@@ -447,6 +447,9 @@ const ptBR = {
   'daily.noPrevious': 'Nenhuma nota diária antes desta',
   'daily.noNext': 'Nenhuma nota diária depois desta',
   'daily.today': 'Hoje',
+  'cmd.gotoHeading': 'Ir para um título da página…',
+  'outline.pick': 'Ir para o título…',
+  'outline.empty': 'Esta página não tem títulos.',
 } satisfies Record<string, Entry>;
 
 export type Key = keyof typeof ptBR;
@@ -886,6 +889,9 @@ const en: Record<Key, Entry> = {
   'daily.noPrevious': 'No daily note before this one',
   'daily.noNext': 'No daily note after this one',
   'daily.today': 'Today',
+  'cmd.gotoHeading': 'Go to a heading in the page…',
+  'outline.pick': 'Go to heading…',
+  'outline.empty': 'This page has no headings.',
 };
 
 const dictionaries: Record<Language, Record<Key, Entry>> = { 'pt-BR': ptBR, en };

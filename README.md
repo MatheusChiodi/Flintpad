@@ -23,7 +23,13 @@ On first launch, pick the vault folder. It can be an existing Obsidian vault: fi
 
 <img src="docs/editor.svg" alt="Block editor with the slash menu open" width="640">
 
-Each note is a light page set into the dark frame. Type `/` to insert headings, lists, to-dos, tables, quotes and code blocks, and drag blocks to reorder them. The big title renames the file.
+Each note is a light page set into the dark frame. Type `/` to insert headings, lists, to-dos, tables, quotes and code blocks, and drag blocks to reorder them. The big title renames the file (`Esc` gives up on the typed name); characters that Windows or wikilinks cannot hold (`\ / : * ? " < > | # ^ [ ]`) are dropped.
+
+- **Status bar** at the foot of the page: save state (Saved / Saving… / Not saved, with a retry), word and character counts and reading time. A failed save also shows a notice instead of failing silently.
+- **Find in page** with `Ctrl+F`: matches are highlighted in place, `Enter` / `Shift+Enter` (or `F3`) step through them, with a match-case toggle. Highlights use the CSS Custom Highlight API, so the note's text is never touched.
+- **Full width**: the button at the right of the status bar (or the command palette) drops the reading column for that page; the choice is remembered per page on this computer.
+- **Templates**: pages inside the `Templates` folder (`Modelos` in Portuguese) can start a new page or be inserted at the cursor, from the command palette. `{{title}}`, `{{date}}`, `{{time}}` and `{{date:DD/MM/YYYY}}` (tokens `YYYY MM DD HH mm`) are filled in. A template named after the daily folder (`Templates/Daily`) becomes the starting text of each new daily note.
+- **Daily notes** show the full date above the title, with buttons to the previous and next existing daily note and back to today.
 
 `Ctrl+Shift+P` (File → Export as PDF…) saves the open page as an A4 PDF: title and content only, black on white, without the sidebar, tabs or links panel. The file is then shown in its folder.
 
@@ -31,7 +37,18 @@ Each note is a light page set into the dark frame. Type `/` to insert headings, 
 
 <img src="docs/links.svg" alt="Links inside a page and the backlinks panel" width="640">
 
-Link pages with `[[Page]]`, `[[Page|alias]]` or `[[Page#section]]`; type `[` to get page suggestions. The side panel lists the pages that point to the current one and the links it contains. Clicking a link to a page that does not exist creates it, and renaming a page updates every link that points to it.
+Link pages with `[[Page]]`, `[[Page|alias]]` or `[[Page#section]]`; type `[` to get page suggestions, and `[Page#` to pick one of that page's headings. A link with a section opens the page scrolled to that heading (it briefly glows), and the section survives editing. Links to pages that do not exist yet are faded; clicking one creates the page, and renaming or moving a page updates every link that points to it. Hovering a link shows a preview card with the start of the page (or of the section); click its title to open it.
+
+The side panel (wide windows) has:
+
+- **Outline**: the page's headings; click one to jump to it. In a narrow window use *Go to a heading* in the command palette.
+- **Backlinks**, each with the passage around the link.
+- **Links in this page**.
+- **Unlinked mentions** (collapsible): pages that mention this page's name as plain text (outside code, links and headings), with a *Link* button that turns those mentions into `[[links]]`, keeping the original wording as the alias.
+
+### Tags
+
+`#tag` in the text (outside code and links) and `tags:` in the frontmatter (inline list or YAML list) are collected into a collapsible Tags section of the sidebar, with counts; `#parent/child` tags nest under their parent, which also counts them. Clicking a tag opens quick search filtered by it.
 
 ### Tasks
 
@@ -93,7 +110,13 @@ The rest of the app only knows the `::whiteboards` tab, the sidebar entry and th
 
 <img src="docs/tabs.svg" alt="Tab bar, page tree and keyboard shortcuts" width="640">
 
-Pages open in tabs with their own back/forward history, next to a collapsible page tree. Quick search (`Ctrl+P`) matches page names first and then the text inside notes, showing the passage around each hit. Shortcuts match the Notion desktop app.
+Pages open in tabs with their own back/forward history, next to a collapsible page tree. Shortcuts match the Notion desktop app.
+
+**Quick search** (`Ctrl+P`) matches page names loosely, VS Code style (`cn` finds *Casa nova*, matched letters highlighted), then the text inside notes, showing the passage around each hit. Narrow it with `tag:name` (or `#name`) and `path:folder`; `Ctrl+Enter` opens the result in a new tab, `Enter` on an unknown name creates the page. Start with `>` to get the **command palette**: every menu action plus page commands (rename, duplicate, move, move to trash, insert template, go to heading, random page, full width, pin tab…), each with its shortcut.
+
+**Page tree**: right-click a page (or press the menu key / `Shift+F10`) for open in new tab, rename, duplicate, move to…, favorite, copy link and move to trash. On a focused row, `F2` renames in place, `Delete` moves to the trash and the arrow keys walk the tree. Drag a page onto a folder (or onto the *Pages* header for the vault root) to move it. The filter field above the tree narrows it to matching pages; the buttons beside *Pages* reveal the open page and collapse or expand every folder. The open page's folders open by themselves. Moving a page to the trash shows a notice with **Undo**, which recreates it with the same text.
+
+**Tabs**: right-click a tab to pin it, duplicate it, copy its link or close it, the others or the ones to its right. A pinned tab stays at the left, ignores `Ctrl+W` and opens links in a new tab. Drag tabs to reorder them (`Shift+←/→` on a focused tab). The open tabs, their history and pins come back the next time the vault is opened.
 
 Star a page to pin it in a Favorites section above the page tree: from the links panel, the star beside the title in smaller windows, the page tree, or `Ctrl+Shift+F`. The last 20 pages you opened come first in quick search while the field is empty, and the five most recent are listed when no page is open. Both lists are kept per vault.
 
@@ -108,6 +131,9 @@ Star a page to pin it in a Favorites section above the page tree: from the links
 | Collapse sidebar into icons (focus mode) | `Ctrl+Shift+\` or the panel button next to the vault name |
 | Copy page link / page name | `Ctrl+L` / `Ctrl+Alt+L` |
 | Add / remove current page from favorites | `Ctrl+Shift+F` |
+| Find in page | `Ctrl+F` |
+| Rename / move to trash the focused page in the tree | `F2` / `Delete` |
+| Context menu of the focused tree row or tab | `Shift+F10` or the menu key |
 | Export page as PDF | `Ctrl+Shift+P` |
 | Paste without formatting | `Ctrl+Shift+V` |
 | Quick search (creates the page if missing) | `Ctrl+P` |
@@ -170,7 +196,9 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - Obsidian-only syntax (callouts `> [!note]`, embeds `![[...]]`, Dataview, canvas) shows as plain text.
 - No Notion databases, no sync, no plugins.
 - Files and folders starting with `.` are ignored.
-- Favorites and recent pages are stored in the app, keyed by the vault's folder path, not in the vault: moving or renaming the vault folder resets them.
+- Favorites, recent pages, the tab session and full-width pages are stored in the app, keyed by the vault's folder path, not in the vault: moving or renaming the vault folder resets them.
+- The daily-note and template folders follow the interface language (`Daily`/`Templates` in English, `Diário`/`Modelos` in Portuguese).
+- Find in page searches the visible text of the editor; there is no replace.
 
 ## Project layout
 
@@ -180,8 +208,8 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - `electron/preload.cjs`: the `window.api` bridge.
 - `src/App.tsx`: state (tabs, link index).
 - `src/whiteboard/`: the whiteboard module (see Whiteboards above).
-- `src/components/`: `Editor` (BlockNote + wikilinks), `Sidebar`, `Panels` (tabs, links, search), `Graph`, `Tasks`, `Requests`, `Code` and its parts in `code/` (explorer, quick input, terminal, extensions).
-- `src/lib/`: link parsing, task extraction, `.bru` request model, VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
+- `src/components/`: `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests`, `Code` and its parts in `code/` (explorer, quick input, terminal, extensions).
+- `src/lib/`: link parsing, note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model, VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
 - `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `OBNOTION_SHOT`/`OBNOTION_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
 - `docs/`: illustrations used in this file.
 

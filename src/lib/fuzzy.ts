@@ -10,10 +10,17 @@ const isWordStart = (text: string, index: number) => {
   return /[\\/\s_.\-()[\]]/.test(previous) || (previous === previous.toLowerCase() && current !== current.toLowerCase());
 };
 
+// Sem acento e em minúsculas, letra por letra: "titulo" acha "Título" e as posições continuam valendo.
+const fold = (text: string) =>
+  text
+    .split('')
+    .map((char) => char.normalize('NFD')[0].toLowerCase())
+    .join('');
+
 export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
-  const q = query.replace(/\s+/g, '').toLowerCase();
+  const q = fold(query.replace(/\s+/g, ''));
   if (!q) return { score: 0, positions: [] };
-  const lower = text.toLowerCase();
+  const lower = fold(text);
   const positions: number[] = [];
   let score = 0;
   let from = 0;

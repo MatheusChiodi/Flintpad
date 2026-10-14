@@ -132,3 +132,9 @@ test('previewLines começa na seção, tira marcas e classifica as linhas', () =
   ]);
   assert.equal(n.previewLines(md, '', 2).length, 2);
 });
+
+test('busca aproximada ignora acentos e mantém as posições', () => {
+  const notes = [note('Título longo.md'), note('Ação.md')];
+  assert.deepEqual(n.searchNotes('titulo', notes, {})[0].positions, [0, 1, 2, 3, 4, 5]);
+  assert.equal(n.searchNotes('acao', notes, {})[0].note.name, 'Ação');
+});

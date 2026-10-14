@@ -537,6 +537,22 @@ export default function App() {
     ['move-note', 'cmd.moveNote', undefined, () => pickFolderFor(activePath), isNote],
     ['delete-note', 'cmd.deleteNote', undefined, () => void deleteNote(activePath), isNote],
     ['find', 'cmd.find', 'Ctrl F', () => window.dispatchEvent(new Event(findOpenEvent)), isNote],
+    [
+      'goto-heading',
+      'cmd.gotoHeading',
+      undefined,
+      // O Sumário também pela paleta: com a janela estreita o painel de links fica oculto.
+      () =>
+        setSwitcher({
+          picker: {
+            placeholder: translate('outline.pick'),
+            empty: translate('outline.empty'),
+            items: headings.map((heading, index) => ({ id: String(index), label: heading.text, detail: '#'.repeat(heading.level) })),
+            onPick: (id) => gotoHeading({ path: activePath, text: headings[Number(id)]?.text ?? '', index: Number(id) }),
+          },
+        }),
+      isNote,
+    ],
     ['toggle-favorite', 'cmd.toggleFavorite', 'Ctrl Shift F', menu['toggle-favorite'], isNote],
     ['copy-link', 'cmd.copyLink', 'Ctrl L', menu['copy-link'], isNote],
     ['copy-name', 'cmd.copyName', 'Ctrl Alt L', menu['copy-name'], isNote],
