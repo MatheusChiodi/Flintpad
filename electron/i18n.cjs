@@ -8,6 +8,7 @@ const LANGUAGES = ['pt-BR', 'en'];
 const strings = {
   'pt-BR': {
     'dialog.chooseVault': 'Escolher pasta do vault',
+    'dialog.exportPdf': 'Exportar página como PDF',
     'error.noVault': 'Nenhum vault aberto',
     'error.outsideVault': 'Caminho fora do vault',
     'error.outsideExtensions': 'Caminho fora das extensões do VS Code',
@@ -18,6 +19,7 @@ const strings = {
     'menu.closeTab': 'Fechar guia',
     'menu.openVault': 'Abrir outro vault…',
     'menu.settings': 'Configurações…',
+    'menu.exportPdf': 'Exportar como PDF…',
     'menu.quit': 'Sair',
     'menu.edit': 'Editar',
     'menu.undo': 'Desfazer',
@@ -55,6 +57,7 @@ const strings = {
   },
   en: {
     'dialog.chooseVault': 'Choose vault folder',
+    'dialog.exportPdf': 'Export page as PDF',
     'error.noVault': 'No vault open',
     'error.outsideVault': 'Path is outside the vault',
     'error.outsideExtensions': 'Path is outside the VS Code extensions',
@@ -65,6 +68,7 @@ const strings = {
     'menu.closeTab': 'Close tab',
     'menu.openVault': 'Open another vault…',
     'menu.settings': 'Settings…',
+    'menu.exportPdf': 'Export as PDF…',
     'menu.quit': 'Quit',
     'menu.edit': 'Edit',
     'menu.undo': 'Undo',

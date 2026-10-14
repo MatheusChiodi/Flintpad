@@ -24,6 +24,7 @@ export type MenuAction =
   | 'close-tab'
   | 'choose-vault'
   | 'settings'
+  | 'export-pdf'
   | 'copy-link'
   | 'copy-name'
   | 'toggle-favorite'
@@ -54,6 +55,8 @@ declare global {
       create(rel: string): Promise<string>;
       rename(from: string, to: string): Promise<string>;
       remove(rel: string): Promise<void>;
+      /** Devolve o caminho gravado, o motivo da falha ou null se o diálogo foi cancelado. */
+      exportPdf(name: string): Promise<{ path?: string; error?: string } | null>;
       bruList(): Promise<{ requests: RequestSummary[]; environments: Environment[] }>;
       bruRead(rel: string): Promise<BruRequest>;
       bruWrite(rel: string, json: BruRequest): Promise<void>;

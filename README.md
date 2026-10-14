@@ -25,6 +25,8 @@ On first launch, pick the vault folder. It can be an existing Obsidian vault: fi
 
 Each note is a light page set into the dark frame. Type `/` to insert headings, lists, to-dos, tables, quotes and code blocks, and drag blocks to reorder them. The big title renames the file.
 
+`Ctrl+Shift+P` (File → Export as PDF…) saves the open page as an A4 PDF: title and content only, black on white, without the sidebar, tabs or links panel. The file is then shown in its folder.
+
 ### Wikilinks and backlinks
 
 <img src="docs/links.svg" alt="Links inside a page and the backlinks panel" width="640">
@@ -61,6 +63,7 @@ Star a page to pin it in a Favorites section above the page tree: from the links
 | Toggle sidebar | `Ctrl+\` |
 | Copy page link / page name | `Ctrl+L` / `Ctrl+Alt+L` |
 | Add / remove current page from favorites | `Ctrl+Shift+F` |
+| Export page as PDF | `Ctrl+Shift+P` |
 | Paste without formatting | `Ctrl+Shift+V` |
 | Quick search (creates the page if missing) | `Ctrl+P` |
 | Tasks | `Ctrl+Shift+J` |

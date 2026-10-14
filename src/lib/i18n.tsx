@@ -70,6 +70,9 @@ const ptBR = {
   'sidebar.emptyHint': '{key} cria a primeira página.',
   'sidebar.settings': 'Configurações',
 
+  'export.saved': 'PDF salvo',
+  'export.failed': 'Não foi possível exportar o PDF',
+
   'favorites.title': 'Favoritos',
   'favorites.add': 'Adicionar aos favoritos',
   'favorites.remove': 'Remover dos favoritos',
@@ -266,6 +269,9 @@ const en: Record<Key, Entry> = {
   'sidebar.emptyTitle': 'Empty vault',
   'sidebar.emptyHint': '{key} creates your first page.',
   'sidebar.settings': 'Settings',
+
+  'export.saved': 'PDF saved',
+  'export.failed': 'Could not export the PDF',
 
   'favorites.title': 'Favorites',
   'favorites.add': 'Add to favorites',

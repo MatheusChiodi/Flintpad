@@ -9,6 +9,7 @@ import { Requests } from './components/Requests';
 import { Settings } from './components/Settings';
 import { Sidebar } from './components/Sidebar';
 import { Tasks } from './components/Tasks';
+import { Toast, type ToastMessage } from './components/Toast';
 import { translate, Trans, useLanguage, useT } from './lib/i18n';
 import { baseName, dirName, outgoingTargets, resolveLink, retargetLinks } from './lib/links';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
@@ -35,6 +36,8 @@ export default function App() {
   const [switcher, setSwitcher] = useState(false);
   const [settings, setSettings] = useState(false);
   const [pins, setPins] = useState<Pins>(emptyPins);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+  const exporting = useRef(false);
   const nextId = useRef(1);
   // Favoritos e recentes do vault aberto: a referência guarda de qual vault são, para gravar na chave certa.
   const pinStore = useRef<{ vault: string | null; pins: Pins }>({ vault: null, pins: emptyPins });
@@ -185,6 +188,24 @@ export default function App() {
     if (note) void navigator.clipboard.writeText(format(note));
   };
 
+  // Só notas viram PDF: nas outras guias a ação não faz nada.
+  const exportPdf = async () => {
+    const { tabs, activeId, notes } = latest.current;
+    const note = notes.find((n) => n.path === currentPath(tabs.find((t) => t.id === activeId)));
+    if (!note || exporting.current) return;
+    exporting.current = true;
+    const notify = (kind: ToastMessage['kind'], text: string, detail?: string) => setToast({ id: Date.now(), kind, text, detail });
+    try {
+      const result = await window.api.exportPdf(note.name);
+      if (result?.path) notify('ok', translate('export.saved'), result.path);
+      else if (result) notify('error', translate('export.failed'), result.error);
+    } catch (error) {
+      notify('error', translate('export.failed'), error instanceof Error ? error.message : String(error));
+    } finally {
+      exporting.current = false;
+    }
+  };
+
   // Requests, Código e Tarefas são guias únicas: se já existem, só recebem o foco.
   const openSingleton = (path: string) => {
     const existing = latest.current.tabs.find((t) => currentPath(t) === path);
@@ -218,6 +239,7 @@ export default function App() {
       setSwitcher(false);
       setSettings(true);
     },
+    'export-pdf': () => void exportPdf(),
     'copy-link': () => copyActive((n) => `[[${n.name}]]`),
     'copy-name': () => copyActive((n) => n.name),
     'toggle-favorite': toggleActiveFavorite,
@@ -509,6 +531,10 @@ export default function App() {
       </Presence>
 
       {settingsModal}
+
+      <Presence when={Boolean(toast)} name="toast">
+        <Toast message={toast} onClose={() => setToast(null)} />
+      </Presence>
     </div>
   );
 }

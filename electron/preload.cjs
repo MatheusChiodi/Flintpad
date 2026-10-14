@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('api', {
   create: (rel) => ipcRenderer.invoke('note:create', rel),
   rename: (from, to) => ipcRenderer.invoke('note:rename', from, to),
   remove: (rel) => ipcRenderer.invoke('note:delete', rel),
+  exportPdf: (name) => ipcRenderer.invoke('page:exportPdf', name),
   bruList: () => ipcRenderer.invoke('bru:list'),
   bruRead: (rel) => ipcRenderer.invoke('bru:read', rel),
   bruWrite: (rel, json) => ipcRenderer.invoke('bru:write', rel, json),

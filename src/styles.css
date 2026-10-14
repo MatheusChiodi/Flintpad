@@ -520,6 +520,43 @@ button {
     0 30px 80px -10px rgb(0 0 0 / 0.75);
 }
 
+/* Aviso temporário: uma lasca da mesma pedra da busca rápida, no rodapé. */
+.toast {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 22px;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: fit-content;
+  max-width: min(460px, calc(100vw - 32px));
+  margin-inline: auto;
+  padding: 10px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: default;
+  background: linear-gradient(180deg, var(--color-obsidian-700), var(--color-obsidian-800));
+  border: 1px solid var(--hairline-strong);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 18px 44px -10px rgb(0 0 0 / 0.75);
+}
+
+.toast-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--color-sheen-400);
+}
+
+.toast[data-kind='error'] .toast-dot {
+  background: var(--color-danger);
+}
+
 /* Boas-vindas */
 .welcome-sheet {
   background: var(--color-paper);
@@ -687,6 +724,13 @@ button {
   animation: palette-out 130ms var(--ease-in-quad) forwards;
 }
 
+.toast {
+  animation: toast-in 260ms var(--ease-out-expo) backwards;
+}
+[data-presence='toast'][data-motion='out'] > .toast {
+  animation: toast-out 150ms var(--ease-in-quad) forwards;
+}
+
 .bn-mantine .bn-suggestion-menu {
   transform-origin: top left;
   animation: pop-in 170ms var(--ease-out-expo) backwards;
@@ -832,6 +876,20 @@ button {
   }
 }
 
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(10px * var(--motion));
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    translate: 0 calc(6px * var(--motion));
+  }
+}
+
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -889,5 +947,124 @@ button {
   .sidebar > div:first-child {
     justify-content: center;
     padding-inline: 0;
+  }
+}
+
+/*
+  Impressão (Exportar como PDF): sai só a folha, título e conteúdo, preto no branco.
+  A moldura some e toda área rolável vira altura automática; sem isso o PDF traria só a primeira tela.
+*/
+@media print {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root,
+  .frame,
+  .frame > main,
+  .stage {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* Barra lateral, painel de links, busca, configurações e avisos; dentro de main, a barra de guias. */
+  .frame > :not(main),
+  .frame > main > :not(.stage),
+  .stage > .ghost {
+    display: none !important;
+  }
+
+  .stage.sheet {
+    --color-ink: #000;
+    --color-ink-soft: #333;
+    --color-ink-faint: #666;
+    --color-paper: #fff;
+    margin: 0 !important;
+    border-radius: 0;
+    box-shadow: none;
+    color: #000;
+    animation: none;
+    clip-path: none;
+  }
+
+  .stage.sheet > *,
+  .stage.sheet .bn-editor,
+  .stage.sheet .title-input {
+    max-width: none !important;
+    padding-inline: 0 !important;
+    animation: none;
+  }
+
+  .stage.sheet > * {
+    padding-block: 0 !important;
+  }
+
+  /* Só conteúdo: sem botões, alças de arrastar, menus flutuantes nem textos de dica de bloco vazio. */
+  .stage.sheet button,
+  .stage.sheet select,
+  .bn-side-menu,
+  .bn-formatting-toolbar,
+  .bn-suggestion-menu,
+  .bn-table-handle,
+  .bn-extend-button {
+    display: none !important;
+  }
+
+  .bn-block-content:has(.ProseMirror-trailingBreak:only-child)::after,
+  .bn-inline-content:has(> .ProseMirror-trailingBreak:only-child)::before {
+    content: none !important;
+  }
+
+  /* A linha vazia que o editor oferece no fim: impressa, pode sobrar sozinha numa folha em branco. */
+  .bn-trailing-block {
+    display: none !important;
+  }
+
+  .bn-container [data-content-type='heading'] {
+    break-after: avoid;
+  }
+
+  .bn-container [data-content-type='table'] tr,
+  .bn-container [data-content-type='quote'] blockquote {
+    break-inside: avoid;
+  }
+
+  .bn-container [data-content-type='table'] .tableWrapper {
+    overflow: visible !important;
+  }
+
+  .bn-container [data-content-type='table'] th,
+  .bn-container [data-content-type='table'] td {
+    border-color: #9aa0a6;
+  }
+
+  /* O bloco de código troca a obsidiana por papel, e a linha longa quebra em vez de ser cortada. */
+  .bn-container .bn-block-content[data-content-type='codeBlock'] {
+    background: #f3f4f2;
+    color: #000;
+    box-shadow: inset 0 0 0 1px #c9cdca;
+    color-scheme: light;
+  }
+
+  .bn-container .bn-block-content[data-content-type='codeBlock'] > pre {
+    padding: 14px 16px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .bn-container .bn-block-content[data-content-type='codeBlock'] > pre * {
+    color: inherit !important;
+  }
+
+  /* Wikilink vira texto na cor de link, sem o veio por baixo. */
+  .wikilink,
+  .wikilink[data-missing='true'] {
+    background-image: none;
+    opacity: 1;
   }
 }

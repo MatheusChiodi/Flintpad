@@ -12,6 +12,10 @@ const { LANGUAGES, translator } = require('./i18n.cjs');
 const MAX_INDEXED_BYTES = 1024 * 1024;
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const ENV_DIR = 'environments';
+// Margens do PDF exportado, em polegadas (cerca de 18 mm).
+const PDF_MARGINS_IN = { top: 0.7, bottom: 0.7, left: 0.7, right: 0.7 };
+const PDF_PAPER = '#ffffff';
+const WINDOW_BACKGROUND = '#0a0d13';
 const MAX_LISTED_FILES = 5000;
 // Arquivos que o editor de código não abre: binários, mídia e pacotes.
 const BINARY_EXTENSIONS = new Set(
@@ -139,6 +143,35 @@ function registerIpc() {
   });
 
   ipcMain.handle('note:delete', (_e, rel) => shell.trashItem(resolveInVault(rel)));
+
+  // Exporta a página aberta: o PDF sai do que está na janela, com o estilo de impressão (@media print).
+  // Devolve { path } ao gravar, { error } se falhar e null se o diálogo for cancelado.
+  ipcMain.handle('page:exportPdf', async (_e, name) => {
+    // OBNOTION_EXPORT_TO=<arquivo.pdf> (testes): grava direto, sem diálogo e sem abrir a pasta.
+    let target = process.env.OBNOTION_EXPORT_TO;
+    try {
+      if (!target) {
+        const safeName = String(name ?? '').replace(/[\\/:*?"<>|]/g, '').trim() || 'ObNotion';
+        const result = await dialog.showSaveDialog(win, {
+          title: t('dialog.exportPdf'),
+          defaultPath: path.join(app.getPath('documents'), `${safeName}.pdf`),
+          filters: [{ name: 'PDF', extensions: ['pdf'] }],
+        });
+        if (result.canceled || !result.filePath) return null;
+        target = result.filePath;
+      }
+      // As margens da folha são pintadas com a cor de fundo da janela: sem a troca, sairiam escuras.
+      win.setBackgroundColor(PDF_PAPER);
+      const pdf = await win.webContents
+        .printToPDF({ printBackground: true, pageSize: 'A4', margins: PDF_MARGINS_IN })
+        .finally(() => win.setBackgroundColor(WINDOW_BACKGROUND));
+      await fsp.writeFile(target, pdf);
+      if (!process.env.OBNOTION_EXPORT_TO) shell.showItemInFolder(target);
+      return { path: target };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
 
   registerRequestIpc();
   registerCodeIpc();
@@ -341,6 +374,8 @@ function buildMenu(lang) {
         item(t('menu.openVault'), 'CmdOrCtrl+O', 'choose-vault'),
         item(t('menu.settings'), 'CmdOrCtrl+,', 'settings'),
         { type: 'separator' },
+        item(t('menu.exportPdf'), 'CmdOrCtrl+Shift+P', 'export-pdf'),
+        { type: 'separator' },
         { role: 'quit', label: t('menu.quit'), accelerator: 'CmdOrCtrl+Shift+Q' },
       ],
     },
@@ -404,7 +439,7 @@ function createWindow() {
     height: Number(process.env.OBNOTION_SIZE?.split('x')[1]) || 820,
     minWidth: 720,
     minHeight: 480,
-    backgroundColor: '#0a0d13',
+    backgroundColor: WINDOW_BACKGROUND,
     autoHideMenuBar: true,
     title: 'ObNotion',
     // Em modo de captura a janela não aparece: renderiza fora da tela, sem depender do foco.
