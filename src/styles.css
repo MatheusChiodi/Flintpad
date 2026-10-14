@@ -599,6 +599,147 @@ button {
   background: var(--color-danger);
 }
 
+/* Ferramentas da folha: busca na página no alto, status no rodapé. Grudam na rolagem da folha. */
+.find-dock {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: flex-end;
+  height: 0;
+  padding-inline: 14px;
+  overflow: visible;
+}
+
+.find-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  height: 36px;
+  padding: 0 6px 0 10px;
+  border-radius: 8px;
+  background: var(--color-paper-raised);
+  box-shadow:
+    0 0 0 1px var(--color-paper-line),
+    0 10px 28px -10px rgb(0 0 0 / 0.35);
+  animation: pop-in 170ms var(--ease-out-expo) backwards;
+}
+
+.find-input {
+  width: 200px;
+  max-width: 40vw;
+  background: transparent;
+  font-size: 13px;
+  color: var(--color-ink);
+  caret-color: var(--color-sheen-700);
+  outline: none;
+}
+
+.find-input::placeholder {
+  color: var(--color-ink-faint);
+}
+
+.find-count {
+  min-width: 64px;
+  padding-inline: 4px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--color-ink-soft);
+}
+
+.find-case {
+  width: 26px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.find-bar .icon-button:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+::highlight(obnotion-find) {
+  background-color: color-mix(in srgb, #f2c94c 45%, transparent);
+}
+
+::highlight(obnotion-find-current) {
+  background-color: #f2a93b;
+  color: var(--color-ink);
+}
+
+/* Título alcançado por link ou pelo Sumário: um brilho breve para o olho achar onde parou. */
+.bn-block-outer.flash > .bn-block > .bn-block-content,
+[data-id].flash > .bn-block-content {
+  animation: heading-flash 1200ms var(--ease-out-quart);
+  border-radius: 4px;
+}
+
+@keyframes heading-flash {
+  from {
+    background: color-mix(in srgb, var(--color-sheen-400) 28%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.note-status {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 14px;
+  padding: 18px 18px 8px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-faint);
+  background: linear-gradient(180deg, transparent, var(--color-paper) 55%);
+  pointer-events: none;
+}
+
+.note-status > * {
+  pointer-events: auto;
+}
+
+.note-status-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
+
+.note-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-sheen-700);
+  opacity: 0.55;
+  transition: background-color 160ms var(--ease-out-quart);
+}
+
+.note-status[data-state='saving'] .note-status-dot {
+  background: #c79a2e;
+  opacity: 1;
+}
+
+.note-status[data-state='error'] {
+  color: #a23b36;
+}
+
+.note-status[data-state='error'] .note-status-dot {
+  background: #c94a44;
+  opacity: 1;
+}
+
+.note-status-retry {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Boas-vindas */
 .welcome-sheet {
   background: var(--color-paper);
@@ -1714,7 +1855,11 @@ button.wb-status-item:hover {
     break-after: avoid;
   }
 
-  .stage.sheet > * > :has(> .title-input) {
+  .stage.sheet .note-page > :has(> .title-input),
+  .stage.sheet .note-status,
+  .stage.sheet .find-dock,
+  .stage.sheet .daily-nav,
+  .stage.sheet .properties {
     display: none !important;
   }
 
@@ -1732,6 +1877,7 @@ button.wb-status-item:hover {
   }
 
   .stage.sheet > *,
+  .stage.sheet .note-page,
   .stage.sheet .bn-editor,
   .stage.sheet .title-input {
     max-width: none !important;
@@ -1739,7 +1885,8 @@ button.wb-status-item:hover {
     animation: none;
   }
 
-  .stage.sheet > * {
+  .stage.sheet > *,
+  .stage.sheet .note-page {
     padding-block: 0 !important;
   }
 

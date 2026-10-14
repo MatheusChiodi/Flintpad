@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Trans, useT, type Translate } from '../lib/i18n';
 import { baseName } from '../lib/links';
+import type { Heading } from '../lib/notes';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type Note, type Tab } from '../types';
 import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, SidebarIcon, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon, WhiteboardIcon } from './Icons';
 
@@ -92,17 +93,20 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onShowSidebar
 type LinksPanelProps = {
   backlinks: Note[];
   outgoing: { target: string; path?: string; label?: string }[];
+  headings: Heading[];
+  onHeading: (index: number) => void;
   favorite: boolean;
   onToggleFavorite: () => void;
   onOpen: (path: string) => void;
   onOpenTarget: (target: string) => void;
 };
 
-export function LinksPanel({ backlinks, outgoing, favorite, onToggleFavorite, onOpen, onOpenTarget }: LinksPanelProps) {
+export function LinksPanel({ backlinks, outgoing, headings, onHeading, favorite, onToggleFavorite, onOpen, onOpenTarget }: LinksPanelProps) {
   const t = useT();
   const heading = 'section-label flex items-center justify-between px-4 pb-2 pt-4';
   const row = 'row w-full px-2 text-left text-[13px]';
   const empty = 'px-4 pb-1 text-[13px] leading-relaxed text-frost-500';
+  const minLevel = Math.min(...headings.map((item) => item.level));
 
   return (
     <aside className="pane hidden w-60 shrink-0 overflow-y-auto pb-4 lg:block" aria-label={t('links.panel')}>
@@ -118,6 +122,29 @@ export function LinksPanel({ backlinks, outgoing, favorite, onToggleFavorite, on
           <Kbd>Ctrl Shift F</Kbd>
         </button>
       </div>
+      {headings.length > 0 && (
+        <nav aria-label={t('outline.title')}>
+          <div className={`${heading} mt-3 border-t border-(--hairline)`}>
+            <span>{t('outline.title')}</span>
+            <span className="tabular-nums">{headings.length}</span>
+          </div>
+          <ol className="px-2">
+            {headings.map((item, index) => (
+              <li key={`${index}:${item.text}`}>
+                <button
+                  className={`${row} outline-row`}
+                  style={{ paddingLeft: 8 + (item.level - minLevel) * 12 }}
+                  data-level={item.level}
+                  title={item.text}
+                  onClick={() => onHeading(index)}
+                >
+                  <span className="truncate">{item.text}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
       <div className={`${heading} mt-3 border-t border-(--hairline)`}>
         <span>{t('links.backlinks')}</span>
         <span className="tabular-nums">{backlinks.length}</span>

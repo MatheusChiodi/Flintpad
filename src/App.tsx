@@ -14,7 +14,8 @@ import { handleCodeMenu } from './lib/codeBridge';
 import { translate, Trans, useLanguage, useT } from './lib/i18n';
 import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks } from './lib/links';
 import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIndex';
-import { sanitizeNotePath } from './lib/notes';
+import { gotoHeading } from './lib/noteBridge';
+import { extractHeadings, parseLinkTarget, sanitizeNotePath } from './lib/notes';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
 
@@ -183,9 +184,12 @@ export default function App() {
       openRequests();
       return;
     }
-    const existing = resolveLink(target, latest.current.notes);
-    if (existing) open(existing);
-    else await createAndOpen(target);
+    // [[Página#Seção]]: abre a página e rola até o título.
+    const { target: name, section } = parseLinkTarget(target);
+    const existing = resolveLink(name, latest.current.notes);
+    if (!existing) return createAndOpen(name);
+    if (section) gotoHeading({ path: existing, text: section });
+    open(existing);
   };
 
   const renameNote = async (path: string, name: string) => {
@@ -384,6 +388,9 @@ export default function App() {
     [isNote, contents, activePath, notes],
   );
 
+  // Sumário: os títulos da página, a partir do que está gravado (atualiza a cada gravação).
+  const headings = useMemo(() => (isNote ? extractHeadings(contents[activePath] ?? '') : []), [isNote, contents, activePath]);
+
   // Toda nota que passa pela guia ativa entra nas recentes (guias especiais e guia vazia, não).
   useEffect(() => {
     if (notes.some((n) => n.path === activePath)) updatePins((current) => touchRecent(current, activePath));
@@ -547,6 +554,7 @@ export default function App() {
               key={`${activeId}:${activePath}:${language}`}
               path={activePath}
               notes={notes}
+              contents={contents}
               favorite={favorite}
               onToggleFavorite={toggleActiveFavorite}
               onSaved={saved}
@@ -605,7 +613,16 @@ export default function App() {
       </main>
 
       <Presence when={isNote} name="links">
-        <LinksPanel backlinks={backlinks} outgoing={outgoing} favorite={favorite} onToggleFavorite={toggleActiveFavorite} onOpen={(path) => open(path)} onOpenTarget={openTarget} />
+        <LinksPanel
+          backlinks={backlinks}
+          outgoing={outgoing}
+          headings={headings}
+          onHeading={(index) => headings[index] && gotoHeading({ path: activePath, text: headings[index].text, index })}
+          favorite={favorite}
+          onToggleFavorite={toggleActiveFavorite}
+          onOpen={(path) => open(path)}
+          onOpenTarget={openTarget}
+        />
       </Presence>
 
       <Presence when={switcher} name="switcher">
