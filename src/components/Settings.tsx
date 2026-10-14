@@ -17,11 +17,27 @@ export function Settings({ vault, onChooseVault, onClose }: Props) {
   closeRef.current = onClose;
 
   useEffect(() => {
-    dialog.current?.focus();
+    // Ao fechar, o foco volta para onde estava (o botão da barra lateral, o editor…).
+    const previous = document.activeElement as HTMLElement | null;
+    dialog.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && closeRef.current();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      previous?.focus();
+    };
   }, []);
+
+  // Grupo de rádio: as setas trocam a língua e levam o foco junto.
+  const onArrow = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1 : event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -1 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const index = LANGUAGES.findIndex(([code]) => code === language);
+    const [next] = LANGUAGES[(index + step + LANGUAGES.length) % LANGUAGES.length];
+    setLanguage(next);
+    event.currentTarget.querySelector<HTMLElement>(`[lang="${next}"]`)?.focus();
+  };
 
   return (
     <div className="scrim fixed inset-0 z-50 flex items-start justify-center pt-24" onMouseDown={onClose}>
@@ -40,13 +56,14 @@ export function Settings({ vault, onChooseVault, onClose }: Props) {
         </div>
 
         <div className="section-label px-4 pb-2 pt-4">{t('settings.language')}</div>
-        <div className="flex flex-col gap-px px-1.5" role="radiogroup" aria-label={t('settings.language')}>
+        <div className="flex flex-col gap-px px-1.5" role="radiogroup" aria-label={t('settings.language')} onKeyDown={onArrow}>
           {LANGUAGES.map(([code, name]) => (
             <button
               key={code}
               className="row w-full px-2.5 text-left text-[13px]"
               role="radio"
               aria-checked={code === language}
+              tabIndex={code === language ? 0 : -1}
               data-active={code === language}
               lang={code}
               onClick={() => setLanguage(code)}

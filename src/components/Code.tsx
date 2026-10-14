@@ -6,7 +6,7 @@ import jsonWorker from 'monaco-editor/language/json/json.worker.js?worker';
 import tsWorker from 'monaco-editor/language/typescript/ts.worker.js?worker';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useT } from '../lib/i18n';
+import { useT, type Key, type Vars } from '../lib/i18n';
 import { dirName } from '../lib/links';
 import { monacoLanguage, toMonacoTheme, toSnippetEntries, type SnippetEntry, type VsExtension } from '../lib/vscode';
 
@@ -122,7 +122,8 @@ export default function Code() {
   const [extensions, setExtensions] = useState<VsExtension[]>([]);
   const [themePath, setThemePath] = useState(() => localStorage.getItem(THEME_STORAGE_KEY) ?? '');
   const [saveState, setSaveState] = useState<SaveState>('saved');
-  const [problem, setProblem] = useState('');
+  // Guarda a chave, não o texto: a mensagem acompanha a troca de língua.
+  const [problem, setProblem] = useState<[Key, Vars] | null>(null);
 
   const refresh = async () => {
     const list = await window.api.filesList();
@@ -244,12 +245,12 @@ export default function Code() {
 
   const select = async (path: string) => {
     await flush();
-    setProblem('');
+    setProblem(null);
     let content: string;
     try {
       content = await window.api.read(path);
     } catch {
-      return setProblem(t('code.readError', { path }));
+      return setProblem(['code.readError', { path }]);
     }
     const instance = editor.current!;
     const previous = instance.getModel();
@@ -266,14 +267,14 @@ export default function Code() {
   const createFile = async () => {
     const name = newName.trim().replace(/\\/g, '/').replace(/^\/+/, '');
     if (!name) return;
-    setProblem('');
+    setProblem(null);
     try {
       const path = await window.api.create(name);
       setNewName('');
       await refresh();
       await select(path);
     } catch {
-      setProblem(t('code.createError', { name }));
+      setProblem(['code.createError', { name }]);
     }
   };
 
@@ -371,7 +372,7 @@ export default function Code() {
             {t('code.extensionsCount', { count: extensions.length })}
           </button>
         </div>
-        {problem && <p className="px-4 py-2 text-[12.5px] text-danger">{problem}</p>}
+        {problem && <p className="px-4 py-2 text-[12.5px] text-danger">{t(...problem)}</p>}
 
         {view === 'extensions' && <ExtensionList extensions={extensions} />}
         <div className={`relative min-h-0 flex-1 ${view === 'extensions' ? 'hidden' : ''}`}>

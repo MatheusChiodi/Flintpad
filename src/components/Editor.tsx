@@ -63,6 +63,9 @@ function linkify(blocks: any[]): any[] {
   return blocks;
 }
 
+// Gravações em andamento por nota, para a próxima abertura esperar por elas.
+const pendingWrites = new Map<string, Promise<void>>();
+
 type Props = {
   path: string;
   notes: Note[];
@@ -86,13 +89,17 @@ export function Editor({ path, notes, onSaved, onRename }: Props) {
     if (!s.ready || s.latest === s.saved) return;
     s.saved = s.latest;
     const content = s.front + s.latest;
-    void window.api.write(path, content).then(() => onSaved(path, content));
+    const write = window.api.write(path, content).then(() => onSaved(path, content));
+    pendingWrites.set(path, write);
+    void write.finally(() => pendingWrites.get(path) === write && pendingWrites.delete(path));
   };
 
   useEffect(() => {
     const s = session.current;
     let alive = true;
     void (async () => {
+      // Um editor recém-desmontado da mesma nota pode ainda estar gravando: ler antes traria texto velho.
+      await pendingWrites.get(path)?.catch(() => undefined);
       const [front, body] = splitFrontmatter(await window.api.read(path));
       if (!alive) return;
       const blocks = linkify(await editor.tryParseMarkdownToBlocks(body));

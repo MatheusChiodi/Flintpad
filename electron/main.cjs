@@ -35,7 +35,12 @@ function readConfig() {
 }
 
 // Grava só as chaves informadas: o vault e a língua moram no mesmo arquivo.
-const saveConfig = (patch) => fsp.writeFile(configFile(), JSON.stringify({ ...readConfig(), ...patch }));
+// Escreve ao lado e renomeia: uma queda no meio da gravação não deixa o config pela metade.
+async function saveConfig(patch) {
+  const temp = `${configFile()}.tmp`;
+  await fsp.writeFile(temp, JSON.stringify({ ...readConfig(), ...patch }));
+  await fsp.rename(temp, configFile());
+}
 
 function setLanguage(next) {
   language = next;
@@ -47,8 +52,8 @@ function loadConfig() {
   const saved = readConfig();
   if (!vault && saved.vault && fs.existsSync(saved.vault)) vault = saved.vault;
   // OBNOTION_LANG sobrepõe a configuração (testes); sem nada salvo, vale a língua do sistema.
-  const wanted = process.env.OBNOTION_LANG || saved.language;
-  setLanguage(LANGUAGES.includes(wanted) ? wanted : app.getLocale().toLowerCase().startsWith('pt') ? 'pt-BR' : 'en');
+  const wanted = [process.env.OBNOTION_LANG, saved.language].find((candidate) => LANGUAGES.includes(candidate));
+  setLanguage(wanted ?? (app.getLocale().toLowerCase().startsWith('pt') ? 'pt-BR' : 'en'));
 }
 
 // Todo caminho vindo do renderer é relativo ao vault e não pode sair dele.

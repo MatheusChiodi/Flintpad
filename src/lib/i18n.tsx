@@ -356,21 +356,16 @@ const en: Record<Key, Entry> = {
 
 const dictionaries: Record<Language, Record<Key, Entry>> = { 'pt-BR': ptBR, en };
 
-type Vars = Record<string, string | number>;
+export type Vars = Record<string, string | number>;
 export type Translate = (key: Key, vars?: Vars) => string;
 
 // `{nome}` é variável; `{{nome}}` é texto literal (sintaxe de variável do Bruno).
 const placeholder = () => /(?<!\{)\{(\w+)\}(?!\})/g;
 
-const pluralRules = new Map<Language, Intl.PluralRules>();
-function isOne(language: Language, count: number) {
-  if (!pluralRules.has(language)) pluralRules.set(language, new Intl.PluralRules(language));
-  return pluralRules.get(language)!.select(count) === 'one';
-}
-
 function format(language: Language, key: Key, vars?: Vars): string {
   const entry = dictionaries[language][key];
-  const text = typeof entry === 'string' ? entry : isOne(language, Number(vars?.count)) ? entry.one : entry.other;
+  // Só 1 é singular nas duas línguas: a regra do Intl para português trataria 0 como "0 página".
+  const text = typeof entry === 'string' ? entry : Number(vars?.count) === 1 ? entry.one : entry.other;
   return vars ? text.replace(placeholder(), (all, name: string) => (name in vars ? String(vars[name]) : all)) : text;
 }
 
@@ -395,7 +390,8 @@ export function I18nProvider({ initial, children }: { initial: Language; childre
       setLanguage: (next: Language) => {
         setState(next);
         // O processo principal grava a escolha e refaz o menu nativo.
-        void window.api.setSettings({ language: next });
+        // Se a gravação falhar a língua ainda vale nesta sessão; o erro fica no console.
+        window.api.setSettings({ language: next }).catch((error) => console.error('settings:set', error));
       },
     }),
     [language],
