@@ -1,0 +1,53 @@
+import type { BruRequest, Environment, EnvVar, HttpResult, OutgoingRequest, RequestSummary } from './lib/request';
+
+export type Note = { path: string; name: string };
+
+export type Tab = { id: number; stack: string[]; idx: number };
+
+export const GRAPH = '::graph';
+export const REQUESTS = '::requests';
+
+// Guias que não são notas.
+export const isSpecialPath = (path: string) => path === GRAPH || path === REQUESTS;
+
+export type MenuAction =
+  | 'new-note'
+  | 'new-tab'
+  | 'reopen-tab'
+  | 'close-tab'
+  | 'choose-vault'
+  | 'copy-link'
+  | 'copy-name'
+  | 'quick-switcher'
+  | 'graph'
+  | 'requests'
+  | 'toggle-sidebar'
+  | 'back'
+  | 'forward'
+  | 'next-tab'
+  | 'prev-tab';
+
+declare global {
+  interface Window {
+    api: {
+      debug: boolean;
+      startNote: string | null;
+      getVault(): Promise<string | null>;
+      chooseVault(): Promise<string | null>;
+      readAll(): Promise<{ path: string; content: string }[]>;
+      read(rel: string): Promise<string>;
+      write(rel: string, content: string): Promise<void>;
+      create(rel: string): Promise<string>;
+      rename(from: string, to: string): Promise<string>;
+      remove(rel: string): Promise<void>;
+      bruList(): Promise<{ requests: RequestSummary[]; environments: Environment[] }>;
+      bruRead(rel: string): Promise<BruRequest>;
+      bruWrite(rel: string, json: BruRequest): Promise<void>;
+      bruCreate(folder: string, name: string): Promise<string>;
+      envWrite(rel: string, variables: EnvVar[]): Promise<void>;
+      httpSend(request: OutgoingRequest): Promise<HttpResult>;
+      httpCancel(id: string): Promise<void>;
+      onMenu(callback: (action: MenuAction) => void): () => void;
+    };
+  }
+}
