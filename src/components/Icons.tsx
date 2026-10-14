@@ -188,6 +188,28 @@ export const PinIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Requests: executar uma pasta, copiar, mostrar segredo e código gerado.
+export const PlayIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M5 3.5v9l7-4.5z" />
+  </Icon>
+);
+
+export const CopyIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="5.25" y="5.25" width="8" height="8" rx="1.5" />
+    <path d="M10.75 5.25V4.25a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v5a1.5 1.5 0 0 0 1.5 1.5h1" />
+  </Icon>
+);
+
+export const EyeIcon = ({ off, ...props }: IconProps & { off?: boolean }) => (
+  <Icon {...props}>
+    <path d="M1.75 8S4 3.75 8 3.75 14.25 8 14.25 8 12 12.25 8 12.25 1.75 8 1.75 8z" />
+    <circle cx="8" cy="8" r="1.9" />
+    {off && <path d="m2.75 2.75 10.5 10.5" />}
+  </Icon>
+);
+
 // Marca: uma lasca de obsidiana com uma faceta acesa.
 export function Mark({ size = 20, className }: { size?: number; className?: string }) {
   return (

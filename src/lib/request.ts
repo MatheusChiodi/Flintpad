@@ -1,6 +1,7 @@
 // Modelo de request no formato JSON do @usebruno/lang (arquivos .bru).
 
 import { translate } from './i18n';
+import { applyPathParams } from './requestTools';
 
 export type Pair = { name: string; value: string; enabled: boolean; type?: string };
 
@@ -141,7 +142,9 @@ const toBase64 = (text: string) => btoa(String.fromCharCode(...new TextEncoder()
 export function buildRequest(request: BruRequest, vars: Record<string, string>, id: string): OutgoingRequest {
   const fill = (text = '') => interpolate(text, vars);
 
-  let rawUrl = fill(request.http.url).trim();
+  // /users/:id recebe o valor do path param (com as variáveis já aplicadas) antes do resto.
+  const pathParams = (request.params ?? []).filter((p) => p.type === 'path').map((p) => ({ ...p, value: fill(p.value) }));
+  let rawUrl = applyPathParams(fill(request.http.url), pathParams).trim();
   if (!rawUrl) throw new Error(translate('requests.error.noUrl'));
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(rawUrl)) rawUrl = `http://${rawUrl}`;
   let url: URL;

@@ -205,6 +205,14 @@ export default function App() {
     return path;
   };
 
+  // Página gerada por outra tela (resposta ou documentação de requests): cria, grava e abre.
+  const createNoteWith = async (name: string, content: string) => {
+    const path = await window.api.create(`${sanitizeNotePath(name) || t('note.untitled')}.md`);
+    await window.api.write(path, content);
+    await refresh();
+    open(path);
+  };
+
   // Versão para ações do usuário: uma falha vira aviso em vez de exceção solta.
   const createAndOpen = async (name?: string, folder?: string) => {
     try {
@@ -822,7 +830,7 @@ export default function App() {
           className={`min-h-0 flex-1 overflow-y-auto ${isNote ? 'mx-2 mb-2' : ''}`}
         >
           {activePath === REQUESTS ? (
-            <Requests notes={notes} contents={contents} onOpenNote={(path) => open(path)} />
+            <Requests notes={notes} contents={contents} onOpenNote={(path) => open(path)} onCreateNote={createNoteWith} />
           ) : activePath === CODE ? (
             <Suspense fallback={<p className="p-5 text-frost-500">{t('code.loading')}</p>}>
               <Code />
