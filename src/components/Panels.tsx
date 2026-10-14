@@ -123,26 +123,59 @@ export function LinksPanel({ backlinks, outgoing, onOpen, onOpenTarget }: LinksP
 
 type SwitcherProps = {
   notes: Note[];
+  contents: Record<string, string>;
   onOpen: (path: string) => void;
   onCreate: (name: string) => void;
   onClose: () => void;
 };
 
-export function QuickSwitcher({ notes, onOpen, onCreate, onClose }: SwitcherProps) {
+const MAX_RESULTS = 40;
+const MIN_CONTENT_QUERY = 2;
+const EXCERPT_BEFORE = 36;
+const EXCERPT_AFTER = 90;
+
+type Excerpt = { before: string; match: string; after: string };
+type SearchResult = { note: Note; excerpt?: Excerpt };
+
+// Trecho do texto em volta da ocorrência, numa linha só.
+function excerptAround(text: string, at: number, length: number): Excerpt {
+  const start = Math.max(0, at - EXCERPT_BEFORE);
+  const end = Math.min(text.length, at + length + EXCERPT_AFTER);
+  const flat = (part: string) => part.replace(/\s+/g, ' ');
+  return {
+    before: (start > 0 ? '…' : '') + flat(text.slice(start, at)).trimStart(),
+    match: flat(text.slice(at, at + length)),
+    after: flat(text.slice(at + length, end)).trimEnd() + (end < text.length ? '…' : ''),
+  };
+}
+
+export function QuickSwitcher({ notes, contents, onOpen, onCreate, onClose }: SwitcherProps) {
   const t = useT();
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
   const input = useRef<HTMLInputElement>(null);
 
+  // Primeiro as páginas cujo nome casa; depois as que têm o termo no texto.
   const results = useMemo(() => {
     const wanted = query.trim().toLowerCase();
-    return notes.filter((n) => n.path.toLowerCase().includes(wanted)).slice(0, 30);
-  }, [notes, query]);
+    const byName: SearchResult[] = notes.filter((n) => n.path.toLowerCase().includes(wanted)).map((note) => ({ note }));
+    if (wanted.length < MIN_CONTENT_QUERY) return byName.slice(0, MAX_RESULTS);
+    const named = new Set(byName.map((result) => result.note.path));
+    const byContent: SearchResult[] = [];
+    for (const note of notes) {
+      if (byName.length + byContent.length >= MAX_RESULTS) break;
+      if (named.has(note.path)) continue;
+      const text = contents[note.path] ?? '';
+      const at = text.toLowerCase().indexOf(wanted);
+      if (at >= 0) byContent.push({ note, excerpt: excerptAround(text, at, wanted.length) });
+    }
+    return [...byName, ...byContent].slice(0, MAX_RESULTS);
+  }, [notes, contents, query]);
 
   useEffect(() => input.current?.focus(), []);
 
   const confirm = () => {
-    const picked = results[index];
+    const picked = results[index]?.note;
     if (picked) onOpen(picked.path);
     else if (query.trim()) onCreate(query.trim());
     onClose();
@@ -177,7 +210,7 @@ export function QuickSwitcher({ notes, onOpen, onCreate, onClose }: SwitcherProp
           />
         </div>
         <div className="max-h-80 overflow-y-auto p-1.5">
-          {results.map((note, i) => (
+          {results.map(({ note, excerpt }, i) => (
             <div
               key={note.path}
               className="row cursor-pointer px-2.5 py-1 text-[13px]"
@@ -189,8 +222,16 @@ export function QuickSwitcher({ notes, onOpen, onCreate, onClose }: SwitcherProp
               }}
             >
               <PageIcon size={14} className="row-icon" />
-              <span className="truncate">{note.name}</span>
-              <span className="ml-auto truncate pl-4 font-mono text-[11px] text-frost-500">{note.path}</span>
+              <span className="shrink-0 truncate">{note.name}</span>
+              {excerpt ? (
+                <span className="min-w-0 flex-1 truncate pl-3 text-[12px] text-frost-500">
+                  {excerpt.before}
+                  <mark className="rounded-sm bg-sheen-400/25 px-0.5 text-frost-100">{excerpt.match}</mark>
+                  {excerpt.after}
+                </span>
+              ) : (
+                <span className="ml-auto truncate pl-4 font-mono text-[11px] text-frost-500">{note.path}</span>
+              )}
             </div>
           ))}
           {!results.length && (

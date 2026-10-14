@@ -411,6 +411,7 @@ export default function App() {
       <Presence when={switcher} name="switcher">
         <QuickSwitcher
           notes={notes}
+          contents={contents}
           onOpen={(path) => open(path)}
           onCreate={async (name) => open(await createNote(name))}
           onClose={() => setSwitcher(false)}

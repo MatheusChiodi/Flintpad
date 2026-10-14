@@ -41,7 +41,7 @@ Link pages with `[[Page]]`, `[[Page|alias]]` or `[[Page#section]]`; type `[` to 
 
 <img src="docs/tabs.svg" alt="Tab bar, page tree and keyboard shortcuts" width="640">
 
-Pages open in tabs with their own back/forward history, next to a collapsible page tree. Shortcuts match the Notion desktop app.
+Pages open in tabs with their own back/forward history, next to a collapsible page tree. Quick search (`Ctrl+P`) matches page names first and then the text inside notes, showing the passage around each hit. Shortcuts match the Notion desktop app.
 
 | Action | Shortcut |
 |---|---|
