@@ -22,6 +22,7 @@ const ptBR = {
   'nav.requests': 'Requests',
   'nav.code': 'Código',
   'nav.tasks': 'Tarefas',
+  'nav.whiteboards': 'Quadros',
 
   'tasks.openCount': { one: '{count} aberta', other: '{count} abertas' },
   'tasks.filter': 'Mostrar',
@@ -349,6 +350,7 @@ const en: Record<Key, Entry> = {
   'nav.requests': 'Requests',
   'nav.code': 'Code',
   'nav.tasks': 'Tasks',
+  'nav.whiteboards': 'Whiteboards',
 
   'tasks.openCount': { one: '{count} open', other: '{count} open' },
   'tasks.filter': 'Show',

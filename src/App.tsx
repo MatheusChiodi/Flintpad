@@ -15,10 +15,12 @@ import { translate, Trans, useLanguage, useT } from './lib/i18n';
 import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks } from './lib/links';
 import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIndex';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
-import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, type MenuAction, type Note, type Tab } from './types';
+import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
 
 // O editor de código é pesado (Monaco): só é baixado quando a guia abre.
 const Code = lazy(() => import('./components/Code'));
+// Quadro branco: módulo isolado em src/whiteboard, também baixado só quando a guia abre.
+const Whiteboards = lazy(() => import('./whiteboard'));
 
 const MAX_EMPTY_RECENTS = 5;
 
@@ -234,7 +236,7 @@ export default function App() {
     }
   };
 
-  // Requests, Código e Tarefas são guias únicas: se já existem, só recebem o foco.
+  // Requests, Código, Tarefas e Quadros são guias únicas: se já existem, só recebem o foco.
   const openSingleton = (path: string) => {
     const existing = latest.current.tabs.find((t) => currentPath(t) === path);
     if (existing) setActiveId(existing.id);
@@ -243,6 +245,7 @@ export default function App() {
   const openRequests = () => openSingleton(REQUESTS);
   const openCode = () => openSingleton(CODE);
   const openTasks = () => openSingleton(TASKS);
+  const openWhiteboards = () => openSingleton(WHITEBOARDS);
   const saved = (path: string, content: string) => setContents((prev) => ({ ...prev, [path]: content }));
 
   // Nota de hoje: uma página por dia numa pasta própria, criada na primeira vez que é aberta.
@@ -280,6 +283,7 @@ export default function App() {
     requests: () => openRequests(),
     code: () => openCode(),
     tasks: () => openTasks(),
+    whiteboards: () => openWhiteboards(),
     'toggle-sidebar': () => setSidebar((visible) => !visible),
     'toggle-rail': () => {
       setSidebar(true);
@@ -471,6 +475,7 @@ export default function App() {
           onGraph={() => open(GRAPH, true)}
           onDaily={() => void openDaily()}
           onTasks={openTasks}
+          onWhiteboards={openWhiteboards}
           onRequests={openRequests}
           onCode={openCode}
           onSearch={() => setSwitcher(true)}
@@ -494,6 +499,10 @@ export default function App() {
           ) : activePath === CODE ? (
             <Suspense fallback={<p className="p-5 text-frost-500">{t('code.loading')}</p>}>
               <Code />
+            </Suspense>
+          ) : activePath === WHITEBOARDS ? (
+            <Suspense fallback={<p className="p-5 text-frost-500">{t('code.loading')}</p>}>
+              <Whiteboards />
             </Suspense>
           ) : activePath === TASKS ? (
             <Tasks notes={notes} contents={contents} onOpen={open} onSaved={saved} />

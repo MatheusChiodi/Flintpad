@@ -110,6 +110,15 @@ export const TasksIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Quadro branco: uma caixa ligada a um círculo.
+export const WhiteboardIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="1.75" y="2.75" width="5.5" height="4" rx="1" />
+    <circle cx="11.5" cy="11.25" r="2.5" />
+    <path d="M7.25 4.75h2.5a1.75 1.75 0 0 1 1.75 1.75v2.25" />
+  </Icon>
+);
+
 export const TrashIcon =(props: IconProps) => (
   <Icon {...props}>
     <path d="M3 4.5h10M6.25 4.5V2.75h3.5V4.5M4.5 4.5l.6 8.75h5.8l.6-8.75M6.9 7v3.75M9.1 7v3.75" />

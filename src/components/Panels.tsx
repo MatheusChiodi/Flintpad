@@ -2,8 +2,8 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Trans, useT, type Translate } from '../lib/i18n';
 import { baseName } from '../lib/links';
-import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, type Note, type Tab } from '../types';
-import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, SidebarIcon, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon } from './Icons';
+import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type Note, type Tab } from '../types';
+import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, SidebarIcon, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon, WhiteboardIcon } from './Icons';
 
 const currentPath = (tab: Tab) => tab.stack[tab.idx] ?? '';
 
@@ -13,6 +13,7 @@ export function tabTitle(tab: Tab, t: Translate) {
   if (path === REQUESTS) return t('nav.requests');
   if (path === CODE) return t('nav.code');
   if (path === TASKS) return t('nav.tasks');
+  if (path === WHITEBOARDS) return t('nav.whiteboards');
   return path ? baseName(path) : t('tabs.new');
 }
 
@@ -37,7 +38,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onShowSidebar
       )}
       {tabs.map((tab) => {
         const path = currentPath(tab);
-        const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path === TASKS ? TasksIcon : path ? PageIcon : PlusIcon;
+        const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path === TASKS ? TasksIcon : path === WHITEBOARDS ? WhiteboardIcon : path ? PageIcon : PlusIcon;
         return (
           <div
             key={tab.id}

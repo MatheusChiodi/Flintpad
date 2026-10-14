@@ -18,9 +18,10 @@ export const GRAPH = '::graph';
 export const REQUESTS = '::requests';
 export const CODE = '::code';
 export const TASKS = '::tasks';
+export const WHITEBOARDS = '::whiteboards';
 
 // Guias que não são notas.
-export const isSpecialPath = (path: string) => path === GRAPH || path === REQUESTS || path === CODE || path === TASKS;
+export const isSpecialPath = (path: string) => path === GRAPH || path === REQUESTS || path === CODE || path === TASKS || path === WHITEBOARDS;
 
 export type MenuAction =
   | 'new-note'
@@ -39,6 +40,7 @@ export type MenuAction =
   | 'requests'
   | 'code'
   | 'tasks'
+  | 'whiteboards'
   | 'toggle-sidebar'
   | 'toggle-rail'
   | 'back'

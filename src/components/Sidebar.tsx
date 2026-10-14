@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Trans, useT } from '../lib/i18n';
 import type { Note } from '../types';
-import { ChevronIcon, FolderIcon, GraphIcon, CalendarIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, SidebarIcon, StarIcon, TasksIcon, TrashIcon } from './Icons';
+import { ChevronIcon, FolderIcon, GraphIcon, CalendarIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, SidebarIcon, StarIcon, TasksIcon, TrashIcon, WhiteboardIcon } from './Icons';
 
 type Folder = { name: string; path: string; folders: Folder[]; notes: Note[] };
 
@@ -36,6 +36,7 @@ type Props = {
   onGraph: () => void;
   onDaily: () => void;
   onTasks: () => void;
+  onWhiteboards: () => void;
   onRequests: () => void;
   onCode: () => void;
   onSearch: () => void;
@@ -45,7 +46,7 @@ type Props = {
   onToggleRail: () => void;
 };
 
-export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite, onOpen, onNew, onDelete, onGraph, onDaily, onTasks, onRequests, onCode, onSearch, onSettings, rail, onToggleRail }: Props) {
+export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite, onOpen, onNew, onDelete, onGraph, onDaily, onTasks, onWhiteboards, onRequests, onCode, onSearch, onSettings, rail, onToggleRail }: Props) {
   const t = useT();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tree = useMemo(() => buildTree(notes), [notes]);
@@ -178,6 +179,11 @@ export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite,
           <TasksIcon className="row-icon" />
           <span className="rail-hide flex-1 text-left">{t('nav.tasks')}</span>
           <Kbd>Ctrl Shift J</Kbd>
+        </button>
+        <button className="row w-full px-2 text-[13px]" title={t('nav.whiteboards')} onClick={onWhiteboards}>
+          <WhiteboardIcon className="row-icon" />
+          <span className="rail-hide flex-1 text-left">{t('nav.whiteboards')}</span>
+          <Kbd>Ctrl Shift B</Kbd>
         </button>
         <button className="row w-full px-2 text-[13px]" title={t('nav.graph')} onClick={onGraph}>
           <GraphIcon className="row-icon" />

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="834" height="414" viewBox="-32 -142 834 414" font-family="&#39;Instrument Sans Variable&#39;, &#39;Segoe UI&#39;, system-ui, sans-serif">
+
+  <rect x="-32" y="-142" width="834" height="414" fill="#f6f7f5"/>
+  <text font-size="20" fill="#7c3aed" text-anchor="start" xml:space="preserve"><tspan x="0" y="-90">Sample: drag, connect and delete freely</tspan></text>
+  <rect x="0" y="0" width="170" height="80" rx="10" stroke="#1d4ed8" stroke-width="2" fill="#dbe6fb"/><text font-size="16" fill="#1d4ed8" text-anchor="middle" xml:space="preserve"><tspan x="85" y="46">Draft</tspan></text>
+  <polygon points="345,-20 440,40 345,100 250,40" stroke-linejoin="round" stroke="#c2410c" stroke-width="2" fill="#fde7d3"/><text font-size="16" fill="#c2410c" text-anchor="middle" xml:space="preserve"><tspan x="345" y="46">Review</tspan></text>
+  <ellipse cx="685" cy="40" rx="85" ry="40" stroke="#0c6c64" stroke-width="2" fill="#d7f0ec"/><text font-size="16" fill="#0c6c64" text-anchor="middle" xml:space="preserve"><tspan x="685" y="46">Publish</tspan></text>
+  <rect x="255" y="170" width="180" height="70" rx="10" stroke="#b91c1c" stroke-width="2" fill="#fbdada"/><text font-size="16" fill="#b91c1c" text-anchor="middle" xml:space="preserve"><tspan x="345" y="211">Fix the text</tspan></text>
+  <line x1="170" y1="40" x2="250" y2="40" stroke="#1a1f26" stroke-width="2" stroke-linecap="round"/><polygon points="250,40 236,44.5 236,35.5" stroke-linejoin="round" stroke="#1a1f26" stroke-width="2" fill="#1a1f26"/>
+  <line x1="440" y1="40" x2="600" y2="40" stroke="#1a1f26" stroke-width="2" stroke-linecap="round"/><polygon points="600,40 586,44.5 586,35.5" stroke-linejoin="round" stroke="#1a1f26" stroke-width="2" fill="#1a1f26"/>
+  <line x1="345" y1="100" x2="345" y2="170" stroke="#1a1f26" stroke-width="2" stroke-linecap="round"/><polygon points="345,170 340.5,156 349.5,156" stroke-linejoin="round" stroke="#1a1f26" stroke-width="2" fill="#1a1f26"/>
+  <line x1="289.85" y1="170" x2="148.03" y2="80" stroke="#1a1f26" stroke-width="2" stroke-linecap="round"/><polygon points="148.03,80 162.26,83.7 157.44,91.3" stroke-linejoin="round" stroke="#1a1f26" stroke-width="2" fill="#1a1f26"/>
+  <text font-size="20" fill="#0c6c64" text-anchor="start" xml:space="preserve"><tspan x="474" y="24">approved</tspan></text>
+</svg>

@@ -15,7 +15,7 @@ const { registerLspIpc } = require('./lsp.cjs');
 // Os ganchos de teste só existem em desenvolvimento: no app empacotado as variáveis são descartadas
 // (o preload herda o ambiente já limpo).
 if (app.isPackaged) {
-  for (const hook of ['OBNOTION_SHOT', 'OBNOTION_EVAL', 'OBNOTION_TYPE', 'OBNOTION_EXPORT_TO']) delete process.env[hook];
+  for (const hook of ['OBNOTION_SHOT', 'OBNOTION_EVAL', 'OBNOTION_TYPE', 'OBNOTION_EXPORT_TO', 'OBNOTION_DOWNLOAD_DIR']) delete process.env[hook];
 }
 
 const MAX_INDEXED_BYTES = 1024 * 1024;
@@ -506,6 +506,7 @@ function buildMenu(lang) {
         item(t('menu.quickSwitcher'), 'CmdOrCtrl+P', 'quick-switcher'),
         item(t('menu.dailyNote'), 'CmdOrCtrl+D', 'daily-note'),
         item(t('menu.tasks'), 'CmdOrCtrl+Shift+J', 'tasks'),
+        item(t('menu.whiteboards'), 'CmdOrCtrl+Shift+B', 'whiteboards'),
         item(t('menu.graph'), 'CmdOrCtrl+G', 'graph'),
         item(t('menu.requests'), 'CmdOrCtrl+Shift+E', 'requests'),
         item(t('menu.code'), 'CmdOrCtrl+Shift+K', 'code'),
@@ -564,6 +565,12 @@ function createWindow() {
   win.webContents.on('will-navigate', (event, url) => {
     if (url !== win.webContents.getURL()) event.preventDefault();
   });
+
+  // OBNOTION_DOWNLOAD_DIR=<pasta> (testes): downloads (exportações do quadro) vão direto para lá, sem diálogo.
+  // Sem a variável, o Electron pergunta onde salvar.
+  if (process.env.OBNOTION_DOWNLOAD_DIR) {
+    win.webContents.session.on('will-download', (_event, item) => item.setSavePath(path.join(process.env.OBNOTION_DOWNLOAD_DIR, path.basename(item.getFilename()))));
+  }
 
   if (process.env.VITE_DEV_SERVER_URL) win.loadURL(process.env.VITE_DEV_SERVER_URL);
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
