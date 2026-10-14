@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Settings: choose between Brazilian Portuguese and English">
+  <rect width="640" height="360" rx="14" fill="#0a0d13"/>
+  <rect x="0.5" y="0.5" width="639" height="359" rx="13.5" fill="none" stroke="#202736"/>
+  <rect x="150" y="62" width="340" height="236" rx="12" fill="#10141c" stroke="#2d3648"/>
+  <g font-family="system-ui, Segoe UI, sans-serif">
+    <text x="178" y="104" font-size="18" font-weight="700" fill="#e7ecf3">Settings</text>
+    <text x="178" y="142" font-family="ui-monospace, Consolas, monospace" font-size="10" letter-spacing="1.200" fill="#7f8a9b">LANGUAGE</text>
+    <rect x="178" y="156" width="284" height="40" rx="8" fill="#4fbfb4" fill-opacity="0.140" stroke="#4fbfb4"/>
+    <circle cx="200" cy="176" r="6" fill="none" stroke="#86d9cd" stroke-width="1.500"/>
+    <circle cx="200" cy="176" r="2.800" fill="#86d9cd"/>
+    <text x="218" y="181" font-size="14" fill="#e7ecf3">English</text>
+    <rect x="178" y="206" width="284" height="40" rx="8" fill="none" stroke="#2d3648"/>
+    <circle cx="200" cy="226" r="6" fill="none" stroke="#7f8a9b" stroke-width="1.500"/>
+    <text x="218" y="231" font-size="14" fill="#aeb8c7">Português (Brasil)</text>
+    <text x="178" y="276" font-size="12" fill="#7f8a9b">Applies right away, including the menu.</text>
+  </g>
+</svg>

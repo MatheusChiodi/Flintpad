@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
+import { Trans, useT, type Translate } from '../lib/i18n';
 import { dirName } from '../lib/links';
 import {
   buildRequest,
@@ -31,20 +32,26 @@ const METHOD_COLOR: Record<string, string> = {
   DELETE: '#f0908d',
 };
 
-const BODY_MODES = [
-  ['none', 'Sem corpo'],
-  ['json', 'JSON'],
-  ['text', 'Texto'],
-  ['xml', 'XML'],
-  ['formUrlEncoded', 'Form URL-encoded'],
-] as const;
+// Nomes de formato e de esquema (JSON, Bearer…) são os mesmos em qualquer língua.
+const bodyModes = (t: Translate) =>
+  [
+    ['none', t('requests.body.none')],
+    ['json', 'JSON'],
+    ['text', t('requests.body.text')],
+    ['xml', 'XML'],
+    ['formUrlEncoded', 'Form URL-encoded'],
+  ] as const;
 
-const AUTH_MODES = [
-  ['none', 'Sem autenticação'],
-  ['bearer', 'Bearer token'],
-  ['basic', 'Basic'],
-  ['apikey', 'API key'],
-] as const;
+const authModes = (t: Translate) =>
+  [
+    ['none', t('requests.auth.none')],
+    ['bearer', 'Bearer token'],
+    ['basic', 'Basic'],
+    ['apikey', 'API key'],
+  ] as const;
+
+type BodyChoice = ReturnType<typeof bodyModes>[number][0];
+type AuthChoice = ReturnType<typeof authModes>[number][0];
 
 const field =
   'min-w-0 rounded-md bg-obsidian-950/60 px-2.5 py-1.5 font-mono text-[12.5px] text-frost-100 outline-none ring-1 ring-[var(--hairline-strong)] placeholder:text-frost-500 focus:ring-sheen-400';
@@ -85,7 +92,7 @@ function PairTable<T extends PairRow>({
   blank,
   onChange,
   namePlaceholder,
-  valuePlaceholder = 'Valor',
+  valuePlaceholder,
   valueDisabled,
 }: {
   rows: T[];
@@ -95,6 +102,7 @@ function PairTable<T extends PairRow>({
   valuePlaceholder?: string;
   valueDisabled?: (row: T) => string | undefined;
 }) {
+  const t = useT();
   const patch = (index: number, change: Partial<T>) => onChange(rows.map((row, i) => (i === index ? { ...row, ...change } : row)));
 
   return (
@@ -107,41 +115,42 @@ function PairTable<T extends PairRow>({
               type="checkbox"
               className="size-3.5 accent-[#4fbfb4]"
               checked={row.enabled}
-              title={row.enabled ? 'Desativar' : 'Ativar'}
+              title={row.enabled ? t('requests.row.disable') : t('requests.row.enable')}
               onChange={(event) => patch(index, { enabled: event.target.checked } as Partial<T>)}
             />
             <input className={`${field} flex-[2]`} placeholder={namePlaceholder} value={row.name} spellCheck={false} onChange={(event) => patch(index, { name: event.target.value } as Partial<T>)} />
             <input
               className={`${field} flex-[3] disabled:opacity-50`}
-              placeholder={lockedReason ?? valuePlaceholder}
+              placeholder={lockedReason ?? valuePlaceholder ?? t('common.value')}
               value={lockedReason ? '' : row.value}
               disabled={Boolean(lockedReason)}
               spellCheck={false}
               onChange={(event) => patch(index, { value: event.target.value } as Partial<T>)}
             />
-            <button className="rounded px-1.5 py-1 text-frost-500 hover:bg-[var(--hover)] hover:text-danger" title="Remover linha" onClick={() => onChange(rows.filter((_, i) => i !== index))}>
+            <button className="rounded px-1.5 py-1 text-frost-500 hover:bg-[var(--hover)] hover:text-danger" title={t('requests.row.remove')} onClick={() => onChange(rows.filter((_, i) => i !== index))}>
               ×
             </button>
           </div>
         );
       })}
       <button className={`${ghostButton} self-start`} onClick={() => onChange([...rows, blank])}>
-        Adicionar linha
+        {t('requests.row.add')}
       </button>
     </div>
   );
 }
 
 function ResponseView({ result, sending }: { result: HttpResult | null; sending: boolean }) {
+  const t = useT();
   const [tab, setTab] = useState<'body' | 'headers'>('body');
   const pretty = useMemo(() => (result?.ok ? formatBody(result.body, result.headers) : ''), [result]);
 
-  if (sending) return <p className="p-4 text-frost-500">Enviando…</p>;
-  if (!result) return <p className="p-4 text-frost-500">A resposta aparece aqui. Ctrl+Enter envia a request.</p>;
+  if (sending) return <p className="p-4 text-frost-500">{t('requests.response.sending')}</p>;
+  if (!result) return <p className="p-4 text-frost-500">{t('requests.response.idle')}</p>;
   if (!result.ok) {
     return (
       <div className="p-4">
-        <p className="font-medium text-danger">{result.cancelled ? 'Request cancelada.' : 'A request não foi concluída.'}</p>
+        <p className="font-medium text-danger">{result.cancelled ? t('requests.response.cancelled') : t('requests.response.failed')}</p>
         {!result.cancelled && <p className="mt-1 font-mono text-[12.5px] text-frost-300">{result.error}</p>}
       </div>
     );
@@ -151,7 +160,7 @@ function ResponseView({ result, sending }: { result: HttpResult | null; sending:
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-4 px-4 py-2">
-        <Segmented value={tab} onChange={setTab} options={[['body', 'Corpo'], ['headers', `Headers (${result.headers.length})`]] as const} />
+        <Segmented value={tab} onChange={setTab} options={[['body', t('requests.tab.body')], ['headers', t('requests.tabCount', { label: t('requests.tab.headers'), count: result.headers.length })]] as const} />
         <span className="ml-auto font-mono text-[12.5px] font-semibold" style={{ color: statusColor }}>
           {result.status} {result.statusText}
         </span>
@@ -162,9 +171,9 @@ function ResponseView({ result, sending }: { result: HttpResult | null; sending:
         {tab === 'body' ? (
           <>
             <pre className="whitespace-pre-wrap break-words font-mono text-[12.5px] leading-relaxed text-frost-100 select-text">
-              {pretty.slice(0, MAX_SHOWN_CHARS) || <span className="text-frost-500">Resposta sem corpo.</span>}
+              {pretty.slice(0, MAX_SHOWN_CHARS) || <span className="text-frost-500">{t('requests.response.noBody')}</span>}
             </pre>
-            {(pretty.length > MAX_SHOWN_CHARS || result.truncated) && <p className="mt-2 text-frost-500">Resposta grande: só o início é mostrado.</p>}
+            {(pretty.length > MAX_SHOWN_CHARS || result.truncated) && <p className="mt-2 text-frost-500">{t('requests.response.truncated')}</p>}
           </>
         ) : (
           <table className="w-full font-mono text-[12.5px]">
@@ -187,6 +196,7 @@ type Listing = { requests: RequestSummary[]; environments: Environment[] };
 type RequestTab = 'params' | 'headers' | 'body' | 'auth' | 'docs';
 
 export function Requests() {
+  const t = useT();
   const [listing, setListing] = useState<Listing>({ requests: [], environments: [] });
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<BruRequest | null>(null);
@@ -249,7 +259,7 @@ export function Requests() {
 
   const createRequest = async () => {
     const folder = selected ? dirName(selected).replace(/\/$/, '') || ROOT_FOLDER : ROOT_FOLDER;
-    const path: string = await window.api.bruCreate(folder, 'Nova request');
+    const path: string = await window.api.bruCreate(folder, t('requests.new'));
     await refresh();
     await select(path);
   };
@@ -288,8 +298,9 @@ export function Requests() {
   const createEnvironment = async () => {
     await flush();
     const taken = new Set(listing.environments.map((e) => e.name));
-    let name = 'Ambiente';
-    for (let i = 2; taken.has(name); i++) name = `Ambiente ${i}`;
+    const base = t('requests.env.defaultName');
+    let name = base;
+    for (let i = 2; taken.has(name); i++) name = `${base} ${i}`;
     const path = `${ROOT_FOLDER}/environments/${name}.bru`;
     await window.api.envWrite(path, [{ name: 'baseUrl', value: 'https://', enabled: true, secret: false }]);
     await refresh();
@@ -311,22 +322,23 @@ export function Requests() {
   }, [listing.requests]);
 
   const missing = draft ? unresolvedVariables(draft, vars) : [];
-  const bodyMode = (draft?.http.body ?? 'none') as (typeof BODY_MODES)[number][0];
-  const authMode = (draft?.http.auth === 'inherit' ? 'none' : draft?.http.auth ?? 'none') as (typeof AUTH_MODES)[number][0];
+  const bodyMode = (draft?.http.body ?? 'none') as BodyChoice;
+  const authMode = (draft?.http.auth === 'inherit' ? 'none' : draft?.http.auth ?? 'none') as AuthChoice;
+  const counted = (label: string, count?: number) => (count ? t('requests.tabCount', { label, count }) : label);
   const textBodyKey = bodyMode === 'json' || bodyMode === 'text' || bodyMode === 'xml' ? bodyMode : null;
 
   return (
     <div className="flex h-full min-h-0 text-[13px]">
       <aside className="flex w-64 shrink-0 flex-col border-r border-[var(--hairline)]">
         <div className="flex items-center gap-2 px-3 pb-2 pt-3">
-          <span className="section-label flex-1">Requests</span>
+          <span className="section-label flex-1">{t('nav.requests')}</span>
           <button className={ghostButton} onClick={createRequest}>
-            Nova request
+            {t('requests.new')}
           </button>
         </div>
         <div className="flex items-center gap-2 px-3 pb-3">
-          <select className={`${field} flex-1 font-sans`} value={environment?.path ?? ''} title="Ambiente ativo" onChange={(event) => chooseEnvironment(event.target.value)}>
-            <option value="">Sem ambiente</option>
+          <select className={`${field} flex-1 font-sans`} value={environment?.path ?? ''} title={t('requests.activeEnvironment')} onChange={(event) => chooseEnvironment(event.target.value)}>
+            <option value="">{t('requests.noEnvironment')}</option>
             {listing.environments.map((env) => (
               <option key={env.path} value={env.path}>
                 {env.name}
@@ -334,7 +346,7 @@ export function Requests() {
             ))}
           </select>
           <button className={`${ghostButton} shrink-0 ${view === 'environments' ? 'bg-[var(--hover-strong)] text-frost-100' : ''}`} onClick={() => setView(view === 'environments' ? 'request' : 'environments')}>
-            Variáveis
+            {t('requests.variables')}
           </button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
@@ -354,7 +366,7 @@ export function Requests() {
                   <span className="flex-1 truncate">{request.name}</span>
                   <button
                     className="rounded px-1 text-frost-500 opacity-0 hover:text-danger group-hover:opacity-100"
-                    title="Mover para a lixeira"
+                    title={t('common.moveToTrash')}
                     onClick={(event) => {
                       event.stopPropagation();
                       void deleteRequest(request.path);
@@ -366,33 +378,39 @@ export function Requests() {
               ))}
             </div>
           ))}
-          {!listing.requests.length && <p className="px-2 py-1 text-frost-500">Nenhuma request ainda. Crie a primeira ou copie uma coleção do Bruno para o vault.</p>}
+          {!listing.requests.length && <p className="px-2 py-1 text-frost-500">{t('requests.empty')}</p>}
         </div>
       </aside>
 
       {view === 'environments' ? (
         <section className="min-w-0 flex-1 overflow-y-auto p-5">
           <div className="mb-4 flex items-center gap-3">
-            <h2 className="font-display text-xl font-semibold text-frost-100">Variáveis de ambiente</h2>
+            <h2 className="font-display text-xl font-semibold text-frost-100">{t('requests.env.title')}</h2>
             <button className={ghostButton} onClick={createEnvironment}>
-              Novo ambiente
+              {t('requests.env.new')}
             </button>
           </div>
           {environment ? (
             <>
               <p className="mb-3 text-frost-500">
-                Ambiente <span className="text-frost-100">{environment.name}</span>. Use <code className="font-mono text-sheen-300">{'{{nome}}'}</code> na URL, nos headers, no corpo e na autenticação.
+                <Trans
+                  k="requests.env.help"
+                  values={{
+                    name: <span className="text-frost-100">{environment.name}</span>,
+                    variable: <code className="font-mono text-sheen-300">{t('requests.env.example')}</code>,
+                  }}
+                />
               </p>
               <PairTable
                 rows={environment.variables}
                 blank={{ name: '', value: '', enabled: true, secret: false }}
-                namePlaceholder="Nome da variável"
-                valueDisabled={(row) => (row.secret ? 'Secreta: o valor fica só no Bruno' : undefined)}
+                namePlaceholder={t('requests.env.variableName')}
+                valueDisabled={(row) => (row.secret ? t('requests.env.secret') : undefined)}
                 onChange={(variables) => saveEnvironment(environment, variables)}
               />
             </>
           ) : (
-            <p className="text-frost-500">Escolha um ambiente na lista ao lado ou crie um novo.</p>
+            <p className="text-frost-500">{t('requests.env.choose')}</p>
           )}
         </section>
       ) : draft && selected ? (
@@ -406,7 +424,7 @@ export function Requests() {
             <input
               className="w-full bg-transparent font-display text-xl font-semibold text-frost-100 outline-none placeholder:text-frost-500"
               value={draft.meta.name}
-              placeholder="Nome da request"
+              placeholder={t('requests.namePlaceholder')}
               spellCheck={false}
               onChange={(event) => update((r) => ({ ...r, meta: { ...r.meta, name: event.target.value } }))}
             />
@@ -424,23 +442,23 @@ export function Requests() {
               <input
                 className={`${field} flex-1`}
                 value={draft.http.url}
-                placeholder="https://api.exemplo.com/recurso ou {{baseUrl}}/recurso"
+                placeholder={t('requests.urlPlaceholder')}
                 spellCheck={false}
                 onChange={(event) => update((r) => ({ ...r, http: { ...r.http, url: event.target.value }, params: paramsFromUrl(event.target.value, r.params) }))}
               />
               {sendingId ? (
                 <button className="shrink-0 rounded-md px-4 py-1.5 font-medium text-danger ring-1 ring-danger/50 hover:bg-danger/10" onClick={() => void window.api.httpCancel(sendingId)}>
-                  Cancelar
+                  {t('requests.cancel')}
                 </button>
               ) : (
                 <button className="shrink-0 rounded-md bg-sheen-400 px-4 py-1.5 font-semibold text-obsidian-950 hover:bg-sheen-300" onClick={() => void send()}>
-                  Enviar
+                  {t('requests.send')}
                 </button>
               )}
             </div>
             {(problem || missing.length > 0) && (
               <p className="mt-2 text-[12.5px] text-danger">
-                {problem || `Variáveis sem valor no ambiente ativo: ${missing.join(', ')}`}
+                {problem || t('requests.missingVariables', { names: missing.join(', ') })}
               </p>
             )}
             <div className="mt-3">
@@ -449,11 +467,11 @@ export function Requests() {
                 onChange={setTab}
                 options={
                   [
-                    ['params', `Parâmetros${draft.params?.length ? ` (${draft.params.length})` : ''}`],
-                    ['headers', `Headers${draft.headers?.length ? ` (${draft.headers.length})` : ''}`],
-                    ['body', 'Corpo'],
-                    ['auth', 'Autenticação'],
-                    ['docs', 'Anotações'],
+                    ['params', counted(t('requests.tab.params'), draft.params?.length)],
+                    ['headers', counted(t('requests.tab.headers'), draft.headers?.length)],
+                    ['body', t('requests.tab.body')],
+                    ['auth', t('requests.tab.auth')],
+                    ['docs', t('requests.tab.docs')],
                   ] as const
                 }
               />
@@ -465,21 +483,21 @@ export function Requests() {
               <PairTable
                 rows={draft.params ?? []}
                 blank={{ name: '', value: '', enabled: true, type: 'query' } as Pair}
-                namePlaceholder="Parâmetro"
+                namePlaceholder={t('requests.param')}
                 onChange={(params) => update((r) => ({ ...r, params, http: { ...r.http, url: urlFromParams(r.http.url, params) } }))}
               />
             )}
             {tab === 'headers' && (
-              <PairTable rows={draft.headers ?? []} blank={{ name: '', value: '', enabled: true } as Pair} namePlaceholder="Header" onChange={(headers) => update((r) => ({ ...r, headers }))} />
+              <PairTable rows={draft.headers ?? []} blank={{ name: '', value: '', enabled: true } as Pair} namePlaceholder={t('requests.header')} onChange={(headers) => update((r) => ({ ...r, headers }))} />
             )}
             {tab === 'body' && (
               <div className="flex flex-col gap-3">
-                <Segmented value={bodyMode} options={BODY_MODES} onChange={(mode) => update((r) => ({ ...r, http: { ...r.http, body: mode } }))} />
+                <Segmented value={bodyMode} options={bodyModes(t)} onChange={(mode) => update((r) => ({ ...r, http: { ...r.http, body: mode } }))} />
                 {textBodyKey && (
                   <textarea
                     className={`${field} min-h-40 w-full resize-y leading-relaxed`}
                     value={(draft.body?.[textBodyKey] as string) ?? ''}
-                    placeholder={textBodyKey === 'json' ? '{\n  "chave": "valor"\n}' : 'Conteúdo do corpo'}
+                    placeholder={textBodyKey === 'json' ? t('requests.body.jsonPlaceholder') : t('requests.body.placeholder')}
                     spellCheck={false}
                     onChange={(event) => update((r) => ({ ...r, body: { ...r.body, [textBodyKey]: event.target.value } }))}
                   />
@@ -488,44 +506,44 @@ export function Requests() {
                   <PairTable
                     rows={draft.body?.formUrlEncoded ?? []}
                     blank={{ name: '', value: '', enabled: true } as Pair}
-                    namePlaceholder="Campo"
+                    namePlaceholder={t('requests.field')}
                     onChange={(formUrlEncoded) => update((r) => ({ ...r, body: { ...r.body, formUrlEncoded } }))}
                   />
                 )}
-                {draft.http.body === 'multipartForm' && <p className="text-frost-500">Corpo multipart é preservado no arquivo, mas ainda não é editado nem enviado aqui.</p>}
+                {draft.http.body === 'multipartForm' && <p className="text-frost-500">{t('requests.body.multipart')}</p>}
               </div>
             )}
             {tab === 'auth' && (
               <div className="flex max-w-xl flex-col gap-3">
-                <Segmented value={authMode} options={AUTH_MODES} onChange={(mode) => update((r) => ({ ...r, http: { ...r.http, auth: mode } }))} />
+                <Segmented value={authMode} options={authModes(t)} onChange={(mode) => update((r) => ({ ...r, http: { ...r.http, auth: mode } }))} />
                 {authMode === 'bearer' && (
                   <input className={`${field} w-full`} placeholder="Token" value={draft.auth?.bearer?.token ?? ''} spellCheck={false} onChange={(event) => update((r) => ({ ...r, auth: { ...r.auth, bearer: { token: event.target.value } } }))} />
                 )}
                 {authMode === 'basic' && (
                   <>
-                    <input className={`${field} w-full`} placeholder="Usuário" value={draft.auth?.basic?.username ?? ''} spellCheck={false} onChange={(event) => update((r) => ({ ...r, auth: { ...r.auth, basic: { ...r.auth?.basic, username: event.target.value } } }))} />
-                    <input className={`${field} w-full`} type="password" placeholder="Senha" value={draft.auth?.basic?.password ?? ''} onChange={(event) => update((r) => ({ ...r, auth: { ...r.auth, basic: { ...r.auth?.basic, password: event.target.value } } }))} />
+                    <input className={`${field} w-full`} placeholder={t('requests.auth.user')} value={draft.auth?.basic?.username ?? ''} spellCheck={false} onChange={(event) => update((r) => ({ ...r, auth: { ...r.auth, basic: { ...r.auth?.basic, username: event.target.value } } }))} />
+                    <input className={`${field} w-full`} type="password" placeholder={t('requests.auth.password')} value={draft.auth?.basic?.password ?? ''} onChange={(event) => update((r) => ({ ...r, auth: { ...r.auth, basic: { ...r.auth?.basic, password: event.target.value } } }))} />
                   </>
                 )}
                 {authMode === 'apikey' && (
                   <>
-                    <input className={`${field} w-full`} placeholder="Nome da chave (ex.: X-API-Key)" value={draft.auth?.apikey?.key ?? ''} spellCheck={false} onChange={(event) => update((r) => ({ ...r, auth: { ...r.auth, apikey: { placement: 'header', ...r.auth?.apikey, key: event.target.value } } }))} />
-                    <input className={`${field} w-full`} placeholder="Valor" value={draft.auth?.apikey?.value ?? ''} spellCheck={false} onChange={(event) => update((r) => ({ ...r, auth: { ...r.auth, apikey: { placement: 'header', ...r.auth?.apikey, value: event.target.value } } }))} />
+                    <input className={`${field} w-full`} placeholder={t('requests.auth.keyName')} value={draft.auth?.apikey?.key ?? ''} spellCheck={false} onChange={(event) => update((r) => ({ ...r, auth: { ...r.auth, apikey: { placement: 'header', ...r.auth?.apikey, key: event.target.value } } }))} />
+                    <input className={`${field} w-full`} placeholder={t('common.value')} value={draft.auth?.apikey?.value ?? ''} spellCheck={false} onChange={(event) => update((r) => ({ ...r, auth: { ...r.auth, apikey: { placement: 'header', ...r.auth?.apikey, value: event.target.value } } }))} />
                     <Segmented
                       value={draft.auth?.apikey?.placement === 'queryparams' ? 'queryparams' : 'header'}
-                      options={[['header', 'Enviar no header'], ['queryparams', 'Enviar na query']] as const}
+                      options={[['header', t('requests.auth.inHeader')], ['queryparams', t('requests.auth.inQuery')]] as const}
                       onChange={(placement) => update((r) => ({ ...r, auth: { ...r.auth, apikey: { ...r.auth?.apikey, placement } } }))}
                     />
                   </>
                 )}
-                {draft.http.auth === 'inherit' && <p className="text-frost-500">No Bruno esta request herda a autenticação da coleção; aqui ela é enviada sem autenticação.</p>}
+                {draft.http.auth === 'inherit' && <p className="text-frost-500">{t('requests.auth.inherit')}</p>}
               </div>
             )}
             {tab === 'docs' && (
               <textarea
                 className={`${field} min-h-40 w-full resize-y font-sans leading-relaxed`}
                 value={draft.docs ?? ''}
-                placeholder="Anotações sobre esta request (Markdown)."
+                placeholder={t('requests.docsPlaceholder')}
                 onChange={(event) => update((r) => ({ ...r, docs: event.target.value }))}
               />
             )}
@@ -537,9 +555,9 @@ export function Requests() {
         </section>
       ) : (
         <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3 text-frost-500">
-          <p className="font-display text-lg text-frost-100">Nenhuma request selecionada</p>
+          <p className="font-display text-lg text-frost-100">{t('requests.noneSelected')}</p>
           <button className={ghostButton} onClick={createRequest}>
-            Nova request
+            {t('requests.new')}
           </button>
         </section>
       )}

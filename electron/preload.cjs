@@ -5,6 +5,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('api', {
   debug: Boolean(process.env.OBNOTION_SHOT),
   startNote: process.env.OBNOTION_OPEN || null,
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (settings) => ipcRenderer.invoke('settings:set', settings),
   getVault: () => ipcRenderer.invoke('vault:get'),
   chooseVault: () => ipcRenderer.invoke('vault:choose'),
   readAll: () => ipcRenderer.invoke('vault:readAll'),

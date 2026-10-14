@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Graph view: pages as nodes sized by their number of links, with one node and its neighbours highlighted">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#4fbfb4" stop-opacity="0.550"/>
+      <stop offset="1" stop-color="#4fbfb4" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="360" rx="14" fill="#0a0d13"/>
+  <rect x="0.5" y="0.5" width="639" height="359" rx="13.5" fill="none" stroke="#202736"/>
+  <g stroke="#7f8a9b" stroke-opacity="0.220" stroke-width="1">
+    <path d="M300 190 170 110M300 190 150 250M300 190 250 300M430 150 540 90M430 150 560 210M430 150 470 270M170 110 90 150M250 300 330 320M540 90 470 50"/>
+  </g>
+  <g stroke="#86d9cd" stroke-width="1.500">
+    <path d="M300 190 430 150M300 190 380 70M300 190 400 260"/>
+  </g>
+  <g fill="#2d3648">
+    <circle cx="170" cy="110" r="8"/>
+    <circle cx="150" cy="250" r="6"/>
+    <circle cx="250" cy="300" r="7"/>
+    <circle cx="90" cy="150" r="5"/>
+    <circle cx="330" cy="320" r="5"/>
+    <circle cx="540" cy="90" r="7"/>
+    <circle cx="560" cy="210" r="5"/>
+    <circle cx="470" cy="270" r="5"/>
+    <circle cx="470" cy="50" r="5"/>
+  </g>
+  <circle cx="300" cy="190" r="46" fill="url(#glow)"/>
+  <g fill="#86d9cd">
+    <circle cx="430" cy="150" r="13"/>
+    <circle cx="380" cy="70" r="8"/>
+    <circle cx="400" cy="260" r="8"/>
+  </g>
+  <circle cx="300" cy="190" r="17" fill="#e7ecf3"/>
+  <circle cx="300" cy="190" r="21" fill="none" stroke="#86d9cd" stroke-width="1.500"/>
+  <g font-family="system-ui, Segoe UI, sans-serif" font-size="13" text-anchor="middle">
+    <text x="300" y="236" font-weight="600" fill="#e7ecf3">Moving house</text>
+    <text x="430" y="186" fill="#aeb8c7">Budget</text>
+    <text x="380" y="100" fill="#aeb8c7">Floor plan</text>
+    <text x="400" y="290" fill="#aeb8c7">Movers</text>
+  </g>
+</svg>

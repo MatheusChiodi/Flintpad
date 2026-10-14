@@ -8,5 +8,13 @@ import './styles.css';
 import { createRoot } from 'react-dom/client';
 
 import App from './App';
+import { I18nProvider } from './lib/i18n';
 
-createRoot(document.getElementById('root')!).render(<App />);
+// A língua vem do processo principal antes da primeira pintura: nada aparece na língua errada.
+void window.api.getSettings().then(({ language }) =>
+  createRoot(document.getElementById('root')!).render(
+    <I18nProvider initial={language}>
+      <App />
+    </I18nProvider>,
+  ),
+);

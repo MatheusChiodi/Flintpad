@@ -6,17 +6,20 @@ import { FolderIcon, GraphIcon, Kbd, Mark, NewPageIcon, PageIcon, PlusIcon, Sear
 import { Presence, Stage } from './components/Motion';
 import { LinksPanel, QuickSwitcher, TabBar } from './components/Panels';
 import { Requests } from './components/Requests';
+import { Settings } from './components/Settings';
 import { Sidebar } from './components/Sidebar';
+import { Trans, useLanguage, useT } from './lib/i18n';
 import { baseName, dirName, outgoingTargets, resolveLink, retargetLinks } from './lib/links';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, type MenuAction, type Note, type Tab } from './types';
 
 // O editor de código é pesado (Monaco): só é baixado quando a guia abre.
 const Code = lazy(() => import('./components/Code'));
 
-const UNTITLED = 'Sem título';
 const currentPath = (tab?: Tab) => tab?.stack[tab.idx] ?? '';
 
 export default function App() {
+  const t = useT();
+  const { language } = useLanguage();
   // undefined = carregando; null = nenhum vault escolhido.
   const [vault, setVault] = useState<string | null | undefined>(undefined);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -26,6 +29,7 @@ export default function App() {
   const [closed, setClosed] = useState<string[]>([]);
   const [sidebar, setSidebar] = useState(true);
   const [switcher, setSwitcher] = useState(false);
+  const [settings, setSettings] = useState(false);
   const nextId = useRef(1);
 
   // Handlers de menu e de eventos globais leem sempre o estado mais recente.
@@ -93,7 +97,7 @@ export default function App() {
     setActiveId(tabs[(index + delta + tabs.length) % tabs.length].id);
   };
 
-  const createNote = async (name = UNTITLED, folder = '') => {
+  const createNote = async (name = t('note.untitled'), folder = '') => {
     const path = await window.api.create(`${folder}${name}.md`);
     await refresh();
     return path;
@@ -162,9 +166,16 @@ export default function App() {
     'reopen-tab': reopenTab,
     'close-tab': () => closeTab(latest.current.activeId),
     'choose-vault': chooseVault,
+    settings: () => {
+      setSwitcher(false);
+      setSettings(true);
+    },
     'copy-link': () => copyActive((n) => `[[${n.name}]]`),
     'copy-name': () => copyActive((n) => n.name),
-    'quick-switcher': () => setSwitcher(true),
+    'quick-switcher': () => {
+      setSettings(false);
+      setSwitcher(true);
+    },
     graph: () => open(GRAPH, true),
     requests: () => openRequests(),
     code: () => openCode(),
@@ -222,6 +233,12 @@ export default function App() {
 
   if (vault === undefined) return null;
 
+  const settingsModal = (
+    <Presence when={settings} name="settings">
+      <Settings vault={vault} onChooseVault={chooseVault} onClose={() => setSettings(false)} />
+    </Presence>
+  );
+
   if (vault === null) {
     return (
       <div className="frame flex h-full items-center justify-center gap-20 overflow-y-auto px-10 py-8">
@@ -231,28 +248,29 @@ export default function App() {
             <span className="font-display text-lg font-semibold tracking-tight text-frost-100">ObNotion</span>
           </div>
           <h1 className="mt-9 font-display text-[44px] font-semibold leading-[1.05] tracking-[-0.025em] text-frost-100">
-            Suas notas, na sua pasta, em blocos.
+            {t('welcome.title')}
           </h1>
           <p className="mt-5 text-[15px] leading-relaxed text-frost-300">
-            Suas notas ficam em arquivos Markdown numa pasta do seu computador. Escolha a pasta para começar; pode ser um
-            vault do Obsidian que você já usa.
+            {t('welcome.body')}
           </p>
           <button className="button-primary mt-8" onClick={chooseVault}>
             <FolderIcon />
-            Escolher pasta do vault
+            {t('welcome.choose')}
           </button>
           <ul className="mt-10 flex flex-col gap-2.5 border-t border-(--hairline) pt-6 text-[13px] text-frost-500">
             <li className="flex items-center gap-2.5">
               <PageIcon className="text-sheen-400" />
-              Arquivos .md comuns, sem conta e sem nuvem
+              {t('welcome.feature.files')}
             </li>
             <li className="flex items-center gap-2.5">
               <GraphIcon className="text-sheen-400" />
-              Links entre páginas, backlinks e grafo
+              {t('welcome.feature.links')}
             </li>
             <li className="flex items-center gap-2.5">
               <PlusIcon className="text-sheen-400" />
-              Editor de blocos com o menu <Kbd>/</Kbd>
+              <span>
+                <Trans k="welcome.feature.blocks" values={{ key: <Kbd>/</Kbd> }} />
+              </span>
             </li>
           </ul>
         </div>
@@ -279,26 +297,32 @@ export default function App() {
             <circle cx="60" cy="40" r="3" fill="currentColor" fillOpacity="0.5" />
           </svg>
           <div className="welcome-sheet relative px-8 pb-9 pt-7">
-            <p className="font-mono text-[10.5px] text-ink-faint">Projetos/Casa nova.md</p>
-            <p className="mt-3 font-display text-[26px] font-semibold leading-tight tracking-[-0.02em]">Casa nova</p>
+            <p className="font-mono text-[10.5px] text-ink-faint">{t('welcome.sample.path')}</p>
+            <p className="mt-3 font-display text-[26px] font-semibold leading-tight tracking-[-0.02em]">{t('welcome.sample.title')}</p>
             <p className="mt-3 text-[13.5px] leading-relaxed">
-              Mudança marcada para março. O orçamento está em <span className="wikilink">Finanças</span> e as medidas
-              dos cômodos em <span className="wikilink">Planta</span>.
+              <Trans
+                k="welcome.sample.body"
+                values={{
+                  budget: <span className="wikilink">{t('welcome.sample.budget')}</span>,
+                  plan: <span className="wikilink">{t('welcome.sample.plan')}</span>,
+                }}
+              />
             </p>
             <ul className="mt-4 flex flex-col gap-2 text-[13.5px]">
               <li className="flex items-center gap-2.5 text-ink-faint line-through">
                 <span className="grid h-3.5 w-3.5 place-items-center rounded-[3px] bg-sheen-700 text-[9px] text-white no-underline">
                   ✓
                 </span>
-                Fechar o contrato
+                {t('welcome.sample.done')}
               </li>
               <li className="flex items-center gap-2.5">
                 <span className="h-3.5 w-3.5 rounded-[3px] border border-ink-faint" />
-                Pedir três orçamentos de frete
+                {t('welcome.sample.todo')}
               </li>
             </ul>
           </div>
         </div>
+        {settingsModal}
       </div>
     );
   }
@@ -311,12 +335,13 @@ export default function App() {
           notes={notes}
           activePath={activePath}
           onOpen={open}
-          onNew={async (folder) => open(await createNote(UNTITLED, folder))}
+          onNew={async (folder) => open(await createNote(undefined, folder))}
           onDelete={deleteNote}
           onGraph={() => open(GRAPH, true)}
           onRequests={openRequests}
           onCode={openCode}
           onSearch={() => setSwitcher(true)}
+          onSettings={() => setSettings(true)}
         />
       </Presence>
 
@@ -330,14 +355,15 @@ export default function App() {
           {activePath === REQUESTS ? (
             <Requests />
           ) : activePath === CODE ? (
-            <Suspense fallback={<p className="p-5 text-frost-500">Abrindo o editor…</p>}>
+            <Suspense fallback={<p className="p-5 text-frost-500">{t('code.loading')}</p>}>
               <Code />
             </Suspense>
           ) : activePath === GRAPH ? (
             <Graph notes={notes} edges={edges} onOpen={(path) => open(path)} />
           ) : isNote ? (
             <Editor
-              key={`${activeId}:${activePath}`}
+              // A língua entra na chave: o dicionário do editor de blocos é fixado na criação.
+              key={`${activeId}:${activePath}:${language}`}
               path={activePath}
               notes={notes}
               onSaved={(path, content) => setContents((prev) => ({ ...prev, [path]: content }))}
@@ -347,27 +373,27 @@ export default function App() {
             <div className="stagger flex h-full flex-col items-center justify-center px-6 text-center">
               <Mark size={40} className="opacity-80" />
               <p className="mt-5 font-display text-[22px] font-semibold tracking-tight text-frost-100">
-                Nenhuma página aberta
+                {t('empty.title')}
               </p>
-              <p className="mt-1.5 text-[13px] text-frost-500">Escolha uma página na barra lateral ou use um atalho.</p>
+              <p className="mt-1.5 text-[13px] text-frost-500">{t('empty.hint')}</p>
               <dl className="mt-7 grid grid-cols-[auto_auto] items-center gap-x-5 gap-y-2.5 text-left text-[13px] text-frost-300">
                 <dt className="flex items-center gap-2.5">
                   <SearchIcon className="text-frost-500" />
-                  Buscar uma página
+                  {t('empty.search')}
                 </dt>
                 <dd className="justify-self-end">
                   <Kbd>Ctrl P</Kbd>
                 </dd>
                 <dt className="flex items-center gap-2.5">
                   <NewPageIcon className="text-frost-500" />
-                  Criar uma página
+                  {t('empty.create')}
                 </dt>
                 <dd className="justify-self-end">
                   <Kbd>Ctrl N</Kbd>
                 </dd>
                 <dt className="flex items-center gap-2.5">
                   <GraphIcon className="text-frost-500" />
-                  Abrir o grafo
+                  {t('empty.graph')}
                 </dt>
                 <dd className="justify-self-end">
                   <Kbd>Ctrl G</Kbd>
@@ -390,6 +416,8 @@ export default function App() {
           onClose={() => setSwitcher(false)}
         />
       </Presence>
+
+      {settingsModal}
     </div>
   );
 }

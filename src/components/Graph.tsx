@@ -11,6 +11,7 @@ import {
 } from 'd3-force';
 import { useEffect, useRef, useState } from 'react';
 
+import { useT } from '../lib/i18n';
 import type { Note } from '../types';
 
 // Mesmas regras do grafo do Obsidian (sim.js + renderizador em app.js, v1.12.7):
@@ -498,6 +499,7 @@ type Props = {
 };
 
 export function Graph({ notes, edges, onOpen }: Props) {
+  const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engine = useRef<Engine | null>(null);
   const openRef = useRef(onOpen);
@@ -531,7 +533,7 @@ export function Graph({ notes, edges, onOpen }: Props) {
     <div className="relative h-full w-full overflow-hidden">
       <canvas ref={canvasRef} className="h-full w-full touch-none" />
       <div className="section-label pointer-events-none absolute left-5 top-4">
-        {count.nodes} páginas · {count.links} links
+        {t('graph.pages', { count: count.nodes })} · {t('graph.links', { count: count.links })}
       </div>
 
       <div className="absolute right-4 top-3 flex w-64 flex-col items-end gap-2">
@@ -540,43 +542,43 @@ export function Graph({ notes, edges, onOpen }: Props) {
           aria-expanded={panel}
           onClick={() => setPanel((open) => !open)}
         >
-          {panel ? 'Fechar ajustes' : 'Ajustes do grafo'}
+          {panel ? t('graph.closeSettings') : t('graph.openSettings')}
         </button>
         {panel && (
           <div className="max-h-[70vh] w-full overflow-y-auto rounded-lg bg-obsidian-800/90 p-4 ring-1 ring-[var(--hairline-strong)] backdrop-blur">
-            <div className={sectionTitle}>Filtros</div>
+            <div className={sectionTitle}>{t('graph.filters')}</div>
             <div className="flex flex-col gap-2.5">
               <input
                 className="w-full rounded-md bg-obsidian-950/60 px-2.5 py-1.5 text-[12.5px] text-frost-100 outline-none ring-1 ring-[var(--hairline-strong)] placeholder:text-frost-500 focus:ring-sheen-400"
-                placeholder="Filtrar páginas…"
+                placeholder={t('graph.filterPlaceholder')}
                 value={options.search}
                 spellCheck={false}
                 onChange={(event) => change({ search: event.target.value })}
               />
-              <Toggle label="Páginas sem links" checked={options.showOrphans} onChange={(showOrphans) => change({ showOrphans })} />
+              <Toggle label={t('graph.orphans')} checked={options.showOrphans} onChange={(showOrphans) => change({ showOrphans })} />
             </div>
 
-            <div className={sectionTitle}>Exibição</div>
+            <div className={sectionTitle}>{t('graph.display')}</div>
             <div className="flex flex-col gap-2.5">
-              <Toggle label="Setas" checked={options.showArrow} onChange={(showArrow) => change({ showArrow })} />
-              <Slider label="Sumir texto ao afastar" min={-3} max={3} step={0.1} value={options.textFade} onChange={(textFade) => change({ textFade })} />
-              <Slider label="Tamanho dos nós" min={0.1} max={5} step={0.1} value={options.nodeSize} onChange={(nodeSize) => change({ nodeSize })} />
-              <Slider label="Espessura dos links" min={0.1} max={5} step={0.1} value={options.lineSize} onChange={(lineSize) => change({ lineSize })} />
+              <Toggle label={t('graph.arrows')} checked={options.showArrow} onChange={(showArrow) => change({ showArrow })} />
+              <Slider label={t('graph.textFade')} min={-3} max={3} step={0.1} value={options.textFade} onChange={(textFade) => change({ textFade })} />
+              <Slider label={t('graph.nodeSize')} min={0.1} max={5} step={0.1} value={options.nodeSize} onChange={(nodeSize) => change({ nodeSize })} />
+              <Slider label={t('graph.lineSize')} min={0.1} max={5} step={0.1} value={options.lineSize} onChange={(lineSize) => change({ lineSize })} />
             </div>
 
-            <div className={sectionTitle}>Forças</div>
+            <div className={sectionTitle}>{t('graph.forces')}</div>
             <div className="flex flex-col gap-2.5">
-              <Slider label="Força do centro" min={0} max={1} step={0.01} value={options.center} onChange={(center) => change({ center })} />
-              <Slider label="Força de repulsão" min={0} max={20} step={0.1} value={options.repel} onChange={(repel) => change({ repel })} />
-              <Slider label="Força dos links" min={0} max={1} step={0.01} value={options.link} onChange={(link) => change({ link })} />
-              <Slider label="Distância dos links" min={30} max={500} step={1} value={options.linkDistance} onChange={(linkDistance) => change({ linkDistance })} />
+              <Slider label={t('graph.center')} min={0} max={1} step={0.01} value={options.center} onChange={(center) => change({ center })} />
+              <Slider label={t('graph.repel')} min={0} max={20} step={0.1} value={options.repel} onChange={(repel) => change({ repel })} />
+              <Slider label={t('graph.link')} min={0} max={1} step={0.01} value={options.link} onChange={(link) => change({ link })} />
+              <Slider label={t('graph.linkDistance')} min={30} max={500} step={1} value={options.linkDistance} onChange={(linkDistance) => change({ linkDistance })} />
             </div>
 
             <button
               className="mt-4 w-full rounded-md px-2.5 py-1.5 text-[12.5px] text-frost-300 ring-1 ring-[var(--hairline-strong)] hover:bg-[var(--hover)] hover:text-frost-100"
               onClick={() => setOptions({ ...DEFAULTS, search: options.search })}
             >
-              Restaurar padrões
+              {t('graph.reset')}
             </button>
           </div>
         )}

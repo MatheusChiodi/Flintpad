@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { Trans, useT, type Translate } from '../lib/i18n';
 import { baseName } from '../lib/links';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, type Note, type Tab } from '../types';
 import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon } from './Icons';
 
 const currentPath = (tab: Tab) => tab.stack[tab.idx] ?? '';
 
-export function tabTitle(tab: Tab) {
+export function tabTitle(tab: Tab, t: Translate) {
   const path = currentPath(tab);
-  if (path === GRAPH) return 'Grafo';
-  if (path === REQUESTS) return 'Requests';
-  if (path === CODE) return 'Código';
-  return path ? baseName(path) : 'Nova guia';
+  if (path === GRAPH) return t('nav.graph');
+  if (path === REQUESTS) return t('nav.requests');
+  if (path === CODE) return t('nav.code');
+  return path ? baseName(path) : t('tabs.new');
 }
 
 type TabBarProps = {
@@ -23,6 +24,7 @@ type TabBarProps = {
 };
 
 export function TabBar({ tabs, activeId, onSelect, onClose, onNew }: TabBarProps) {
+  const t = useT();
   return (
     <div className="flex h-11 shrink-0 items-end gap-1 pl-[18px] pr-3">
       {tabs.map((tab) => {
@@ -38,11 +40,11 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew }: TabBarProps
             onAuxClick={(event) => event.button === 1 && onClose(tab.id)}
           >
             <TabIcon size={14} className="row-icon" />
-            <span className="flex-1 truncate">{tabTitle(tab)}</span>
+            <span className="flex-1 truncate">{tabTitle(tab, t)}</span>
             <button
               className="icon-button reveal"
-              title="Fechar guia"
-              aria-label={`Fechar guia ${tabTitle(tab)}`}
+              title={t('tabs.close')}
+              aria-label={t('tabs.closeNamed', { name: tabTitle(tab, t) })}
               onClick={(event) => {
                 event.stopPropagation();
                 onClose(tab.id);
@@ -53,7 +55,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew }: TabBarProps
           </div>
         );
       })}
-      <button className="icon-button mb-1.5 ml-1 h-6 w-6" title="Nova guia" aria-label="Nova guia" onClick={onNew}>
+      <button className="icon-button mb-1.5 ml-1 h-6 w-6" title={t('tabs.new')} aria-label={t('tabs.new')} onClick={onNew}>
         <PlusIcon size={15} />
       </button>
     </div>
@@ -68,6 +70,7 @@ type LinksPanelProps = {
 };
 
 export function LinksPanel({ backlinks, outgoing, onOpen, onOpenTarget }: LinksPanelProps) {
+  const t = useT();
   const heading = 'section-label flex items-center justify-between px-4 pb-2 pt-4';
   const row = 'row w-full px-2 text-left text-[13px]';
   const empty = 'px-4 pb-1 text-[13px] leading-relaxed text-frost-500';
@@ -75,7 +78,7 @@ export function LinksPanel({ backlinks, outgoing, onOpen, onOpenTarget }: LinksP
   return (
     <aside className="pane hidden w-60 shrink-0 overflow-y-auto pb-4 lg:block">
       <div className={heading}>
-        <span>Backlinks</span>
+        <span>{t('links.backlinks')}</span>
         <span className="tabular-nums">{backlinks.length}</span>
       </div>
       <div className="px-2">
@@ -86,10 +89,10 @@ export function LinksPanel({ backlinks, outgoing, onOpen, onOpenTarget }: LinksP
           </button>
         ))}
       </div>
-      {!backlinks.length && <p className={empty}>Nenhuma página aponta para esta.</p>}
+      {!backlinks.length && <p className={empty}>{t('links.noBacklinks')}</p>}
 
       <div className={`${heading} mt-3 border-t border-(--hairline)`}>
-        <span>Links nesta página</span>
+        <span>{t('links.outgoing')}</span>
         <span className="tabular-nums">{outgoing.length}</span>
       </div>
       <div className="px-2">
@@ -97,7 +100,7 @@ export function LinksPanel({ backlinks, outgoing, onOpen, onOpenTarget }: LinksP
           <button
             key={link.target}
             className={`${row} ${link.path ? '' : 'italic text-frost-500'}`}
-            title={link.path ?? 'Página ainda não existe: clique para criar'}
+            title={link.path ?? t('links.missing')}
             onClick={() => onOpenTarget(link.target)}
           >
             {link.path ? (
@@ -111,7 +114,7 @@ export function LinksPanel({ backlinks, outgoing, onOpen, onOpenTarget }: LinksP
       </div>
       {!outgoing.length && (
         <p className={empty}>
-          Digite <Kbd>[</Kbd> para ligar a outra página.
+          <Trans k="links.hint" values={{ key: <Kbd>[</Kbd> }} />
         </p>
       )}
     </aside>
@@ -126,6 +129,7 @@ type SwitcherProps = {
 };
 
 export function QuickSwitcher({ notes, onOpen, onCreate, onClose }: SwitcherProps) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
   const input = useRef<HTMLInputElement>(null);
@@ -155,8 +159,8 @@ export function QuickSwitcher({ notes, onOpen, onCreate, onClose }: SwitcherProp
           <input
             ref={input}
             className="w-full bg-transparent py-3.5 text-[15px] text-frost-100 caret-sheen-400 outline-none placeholder:text-frost-500"
-            placeholder="Buscar ou criar página…"
-            aria-label="Buscar ou criar página"
+            placeholder={t('switcher.placeholder')}
+            aria-label={t('switcher.label')}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -192,11 +196,9 @@ export function QuickSwitcher({ notes, onOpen, onCreate, onClose }: SwitcherProp
           {!results.length && (
             <p className="flex items-center gap-2 px-2.5 py-2 text-[13px] text-frost-300">
               {query.trim() ? (
-                <>
-                  <Kbd>Enter</Kbd> cria a página “{query.trim()}”
-                </>
+                <Trans k="switcher.create" values={{ key: <Kbd>Enter</Kbd>, name: query.trim() }} />
               ) : (
-                'Nenhuma página.'
+                t('switcher.empty')
               )}
             </p>
           )}
@@ -204,13 +206,13 @@ export function QuickSwitcher({ notes, onOpen, onCreate, onClose }: SwitcherProp
         <div className="flex items-center gap-4 border-t border-(--hairline) px-4 py-2 text-[11px] text-frost-500">
           <span className="flex items-center gap-1.5">
             <Kbd>↑</Kbd>
-            <Kbd>↓</Kbd> navegar
+            <Kbd>↓</Kbd> {t('switcher.navigate')}
           </span>
           <span className="flex items-center gap-1.5">
-            <Kbd>Enter</Kbd> abrir
+            <Kbd>Enter</Kbd> {t('switcher.open')}
           </span>
           <span className="flex items-center gap-1.5">
-            <Kbd>Esc</Kbd> fechar
+            <Kbd>Esc</Kbd> {t('switcher.close')}
           </span>
         </div>
       </div>

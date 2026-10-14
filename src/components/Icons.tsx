@@ -95,6 +95,13 @@ export const TrashIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const SettingsIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m12.41 7.12 1.55.17v1.42l-1.55.17-.67 1.62.97 1.21-1 1-1.21-.97-1.62.67-.17 1.55H7.29l-.17-1.55-1.62-.67-1.21.97-1-1 .97-1.21-.67-1.62-1.55-.17V7.29l1.55-.17.67-1.62-.97-1.21 1-1 1.21.97 1.62-.67.17-1.55h1.42l.17 1.55 1.62.67 1.21-.97 1 1-.97 1.21z" />
+    <circle cx="8" cy="8" r="1.9" />
+  </Icon>
+);
+
 export const BacklinkIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M12.75 3.25 5 11M5 5.75V11h5.25" />

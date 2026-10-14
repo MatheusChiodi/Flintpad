@@ -1,5 +1,7 @@
 // Modelo de request no formato JSON do @usebruno/lang (arquivos .bru).
 
+import { translate } from './i18n';
+
 export type Pair = { name: string; value: string; enabled: boolean; type?: string };
 
 export type BodyMode = 'none' | 'json' | 'text' | 'xml' | 'formUrlEncoded' | 'multipartForm';
@@ -93,13 +95,13 @@ export function buildRequest(request: BruRequest, vars: Record<string, string>, 
   const fill = (text = '') => interpolate(text, vars);
 
   let rawUrl = fill(request.http.url).trim();
-  if (!rawUrl) throw new Error('Informe a URL.');
+  if (!rawUrl) throw new Error(translate('requests.error.noUrl'));
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(rawUrl)) rawUrl = `http://${rawUrl}`;
   let url: URL;
   try {
     url = new URL(rawUrl);
   } catch {
-    throw new Error(`URL inválida: ${rawUrl}`);
+    throw new Error(translate('requests.error.invalidUrl', { url: rawUrl }));
   }
 
   const headers: [string, string][] = (request.headers ?? [])
@@ -144,7 +146,7 @@ export function buildRequest(request: BruRequest, vars: Record<string, string>, 
       contentType('application/x-www-form-urlencoded');
       break;
     case 'multipartForm':
-      throw new Error('Corpo multipart ainda não é suportado no ObNotion.');
+      throw new Error(translate('requests.error.multipart'));
   }
 
   return { id, method: request.http.method.toUpperCase(), url: url.toString(), headers, body };

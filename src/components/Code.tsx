@@ -6,6 +6,7 @@ import jsonWorker from 'monaco-editor/language/json/json.worker.js?worker';
 import tsWorker from 'monaco-editor/language/typescript/ts.worker.js?worker';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { useT } from '../lib/i18n';
 import { dirName } from '../lib/links';
 import { monacoLanguage, toMonacoTheme, toSnippetEntries, type SnippetEntry, type VsExtension } from '../lib/vscode';
 
@@ -61,20 +62,20 @@ const ghostButton =
 type SaveState = 'saved' | 'pending' | 'error';
 
 function ExtensionList({ extensions }: { extensions: VsExtension[] }) {
+  const t = useT();
   const groups: [title: string, items: VsExtension[]][] = [
-    ['Instaladas por você', extensions.filter((e) => !e.builtin)],
-    ['Do VS Code', extensions.filter((e) => e.builtin)],
+    [t('code.ext.user'), extensions.filter((e) => !e.builtin)],
+    [t('code.ext.builtin'), extensions.filter((e) => e.builtin)],
   ];
   const chip = 'rounded px-1.5 py-0.5 font-mono text-[10.5px] ring-1 ring-[var(--hairline-strong)]';
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-5">
-      <h2 className="font-display text-xl font-semibold text-frost-100">Extensões do VS Code</h2>
+      <h2 className="font-display text-xl font-semibold text-frost-100">{t('code.ext.title')}</h2>
       <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-frost-500">
-        O ObNotion lê as extensões já instaladas no seu VS Code. Temas de cor e snippets funcionam aqui. Extensões que
-        dependem de código próprio (ESLint, Prettier, depuradores, assistentes) continuam funcionando só no VS Code.
+        {t('code.ext.body')}
       </p>
-      {!extensions.length && <p className="mt-6 text-frost-500">Nenhuma extensão encontrada. Instale o VS Code ou alguma extensão nele.</p>}
+      {!extensions.length && <p className="mt-6 text-frost-500">{t('code.ext.none')}</p>}
       {groups.map(
         ([title, items]) =>
           items.length > 0 && (
@@ -92,10 +93,10 @@ function ExtensionList({ extensions }: { extensions: VsExtension[] }) {
                         <span className="shrink-0 font-mono text-[10.5px] text-frost-500">{extension.version}</span>
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-1.5 text-frost-300">
-                        {extension.themes.length > 0 && <span className={`${chip} text-sheen-300`}>{extension.themes.length} tema(s)</span>}
-                        {extension.snippets.length > 0 && <span className={`${chip} text-sheen-300`}>snippets</span>}
-                        {extension.grammars > 0 && <span className={`${chip} text-frost-500`}>gramática não aplicada</span>}
-                        {extension.hasCode && <span className={`${chip} text-frost-500`}>código só no VS Code</span>}
+                        {extension.themes.length > 0 && <span className={`${chip} text-sheen-300`}>{t('code.ext.themes', { count: extension.themes.length })}</span>}
+                        {extension.snippets.length > 0 && <span className={`${chip} text-sheen-300`}>{t('code.ext.snippets')}</span>}
+                        {extension.grammars > 0 && <span className={`${chip} text-frost-500`}>{t('code.ext.grammar')}</span>}
+                        {extension.hasCode && <span className={`${chip} text-frost-500`}>{t('code.ext.codeOnly')}</span>}
                       </div>
                     </li>
                   );
@@ -109,6 +110,7 @@ function ExtensionList({ extensions }: { extensions: VsExtension[] }) {
 }
 
 export default function Code() {
+  const t = useT();
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const session = useRef<{ path: string | null; timer: number; dirty: boolean }>({ path: null, timer: 0, dirty: false });
@@ -247,7 +249,7 @@ export default function Code() {
     try {
       content = await window.api.read(path);
     } catch {
-      return setProblem(`Não foi possível ler ${path}.`);
+      return setProblem(t('code.readError', { path }));
     }
     const instance = editor.current!;
     const previous = instance.getModel();
@@ -271,7 +273,7 @@ export default function Code() {
       await refresh();
       await select(path);
     } catch {
-      setProblem(`Não foi possível criar ${name}.`);
+      setProblem(t('code.createError', { name }));
     }
   };
 
@@ -301,7 +303,7 @@ export default function Code() {
   return (
     <div className="flex h-full min-h-0 text-[13px]">
       <aside className="flex w-64 shrink-0 flex-col border-r border-[var(--hairline)] max-[860px]:w-48">
-        <div className="section-label px-3 pb-2 pt-3">Arquivos · {files.length}</div>
+        <div className="section-label px-3 pb-2 pt-3">{t('code.files', { count: files.length })}</div>
         <form
           className="flex gap-2 px-3 pb-2"
           onSubmit={(event) => {
@@ -309,13 +311,13 @@ export default function Code() {
             void createFile();
           }}
         >
-          <input className={`${field} flex-1 font-mono`} placeholder="pasta/arquivo.ts" value={newName} spellCheck={false} onChange={(event) => setNewName(event.target.value)} />
+          <input className={`${field} flex-1 font-mono`} placeholder={t('code.newPlaceholder')} value={newName} spellCheck={false} onChange={(event) => setNewName(event.target.value)} />
           <button className={`${ghostButton} shrink-0`} type="submit">
-            Criar
+            {t('code.create')}
           </button>
         </form>
         <div className="px-3 pb-3">
-          <input className={`${field} w-full`} placeholder="Filtrar arquivos…" value={filter} spellCheck={false} onChange={(event) => setFilter(event.target.value)} />
+          <input className={`${field} w-full`} placeholder={t('code.filterPlaceholder')} value={filter} spellCheck={false} onChange={(event) => setFilter(event.target.value)} />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
           {groups.map(([folder, paths]) => (
@@ -333,7 +335,7 @@ export default function Code() {
                   <span className="flex-1 truncate font-mono text-[12.5px]">{path.split('/').pop()}</span>
                   <button
                     className="rounded px-1 text-frost-500 opacity-0 hover:text-danger group-hover:opacity-100"
-                    title="Mover para a lixeira"
+                    title={t('common.moveToTrash')}
                     onClick={(event) => {
                       event.stopPropagation();
                       void deleteFile(path);
@@ -345,20 +347,20 @@ export default function Code() {
               ))}
             </div>
           ))}
-          {!groups.length && <p className="px-2 py-1 text-frost-500">{files.length ? 'Nenhum arquivo com esse filtro.' : 'Vault sem arquivos. Crie o primeiro acima.'}</p>}
+          {!groups.length && <p className="px-2 py-1 text-frost-500">{files.length ? t('code.noMatch') : t('code.noFiles')}</p>}
         </div>
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">
         <div className="flex flex-wrap items-center gap-3 border-b border-[var(--hairline)] px-4 py-2">
-          <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-frost-100">{view === 'extensions' ? 'Extensões' : selected ?? 'Nenhum arquivo aberto'}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-frost-100">{view === 'extensions' ? t('code.extensions') : selected ?? t('code.noneOpen')}</span>
           {view === 'editor' && selected && (
             <span className="font-mono text-[11px] text-frost-500">
-              {language} · {saveState === 'saved' ? 'salvo' : saveState === 'pending' ? 'salvando…' : 'erro ao salvar'}
+              {language} · {saveState === 'saved' ? t('code.saved') : saveState === 'pending' ? t('code.saving') : t('code.saveError')}
             </span>
           )}
-          <select className={`${field} max-w-56`} value={themes.some((t) => t.path === themePath) ? themePath : ''} title="Tema do editor" onChange={(event) => chooseTheme(event.target.value)}>
-            <option value="">Tema ObNotion</option>
+          <select className={`${field} max-w-56`} value={themes.some((t) => t.path === themePath) ? themePath : ''} title={t('code.theme')} onChange={(event) => chooseTheme(event.target.value)}>
+            <option value="">{t('code.defaultTheme')}</option>
             {themes.map((theme) => (
               <option key={theme.path} value={theme.path}>
                 {theme.label}
@@ -366,7 +368,7 @@ export default function Code() {
             ))}
           </select>
           <button className={`${ghostButton} ${view === 'extensions' ? 'bg-[var(--hover-strong)] text-frost-100' : ''}`} onClick={() => setView(view === 'extensions' ? 'editor' : 'extensions')}>
-            Extensões · {extensions.length}
+            {t('code.extensionsCount', { count: extensions.length })}
           </button>
         </div>
         {problem && <p className="px-4 py-2 text-[12.5px] text-danger">{problem}</p>}
@@ -376,8 +378,8 @@ export default function Code() {
           <div ref={host} className={`absolute inset-0 ${selected ? '' : 'invisible'}`} />
           {!selected && (
             <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-frost-500">
-              <p className="font-display text-lg text-frost-100">Nenhum arquivo aberto</p>
-              <p>Escolha um arquivo na lista ou crie um novo, com a extensão no nome (ex.: notas/script.py).</p>
+              <p className="font-display text-lg text-frost-100">{t('code.noneOpen')}</p>
+              <p>{t('code.noneOpenHint')}</p>
             </div>
           )}
         </div>

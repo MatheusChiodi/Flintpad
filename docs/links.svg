@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Wikilinks and backlinks: links inside a page and a side panel listing the pages that point to it">
+  <rect width="640" height="360" rx="14" fill="#0a0d13"/>
+  <rect x="0.5" y="0.5" width="639" height="359" rx="13.5" fill="none" stroke="#202736"/>
+  <rect x="40" y="34" width="380" height="326" rx="10" fill="#f6f7f5"/>
+  <rect x="76" y="70" width="160" height="18" rx="4" fill="#1a1f26"/>
+  <rect x="76" y="116" width="96" height="8" rx="4" fill="#8b939d"/>
+  <rect x="180" y="110" width="84" height="20" rx="5" fill="#0c6c64" fill-opacity="0.140"/>
+  <text x="188" y="125" font-family="system-ui, Segoe UI, sans-serif" font-size="13" font-weight="600" fill="#0c6c64">[[Budget]]</text>
+  <rect x="272" y="116" width="100" height="8" rx="4" fill="#8b939d"/>
+  <rect x="76" y="146" width="150" height="8" rx="4" fill="#8b939d"/>
+  <rect x="234" y="140" width="92" height="20" rx="5" fill="#0c6c64" fill-opacity="0.140"/>
+  <text x="242" y="155" font-family="system-ui, Segoe UI, sans-serif" font-size="13" font-weight="600" fill="#0c6c64">[[Floor plan]]</text>
+  <rect x="76" y="176" width="260" height="8" rx="4" fill="#c3c8cc"/>
+  <rect x="76" y="196" width="210" height="8" rx="4" fill="#c3c8cc"/>
+  <path d="M326 150C380 150 390 104 446 104" fill="none" stroke="#4fbfb4" stroke-width="1.500" stroke-dasharray="4 4"/>
+  <text x="446" y="64" font-family="ui-monospace, Consolas, monospace" font-size="10" letter-spacing="1.200" fill="#7f8a9b">BACKLINKS · 3</text>
+  <g font-family="system-ui, Segoe UI, sans-serif" font-size="13" fill="#e7ecf3">
+    <rect x="438" y="88" width="170" height="32" rx="6" fill="#171c27"/>
+    <path d="m456 109 6-6m-6 0v6h6" fill="none" stroke="#4fbfb4" stroke-width="1.500" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="474" y="109">Moving house</text>
+    <path d="m456 147 6-6m-6 0v6h6" fill="none" stroke="#7f8a9b" stroke-width="1.500" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="474" y="147" fill="#aeb8c7">Finances 2026</text>
+    <path d="m456 181 6-6m-6 0v6h6" fill="none" stroke="#7f8a9b" stroke-width="1.500" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="474" y="181" fill="#aeb8c7">Weekly review</text>
+  </g>
+  <text x="446" y="236" font-family="ui-monospace, Consolas, monospace" font-size="10" letter-spacing="1.200" fill="#7f8a9b">LINKS ON THIS PAGE · 2</text>
+  <g font-family="system-ui, Segoe UI, sans-serif" font-size="13" fill="#aeb8c7">
+    <path d="m456 268 6-6m0 6v-6h-6" fill="none" stroke="#7f8a9b" stroke-width="1.500" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="474" y="269">Budget</text>
+    <path d="m456 300 6-6m0 6v-6h-6" fill="none" stroke="#7f8a9b" stroke-width="1.500" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="474" y="301">Floor plan</text>
+  </g>
+</svg>

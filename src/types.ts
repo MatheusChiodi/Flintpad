@@ -1,9 +1,13 @@
+import type { Language } from './lib/i18n';
 import type { VsExtension, VsSnippet, VsTheme } from './lib/vscode';
 import type { BruRequest, Environment, EnvVar, HttpResult, OutgoingRequest, RequestSummary } from './lib/request';
 
 export type Note = { path: string; name: string };
 
 export type Tab = { id: number; stack: string[]; idx: number };
+
+// Preferências guardadas pelo processo principal em config.json.
+export type Settings = { language: Language };
 
 export const GRAPH = '::graph';
 export const REQUESTS = '::requests';
@@ -18,6 +22,7 @@ export type MenuAction =
   | 'reopen-tab'
   | 'close-tab'
   | 'choose-vault'
+  | 'settings'
   | 'copy-link'
   | 'copy-name'
   | 'quick-switcher'
@@ -35,6 +40,8 @@ declare global {
     api: {
       debug: boolean;
       startNote: string | null;
+      getSettings(): Promise<Settings>;
+      setSettings(settings: Partial<Settings>): Promise<Settings>;
       getVault(): Promise<string | null>;
       chooseVault(): Promise<string | null>;
       readAll(): Promise<{ path: string; content: string }[]>;

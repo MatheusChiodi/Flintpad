@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Tabs and shortcuts: a tab bar, the page tree and the Notion keyboard shortcuts">
+  <rect width="640" height="360" rx="14" fill="#0a0d13"/>
+  <rect x="0.5" y="0.5" width="639" height="359" rx="13.5" fill="none" stroke="#202736"/>
+  <rect x="0" y="0" width="168" height="360" rx="14" fill="#10141c"/>
+  <rect x="154" y="0" width="14" height="360" fill="#10141c"/>
+  <g fill="#2d3648">
+    <rect x="24" y="34" width="92" height="10" rx="5" fill="#e7ecf3"/>
+    <rect x="24" y="74" width="110" height="8" rx="4"/>
+    <rect x="24" y="98" width="84" height="8" rx="4"/>
+    <rect x="38" y="122" width="96" height="8" rx="4"/>
+    <rect x="38" y="146" width="72" height="8" rx="4"/>
+    <rect x="24" y="170" width="100" height="8" rx="4"/>
+  </g>
+  <rect x="16" y="113" width="136" height="26" rx="6" fill="#4fbfb4" fill-opacity="0.140"/>
+  <rect x="38" y="122" width="96" height="8" rx="4" fill="#86d9cd"/>
+  <g font-family="system-ui, Segoe UI, sans-serif" font-size="12">
+    <path d="M188 58V38a8 8 0 0 1 8-8h112a8 8 0 0 1 8 8v20z" fill="#f6f7f5"/>
+    <text x="204" y="49" fill="#1a1f26" font-weight="600">Moving house</text>
+    <text x="336" y="49" fill="#7f8a9b">Budget</text>
+    <text x="420" y="49" fill="#7f8a9b">Graph</text>
+    <path d="M486 44h10m-5-5v10" stroke="#7f8a9b" stroke-width="1.500" stroke-linecap="round"/>
+  </g>
+  <rect x="188" y="58" width="452" height="302" fill="#f6f7f5"/>
+  <rect x="220" y="92" width="170" height="16" rx="4" fill="#1a1f26"/>
+  <rect x="220" y="128" width="330" height="8" rx="4" fill="#c3c8cc"/>
+  <rect x="220" y="146" width="270" height="8" rx="4" fill="#c3c8cc"/>
+  <g font-family="ui-monospace, Consolas, monospace" font-size="12" fill="#1a1f26">
+    <g>
+      <rect x="220" y="196" width="76" height="28" rx="6" fill="#ffffff" stroke="#dadedb"/>
+      <text x="258" y="215" text-anchor="middle">Ctrl T</text>
+      <text x="308" y="215" font-family="system-ui, Segoe UI, sans-serif" fill="#55606d">New tab</text>
+    </g>
+    <g>
+      <rect x="220" y="236" width="76" height="28" rx="6" fill="#ffffff" stroke="#dadedb"/>
+      <text x="258" y="255" text-anchor="middle">Ctrl P</text>
+      <text x="308" y="255" font-family="system-ui, Segoe UI, sans-serif" fill="#55606d">Quick search</text>
+    </g>
+    <g>
+      <rect x="220" y="276" width="76" height="28" rx="6" fill="#ffffff" stroke="#dadedb"/>
+      <text x="258" y="295" text-anchor="middle">Ctrl \</text>
+      <text x="308" y="295" font-family="system-ui, Segoe UI, sans-serif" fill="#55606d">Toggle sidebar</text>
+    </g>
+    <g>
+      <rect x="430" y="196" width="104" height="28" rx="6" fill="#ffffff" stroke="#dadedb"/>
+      <text x="482" y="215" text-anchor="middle">Ctrl Shift T</text>
+      <text x="546" y="215" font-family="system-ui, Segoe UI, sans-serif" fill="#55606d">Reopen</text>
+    </g>
+    <g>
+      <rect x="430" y="236" width="104" height="28" rx="6" fill="#ffffff" stroke="#dadedb"/>
+      <text x="482" y="255" text-anchor="middle">Ctrl [ / ]</text>
+      <text x="546" y="255" font-family="system-ui, Segoe UI, sans-serif" fill="#55606d">Back / forward</text>
+    </g>
+  </g>
+</svg>

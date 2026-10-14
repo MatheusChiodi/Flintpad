@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Requests: an API client with a request list, method and URL bar, and a formatted JSON response">
+  <rect width="640" height="360" rx="14" fill="#0a0d13"/>
+  <rect x="0.5" y="0.5" width="639" height="359" rx="13.5" fill="none" stroke="#202736"/>
+  <path d="M176 0v360" stroke="#202736"/>
+  <g font-family="ui-monospace, Consolas, monospace" font-size="11">
+    <text x="20" y="36" font-size="10" letter-spacing="1.200" fill="#7f8a9b">REQUESTS</text>
+    <rect x="12" y="52" width="152" height="28" rx="6" fill="#171c27"/>
+    <text x="22" y="70" font-weight="700" fill="#e6c07b">POST</text>
+    <text x="62" y="70" font-family="system-ui, Segoe UI, sans-serif" font-size="12.500" fill="#e7ecf3">Create user</text>
+    <text x="22" y="102" font-weight="700" fill="#86d9cd">GET</text>
+    <text x="62" y="102" font-family="system-ui, Segoe UI, sans-serif" font-size="12.500" fill="#aeb8c7">List users</text>
+    <text x="22" y="132" font-weight="700" fill="#f0908d">DEL</text>
+    <text x="62" y="132" font-family="system-ui, Segoe UI, sans-serif" font-size="12.500" fill="#aeb8c7">Remove user</text>
+  </g>
+  <rect x="200" y="28" width="76" height="32" rx="6" fill="#05070b" stroke="#2d3648"/>
+  <text x="238" y="49" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="12" font-weight="700" fill="#e6c07b">POST</text>
+  <rect x="284" y="28" width="250" height="32" rx="6" fill="#05070b" stroke="#2d3648"/>
+  <text x="296" y="49" font-family="ui-monospace, Consolas, monospace" font-size="12" fill="#e7ecf3"><tspan fill="#86d9cd">{{baseUrl}}</tspan>/users</text>
+  <rect x="542" y="28" width="74" height="32" rx="6" fill="#4fbfb4"/>
+  <text x="579" y="49" text-anchor="middle" font-family="system-ui, Segoe UI, sans-serif" font-size="13" font-weight="700" fill="#05070b">Send</text>
+  <g font-family="system-ui, Segoe UI, sans-serif" font-size="12" fill="#7f8a9b">
+    <rect x="200" y="76" width="64" height="24" rx="5" fill="#202736"/>
+    <text x="212" y="92" fill="#e7ecf3">Params</text>
+    <text x="278" y="92">Headers</text>
+    <text x="344" y="92">Body</text>
+    <text x="390" y="92">Auth</text>
+    <text x="436" y="92">Notes</text>
+  </g>
+  <path d="M176 126h464" stroke="#202736"/>
+  <rect x="176.500" y="126.500" width="463" height="233" fill="#05070b" fill-opacity="0.500"/>
+  <g font-family="ui-monospace, Consolas, monospace" font-size="12">
+    <text x="612" y="154" text-anchor="end" fill="#7f8a9b"><tspan font-weight="700" fill="#86d9cd">201 Created</tspan>   90 ms   118 B</text>
+    <text x="204" y="190" fill="#e7ecf3">{</text>
+    <text x="222" y="212" fill="#e7ecf3"><tspan fill="#86d9cd">"id"</tspan>: <tspan fill="#c8a6f2">42</tspan>,</text>
+    <text x="222" y="234" fill="#e7ecf3"><tspan fill="#86d9cd">"name"</tspan>: <tspan fill="#e6c07b">"Ana"</tspan>,</text>
+    <text x="222" y="256" fill="#e7ecf3"><tspan fill="#86d9cd">"active"</tspan>: <tspan fill="#c8a6f2">true</tspan></text>
+    <text x="204" y="278" fill="#e7ecf3">}</text>
+  </g>
+</svg>

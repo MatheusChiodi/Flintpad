@@ -7,6 +7,7 @@ const fsp = require('node:fs/promises');
 const os = require('node:os');
 const { parse: parseJsonc } = require('jsonc-parser');
 const { bruToJsonV2, jsonToBruV2, bruToEnvJsonV2, envJsonToBruV2 } = require('@usebruno/lang');
+const { LANGUAGES, translator } = require('./i18n.cjs');
 
 const MAX_INDEXED_BYTES = 1024 * 1024;
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
@@ -21,22 +22,40 @@ const configFile = () => path.join(app.getPath('userData'), 'config.json');
 
 let win = null;
 let vault = process.env.OBNOTION_VAULT || null;
+let language = 'pt-BR';
+let t = translator(language);
 
-function loadConfig() {
-  if (vault) return;
+function readConfig() {
   try {
-    const saved = JSON.parse(fs.readFileSync(configFile(), 'utf8')).vault;
-    if (saved && fs.existsSync(saved)) vault = saved;
+    return JSON.parse(fs.readFileSync(configFile(), 'utf8')) ?? {};
   } catch {
     // primeira execução: sem config
+    return {};
   }
+}
+
+// Grava só as chaves informadas: o vault e a língua moram no mesmo arquivo.
+const saveConfig = (patch) => fsp.writeFile(configFile(), JSON.stringify({ ...readConfig(), ...patch }));
+
+function setLanguage(next) {
+  language = next;
+  t = translator(language);
+  Menu.setApplicationMenu(buildMenu(language));
+}
+
+function loadConfig() {
+  const saved = readConfig();
+  if (!vault && saved.vault && fs.existsSync(saved.vault)) vault = saved.vault;
+  // OBNOTION_LANG sobrepõe a configuração (testes); sem nada salvo, vale a língua do sistema.
+  const wanted = process.env.OBNOTION_LANG || saved.language;
+  setLanguage(LANGUAGES.includes(wanted) ? wanted : app.getLocale().toLowerCase().startsWith('pt') ? 'pt-BR' : 'en');
 }
 
 // Todo caminho vindo do renderer é relativo ao vault e não pode sair dele.
 function resolveInVault(rel) {
-  if (!vault) throw new Error('Nenhum vault aberto');
+  if (!vault) throw new Error(t('error.noVault'));
   const full = path.resolve(vault, rel);
-  if (full !== vault && !full.startsWith(vault + path.sep)) throw new Error('Caminho fora do vault');
+  if (full !== vault && !full.startsWith(vault + path.sep)) throw new Error(t('error.outsideVault'));
   return full;
 }
 
@@ -64,13 +83,24 @@ function registerIpc() {
 
   ipcMain.handle('vault:choose', async () => {
     const result = await dialog.showOpenDialog(win, {
-      title: 'Escolher pasta do vault',
+      title: t('dialog.chooseVault'),
       properties: ['openDirectory', 'createDirectory'],
     });
     if (result.canceled || !result.filePaths[0]) return vault;
     vault = result.filePaths[0];
-    await fsp.writeFile(configFile(), JSON.stringify({ vault }));
+    await saveConfig({ vault });
     return vault;
+  });
+
+  ipcMain.handle('settings:get', () => ({ language }));
+
+  ipcMain.handle('settings:set', async (_e, settings) => {
+    if (LANGUAGES.includes(settings?.language) && settings.language !== language) {
+      setLanguage(settings.language);
+      // Com OBNOTION_LANG a troca vale só para a sessão: o teste não mexe na configuração real.
+      if (!process.env.OBNOTION_LANG) await saveConfig({ language });
+    }
+    return { language };
   });
 
   ipcMain.handle('vault:readAll', async () => {
@@ -130,7 +160,7 @@ const readJsonc = async (file) => parseJsonc(await fsp.readFile(file, 'utf8'), [
 
 function resolveInExtensions(file) {
   const full = path.resolve(file);
-  if (!extensionRoots().some((dir) => full.startsWith(dir + path.sep))) throw new Error('Caminho fora das extensões do VS Code');
+  if (!extensionRoots().some((dir) => full.startsWith(dir + path.sep))) throw new Error(t('error.outsideExtensions'));
   return full;
 }
 
@@ -289,69 +319,71 @@ function registerRequestIpc() {
 }
 
 // Menu e atalhos espelhados do Notion Desktop; ações de página vão para o renderer.
-function buildMenu() {
+function buildMenu(lang) {
+  const t = translator(lang);
   const send = (action) => () => win?.webContents.send('menu', action);
   const item = (label, accelerator, action) => ({ label, accelerator, click: send(action) });
 
   return Menu.buildFromTemplate([
     {
-      label: 'Arquivo',
+      label: t('menu.file'),
       submenu: [
-        item('Nova página', 'CmdOrCtrl+N', 'new-note'),
-        item('Nova guia', 'CmdOrCtrl+T', 'new-tab'),
-        item('Reabrir a última guia fechada', 'CmdOrCtrl+Shift+T', 'reopen-tab'),
-        item('Fechar guia', 'CmdOrCtrl+W', 'close-tab'),
+        item(t('menu.newPage'), 'CmdOrCtrl+N', 'new-note'),
+        item(t('menu.newTab'), 'CmdOrCtrl+T', 'new-tab'),
+        item(t('menu.reopenTab'), 'CmdOrCtrl+Shift+T', 'reopen-tab'),
+        item(t('menu.closeTab'), 'CmdOrCtrl+W', 'close-tab'),
         { type: 'separator' },
-        item('Abrir outro vault…', 'CmdOrCtrl+O', 'choose-vault'),
+        item(t('menu.openVault'), 'CmdOrCtrl+O', 'choose-vault'),
+        item(t('menu.settings'), 'CmdOrCtrl+,', 'settings'),
         { type: 'separator' },
-        { role: 'quit', label: 'Sair', accelerator: 'CmdOrCtrl+Shift+Q' },
+        { role: 'quit', label: t('menu.quit'), accelerator: 'CmdOrCtrl+Shift+Q' },
       ],
     },
     {
-      label: 'Editar',
+      label: t('menu.edit'),
       submenu: [
-        { role: 'undo', label: 'Desfazer' },
-        { role: 'redo', label: 'Refazer', accelerator: 'CmdOrCtrl+Shift+Z' },
+        { role: 'undo', label: t('menu.undo') },
+        { role: 'redo', label: t('menu.redo'), accelerator: 'CmdOrCtrl+Shift+Z' },
         { type: 'separator' },
-        { role: 'cut', label: 'Recortar' },
-        { role: 'copy', label: 'Copiar' },
-        { role: 'paste', label: 'Colar' },
-        { role: 'pasteAndMatchStyle', label: 'Colar e usar mesmo estilo', accelerator: 'CmdOrCtrl+Shift+V' },
-        { role: 'selectAll', label: 'Selecionar tudo' },
+        { role: 'cut', label: t('menu.cut') },
+        { role: 'copy', label: t('menu.copy') },
+        { role: 'paste', label: t('menu.paste') },
+        { role: 'pasteAndMatchStyle', label: t('menu.pasteMatchStyle'), accelerator: 'CmdOrCtrl+Shift+V' },
+        { role: 'selectAll', label: t('menu.selectAll') },
         { type: 'separator' },
-        item('Copiar link para página atual', 'CmdOrCtrl+L', 'copy-link'),
-        item('Copiar nome da página atual', 'CmdOrCtrl+Alt+L', 'copy-name'),
+        item(t('menu.copyLink'), 'CmdOrCtrl+L', 'copy-link'),
+        item(t('menu.copyName'), 'CmdOrCtrl+Alt+L', 'copy-name'),
       ],
     },
     {
-      label: 'Visualizar',
+      label: t('menu.view'),
       submenu: [
-        item('Busca rápida', 'CmdOrCtrl+P', 'quick-switcher'),
-        item('Visualização em grafo', 'CmdOrCtrl+G', 'graph'),
-        item('Requests', 'CmdOrCtrl+Shift+E', 'requests'),
-        item('Código', 'CmdOrCtrl+Shift+K', 'code'),
-        item('Mostrar/ocultar barra lateral', 'CmdOrCtrl+\\', 'toggle-sidebar'),
+        item(t('menu.quickSwitcher'), 'CmdOrCtrl+P', 'quick-switcher'),
+        item(t('menu.graph'), 'CmdOrCtrl+G', 'graph'),
+        item(t('menu.requests'), 'CmdOrCtrl+Shift+E', 'requests'),
+        item(t('menu.code'), 'CmdOrCtrl+Shift+K', 'code'),
+        item(t('menu.toggleSidebar'), 'CmdOrCtrl+\\', 'toggle-sidebar'),
         { type: 'separator' },
-        { role: 'reload', label: 'Recarregar' },
-        { role: 'forceReload', label: 'Forçar recarregar' },
-        { role: 'toggleDevTools', label: 'Alternar Ferramentas do Desenvolvedor' },
+        { role: 'reload', label: t('menu.reload') },
+        { role: 'forceReload', label: t('menu.forceReload') },
+        { role: 'toggleDevTools', label: t('menu.devTools') },
         { type: 'separator' },
-        { role: 'zoomIn', label: 'Mais zoom', accelerator: 'CmdOrCtrl+=' },
-        { role: 'zoomOut', label: 'Menos zoom' },
-        { role: 'resetZoom', label: 'Tamanho real' },
-        { role: 'togglefullscreen', label: 'Alternar tela cheia' },
+        { role: 'zoomIn', label: t('menu.zoomIn'), accelerator: 'CmdOrCtrl+=' },
+        { role: 'zoomOut', label: t('menu.zoomOut') },
+        { role: 'resetZoom', label: t('menu.resetZoom') },
+        { role: 'togglefullscreen', label: t('menu.fullscreen') },
       ],
     },
     {
-      label: 'Histórico',
-      submenu: [item('Voltar', 'CmdOrCtrl+[', 'back'), item('Avançar', 'CmdOrCtrl+]', 'forward')],
+      label: t('menu.history'),
+      submenu: [item(t('menu.back'), 'CmdOrCtrl+[', 'back'), item(t('menu.forward'), 'CmdOrCtrl+]', 'forward')],
     },
     {
-      label: 'Janela',
+      label: t('menu.window'),
       submenu: [
-        item('Mostrar próxima guia', 'Ctrl+Tab', 'next-tab'),
-        item('Mostrar guia anterior', 'Ctrl+Shift+Tab', 'prev-tab'),
-        { role: 'minimize', label: 'Minimizar' },
+        item(t('menu.nextTab'), 'Ctrl+Tab', 'next-tab'),
+        item(t('menu.prevTab'), 'Ctrl+Shift+Tab', 'prev-tab'),
+        { role: 'minimize', label: t('menu.minimize') },
       ],
     },
   ]);
@@ -412,7 +444,6 @@ function createWindow() {
 app.whenReady().then(() => {
   loadConfig();
   registerIpc();
-  Menu.setApplicationMenu(buildMenu());
   createWindow();
 });
 

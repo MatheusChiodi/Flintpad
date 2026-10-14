@@ -659,10 +659,12 @@ button {
 .palette {
   animation: palette-in 260ms var(--ease-out-expo) backwards;
 }
-[data-presence='switcher'][data-motion='out'] > .scrim {
+[data-presence='switcher'][data-motion='out'] > .scrim,
+[data-presence='settings'][data-motion='out'] > .scrim {
   animation: scrim-out 150ms var(--ease-in-quad) forwards;
 }
-[data-presence='switcher'][data-motion='out'] .palette {
+[data-presence='switcher'][data-motion='out'] .palette,
+[data-presence='settings'][data-motion='out'] .palette {
   animation: palette-out 130ms var(--ease-in-quad) forwards;
 }
 

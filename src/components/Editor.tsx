@@ -1,9 +1,10 @@
 import { BlockNoteSchema, defaultInlineContentSpecs } from '@blocknote/core';
-import { pt } from '@blocknote/core/locales';
+import { en, pt } from '@blocknote/core/locales';
 import { BlockNoteView } from '@blocknote/mantine';
 import { createReactInlineContentSpec, SuggestionMenuController, useCreateBlockNote } from '@blocknote/react';
 import { useEffect, useRef, useState } from 'react';
 
+import { useLanguage, useT } from '../lib/i18n';
 import { baseName, linkRegex, restoreWikilinks, splitFrontmatter } from '../lib/links';
 import type { Note } from '../types';
 
@@ -70,7 +71,10 @@ type Props = {
 };
 
 export function Editor({ path, notes, onSaved, onRename }: Props) {
-  const editor = useCreateBlockNote({ schema, dictionary: pt });
+  const t = useT();
+  // O dicionário só é lido na criação: a troca de língua remonta o componente (key em App).
+  const { language } = useLanguage();
+  const editor = useCreateBlockNote({ schema, dictionary: language === 'en' ? en : pt });
   const [title, setTitle] = useState(baseName(path));
   const session = useRef({ front: '', saved: '', latest: '', ready: false, timer: 0 });
 
@@ -140,8 +144,8 @@ export function Editor({ path, notes, onSaved, onRename }: Props) {
       <input
         className="title-input mb-5 w-full bg-transparent px-[54px] outline-none"
         value={title}
-        placeholder="Sem título"
-        aria-label="Título da página"
+        placeholder={t('note.untitled')}
+        aria-label={t('editor.titleLabel')}
         spellCheck={false}
         onChange={(event) => setTitle(event.target.value)}
         onBlur={commitTitle}

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 
+import { Trans, useT } from '../lib/i18n';
 import type { Note } from '../types';
-import { ChevronIcon, FolderIcon, GraphIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, TrashIcon } from './Icons';
+import { ChevronIcon, FolderIcon, GraphIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, TrashIcon } from './Icons';
 
 type Folder = { name: string; path: string; folders: Folder[]; notes: Note[] };
 
@@ -34,9 +35,11 @@ type Props = {
   onRequests: () => void;
   onCode: () => void;
   onSearch: () => void;
+  onSettings: () => void;
 };
 
-export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onGraph, onRequests, onCode, onSearch }: Props) {
+export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onGraph, onRequests, onCode, onSearch, onSettings }: Props) {
+  const t = useT();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tree = useMemo(() => buildTree(notes), [notes]);
 
@@ -64,8 +67,8 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
             <span className="flex-1 truncate font-medium">{child.name}</span>
             <button
               className="icon-button reveal"
-              title="Nova página nesta pasta"
-              aria-label={`Nova página em ${child.name}`}
+              title={t('sidebar.newPageHere')}
+              aria-label={t('sidebar.newPageIn', { folder: child.name })}
               onClick={(event) => {
                 event.stopPropagation();
                 onNew(child.path);
@@ -92,8 +95,8 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
           <button
             className="icon-button reveal"
             data-danger="true"
-            title="Mover para a lixeira"
-            aria-label={`Mover ${note.name} para a lixeira`}
+            title={t('common.moveToTrash')}
+            aria-label={t('sidebar.trashNote', { name: note.name })}
             onClick={(event) => {
               event.stopPropagation();
               onDelete(note.path);
@@ -117,32 +120,32 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
       <nav className="flex flex-col gap-px px-2 pb-3">
         <button className="row w-full px-2 text-[13px]" onClick={onSearch}>
           <SearchIcon className="row-icon" />
-          <span className="flex-1 text-left">Buscar</span>
+          <span className="flex-1 text-left">{t('sidebar.search')}</span>
           <Kbd>Ctrl P</Kbd>
         </button>
         <button className="row w-full px-2 text-[13px]" onClick={() => onNew('')}>
           <NewPageIcon className="row-icon" />
-          <span className="flex-1 text-left">Nova página</span>
+          <span className="flex-1 text-left">{t('sidebar.newPage')}</span>
           <Kbd>Ctrl N</Kbd>
         </button>
         <button className="row w-full px-2 text-[13px]" onClick={onGraph}>
           <GraphIcon className="row-icon" />
-          <span className="flex-1 text-left">Grafo</span>
+          <span className="flex-1 text-left">{t('nav.graph')}</span>
           <Kbd>Ctrl G</Kbd>
         </button>
         <button className="row w-full px-2 text-[13px]" onClick={onRequests}>
           <RequestIcon className="row-icon" />
-          <span className="flex-1 text-left">Requests</span>
+          <span className="flex-1 text-left">{t('nav.requests')}</span>
           <Kbd>Ctrl Shift E</Kbd>
         </button>
         <button className="row w-full px-2 text-[13px]" onClick={onCode}>
           <CodeIcon className="row-icon" />
-          <span className="flex-1 text-left">Código</span>
+          <span className="flex-1 text-left">{t('nav.code')}</span>
           <Kbd>Ctrl Shift K</Kbd>
         </button>
       </nav>
       <div className="section-label flex items-center justify-between border-t border-(--hairline) px-4 pb-2 pt-3.5">
-        <span>Páginas</span>
+        <span>{t('sidebar.pages')}</span>
         {notes.length > 0 && <span className="tabular-nums">{notes.length}</span>}
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-4">
@@ -150,12 +153,19 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
           renderFolder(tree, 0)
         ) : (
           <div className="mx-2 mt-2 rounded-lg border border-dashed border-(--hairline-strong) px-3 py-4 text-[13px] leading-relaxed">
-            <p className="font-medium text-frost-100">Vault vazio</p>
+            <p className="font-medium text-frost-100">{t('sidebar.emptyTitle')}</p>
             <p className="mt-1 text-frost-500">
-              <Kbd>Ctrl N</Kbd> cria a primeira página.
+              <Trans k="sidebar.emptyHint" values={{ key: <Kbd>Ctrl N</Kbd> }} />
             </p>
           </div>
         )}
+      </div>
+      <div className="border-t border-(--hairline) p-2">
+        <button className="row w-full px-2 text-[13px]" onClick={onSettings}>
+          <SettingsIcon className="row-icon" />
+          <span className="flex-1 text-left">{t('sidebar.settings')}</span>
+          <Kbd>Ctrl ,</Kbd>
+        </button>
       </div>
     </aside>
   );

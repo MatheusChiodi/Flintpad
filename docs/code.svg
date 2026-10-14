@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="Code: a file list and a code editor with syntax highlighting, plus themes and snippets taken from VS Code extensions">
+  <rect width="640" height="360" rx="14" fill="#0a0d13"/>
+  <rect x="0.5" y="0.5" width="639" height="359" rx="13.5" fill="none" stroke="#202736"/>
+  <path d="M168 0v360M168 52h472" stroke="#202736"/>
+  <g font-family="ui-monospace, Consolas, monospace" font-size="12">
+    <text x="20" y="34" font-size="10" letter-spacing="1.200" fill="#7f8a9b">FILES · 4</text>
+    <text x="20" y="66" font-size="11" fill="#7f8a9b">src</text>
+    <rect x="12" y="76" width="144" height="26" rx="6" fill="#171c27"/>
+    <text x="22" y="93" fill="#e7ecf3">app.ts</text>
+    <text x="22" y="121" fill="#aeb8c7">util.ts</text>
+    <text x="20" y="152" font-size="11" fill="#7f8a9b">/</text>
+    <text x="22" y="175" fill="#aeb8c7">config.json</text>
+    <text x="22" y="201" fill="#aeb8c7">notes.md</text>
+    <text x="190" y="31" fill="#e7ecf3">src/app.ts</text>
+    <text x="290" y="31" font-size="11" fill="#7f8a9b">typescript · saved</text>
+  </g>
+  <rect x="436" y="14" width="96" height="26" rx="6" fill="#05070b" stroke="#2d3648"/>
+  <text x="446" y="31" font-family="system-ui, Segoe UI, sans-serif" font-size="12" fill="#e7ecf3">Dracula</text>
+  <path d="m516 25 4 4 4-4" fill="none" stroke="#7f8a9b" stroke-width="1.500" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="540" y="14" width="84" height="26" rx="6" fill="#171c27"/>
+  <text x="582" y="31" text-anchor="middle" font-family="system-ui, Segoe UI, sans-serif" font-size="12" fill="#e7ecf3">Extensions</text>
+  <g font-family="ui-monospace, Consolas, monospace" font-size="13">
+    <g fill="#2d3648" text-anchor="end">
+      <text x="204" y="88">1</text>
+      <text x="204" y="112">2</text>
+      <text x="204" y="136">3</text>
+      <text x="204" y="160">4</text>
+      <text x="204" y="184">5</text>
+      <text x="204" y="208">6</text>
+    </g>
+    <text x="222" y="88" fill="#7f8a9b" font-style="italic">// greet a user</text>
+    <text x="222" y="112" fill="#e7ecf3"><tspan fill="#86d9cd">interface</tspan> <tspan fill="#8fb4ff">User</tspan> { name: <tspan fill="#8fb4ff">string</tspan> }</text>
+    <text x="222" y="160" fill="#e7ecf3"><tspan fill="#86d9cd">export function</tspan> greet(user: <tspan fill="#8fb4ff">User</tspan>) {</text>
+    <text x="240" y="184" fill="#e7ecf3"><tspan fill="#86d9cd">return</tspan> <tspan fill="#e6c07b">`Hello, ${user.name}!`</tspan>;</text>
+    <text x="222" y="208" fill="#e7ecf3">}</text>
+  </g>
+  <rect x="222" y="238" width="250" height="88" rx="8" fill="#10141c" stroke="#2d3648"/>
+  <g font-family="ui-monospace, Consolas, monospace" font-size="12">
+    <rect x="228" y="244" width="238" height="24" rx="5" fill="#202736"/>
+    <text x="238" y="260" fill="#e7ecf3">rafce</text>
+    <text x="456" y="260" text-anchor="end" font-size="10.500" fill="#86d9cd">snippet</text>
+    <text x="238" y="286" fill="#aeb8c7">rfc</text>
+    <text x="456" y="286" text-anchor="end" font-size="10.500" fill="#7f8a9b">snippet</text>
+    <text x="238" y="310" fill="#aeb8c7">useState</text>
+    <text x="456" y="310" text-anchor="end" font-size="10.500" fill="#7f8a9b">snippet</text>
+  </g>
+</svg>
