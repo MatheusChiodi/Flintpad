@@ -55,7 +55,7 @@ function setLanguage(next) {
 function loadConfig() {
   const saved = readConfig();
   if (!vault && saved.vault && fs.existsSync(saved.vault)) vault = saved.vault;
-  // OBNOTION_LANG sobrepõe a configuração (testes); sem nada salvo, vale a língua do sistema.
+  // OBNOTION_LANG é a língua inicial (testes); sem nada salvo, vale a língua do sistema.
   const wanted = [process.env.OBNOTION_LANG, saved.language].find((candidate) => LANGUAGES.includes(candidate));
   setLanguage(wanted ?? (app.getLocale().toLowerCase().startsWith('pt') ? 'pt-BR' : 'en'));
 }
@@ -106,8 +106,7 @@ function registerIpc() {
   ipcMain.handle('settings:set', async (_e, settings) => {
     if (LANGUAGES.includes(settings?.language) && settings.language !== language) {
       setLanguage(settings.language);
-      // Com OBNOTION_LANG a troca vale só para a sessão: o teste não mexe na configuração real.
-      if (!process.env.OBNOTION_LANG) await saveConfig({ language });
+      await saveConfig({ language });
     }
     return { language };
   });
@@ -483,6 +482,14 @@ function createWindow() {
       }, Number(process.env.OBNOTION_SHOT_DELAY) || 5000);
     });
   }
+}
+
+// Em modo de captura o app usa uma pasta de dados própria: nenhum teste lê nem grava o config.json
+// e o localStorage reais. OBNOTION_USER_DATA=<pasta> escolhe outra; --user-data-dir tem precedência.
+if (process.env.OBNOTION_SHOT && !app.commandLine.hasSwitch('user-data-dir')) {
+  const testData = process.env.OBNOTION_USER_DATA || path.join(os.tmpdir(), 'obnotion-test-userdata');
+  fs.mkdirSync(testData, { recursive: true });
+  app.setPath('userData', testData);
 }
 
 app.whenReady().then(() => {
