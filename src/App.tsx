@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Editor, findOpenEvent, openLinkEvent, pendingWrite, trackWrite } from './components/Editor';
+import { discardNote, Editor, findOpenEvent, flushNote, openLinkEvent, pendingWrite, trackWrite } from './components/Editor';
 import { Graph } from './components/Graph';
 import { FolderIcon, GraphIcon, Kbd, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon } from './components/Icons';
 import { Presence, Stage } from './components/Motion';
@@ -15,7 +15,7 @@ import { translate, Trans, useLanguage, useT, type Key } from './lib/i18n';
 import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks } from './lib/links';
 import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIndex';
 import { gotoHeading } from './lib/noteBridge';
-import { extractHeadings, linkContexts, linkMentions, parseLinkTarget, sanitizeNotePath, tagIndex, unlinkedMentions } from './lib/notes';
+import { extractHeadings, folderList, linkContexts, linkMentions, parseLinkTarget, sanitizeNotePath, tagIndex, unlinkedMentions } from './lib/notes';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
 
@@ -193,12 +193,17 @@ export default function App() {
     open(existing);
   };
 
-  const renameNote = async (path: string, name: string) => {
+  // Renomear e mover são a mesma operação: o arquivo muda de caminho e os links acompanham.
+  const relocate = async (path: string, target: string, failure: Key = 'notes.error.rename') => {
+    if (target === path) return;
     let renamed: string;
     try {
-      renamed = await window.api.rename(path, `${dirName(path)}${name}.md`);
+      // O editor da página grava o que ainda está pendente antes: depois seria tarde (o arquivo mudou de nome).
+      flushNote(path);
+      await pendingWrite(path);
+      renamed = await window.api.rename(path, target);
     } catch (error) {
-      notify('error', translate('notes.error.rename'), reason(error));
+      notify('error', translate(failure), reason(error));
       await refresh();
       return;
     }
@@ -215,14 +220,75 @@ export default function App() {
       }),
     );
     await refresh();
+    return renamed;
   };
 
-  const deleteNote = async (path: string) => {
+  const renameNote = (path: string, name: string) => relocate(path, `${dirName(path)}${name}.md`);
+
+  const moveNote = async (path: string, folder: string) => {
+    const moved = await relocate(path, `${folder}${baseName(path)}.md`, 'notes.error.move');
+    if (moved) notify('ok', translate('move.done', { name: baseName(moved), folder: folder ? folder.replace(/\/$/, '') : translate('move.root') }));
+  };
+
+  // Mover pela lista de pastas (menu de contexto ou paleta): a mesma janela da busca rápida.
+  const pickFolderFor = (path: string) => {
+    const here = dirName(path);
+    setSwitcher({
+      picker: {
+        placeholder: translate('move.placeholder', { name: baseName(path) }),
+        empty: translate('move.empty'),
+        items: folderList(latest.current.notes)
+          .filter((folder) => folder !== here)
+          .map((folder) => ({ id: folder, label: folder ? folder.replace(/\/$/, '') : translate('move.root') })),
+        onPick: (folder) => void moveNote(path, folder),
+      },
+    });
+  };
+
+  const duplicateNote = async (path: string) => {
     try {
+      flushNote(path);
+      await pendingWrite(path);
+      const content = await window.api.read(path);
+      const copy = await window.api.create(`${dirName(path)}${baseName(path)} ${translate('notes.copySuffix')}.md`);
+      await window.api.write(copy, content);
+      await refresh();
+      open(copy);
+    } catch (error) {
+      notify('error', translate('notes.error.create'), reason(error));
+    }
+  };
+
+  const restoreNote = async (path: string, content: string, wasFavorite: boolean) => {
+    try {
+      const restored = await window.api.create(path);
+      await window.api.write(restored, content);
+      await refresh();
+      if (wasFavorite) updatePins((current) => toggleFavorite(current, restored));
+      open(restored);
+    } catch (error) {
+      notify('error', translate('notes.error.create'), reason(error));
+    }
+  };
+
+  // A página vai para a lixeira do sistema; o aviso traz "Desfazer", que recria o arquivo com o mesmo texto.
+  const deleteNote = async (path: string) => {
+    let content = '';
+    try {
+      discardNote(path);
+      await pendingWrite(path);
+      content = await window.api.read(path);
       await window.api.remove(path);
     } catch (error) {
       return notify('error', translate('notes.error.delete'), reason(error));
     }
+    const wasFavorite = pinStore.current.pins.favorites.includes(path);
+    setToast({
+      id: Date.now(),
+      kind: 'ok',
+      text: translate('notes.deleted', { name: baseName(path) }),
+      action: { label: translate('notes.undo'), run: () => void restoreNote(path, content, wasFavorite) },
+    });
     const { tabs, activeId } = latest.current;
     const rest = tabs
       .map((t) => {
@@ -353,6 +419,10 @@ export default function App() {
     ['new-note', 'cmd.newNote', 'Ctrl N', menu['new-note']],
     ['daily-note', 'cmd.dailyNote', 'Ctrl D', menu['daily-note']],
     ['random-note', 'cmd.randomNote', undefined, openRandom, notes.length > 0],
+    ['rename-note', 'cmd.renameNote', undefined, () => document.querySelector<HTMLInputElement>('.title-input')?.focus(), isNote],
+    ['duplicate-note', 'cmd.duplicateNote', undefined, () => void duplicateNote(activePath), isNote],
+    ['move-note', 'cmd.moveNote', undefined, () => pickFolderFor(activePath), isNote],
+    ['delete-note', 'cmd.deleteNote', undefined, () => void deleteNote(activePath), isNote],
     ['find', 'cmd.find', 'Ctrl F', () => window.dispatchEvent(new Event(findOpenEvent)), isNote],
     ['toggle-favorite', 'cmd.toggleFavorite', 'Ctrl Shift F', menu['toggle-favorite'], isNote],
     ['copy-link', 'cmd.copyLink', 'Ctrl L', menu['copy-link'], isNote],
@@ -572,7 +642,12 @@ export default function App() {
           onToggleFavorite={toggleFavoriteAt}
           onOpen={open}
           onNew={(folder) => void createAndOpen(undefined, folder)}
-          onDelete={deleteNote}
+          onDelete={(path) => void deleteNote(path)}
+          onRename={(path, name) => void renameNote(path, name)}
+          onDuplicate={(path) => void duplicateNote(path)}
+          onMove={pickFolderFor}
+          onMoveTo={(path, folder) => void moveNote(path, folder)}
+          onCopyLink={(path) => void navigator.clipboard.writeText(`[[${baseName(path)}]]`)}
           onGraph={() => open(GRAPH, true)}
           onDaily={() => void openDaily()}
           onTasks={openTasks}

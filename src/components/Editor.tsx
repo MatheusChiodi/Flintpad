@@ -19,6 +19,13 @@ const FLASH_MS = 1200;
 
 export const openLinkEvent = 'obnotion:open-link';
 export const findFocusEvent = 'obnotion:find-focus';
+// Pedidos de fora para o editor de uma página: gravar já o que está pendente (antes de renomear ou
+// mover) ou descartar (a página foi para a lixeira; gravar recriaria o arquivo).
+const noteCommandEvent = 'obnotion:note-command';
+type NoteCommand = { path: string; discard: boolean };
+export const flushNote = (path: string) => window.dispatchEvent(new CustomEvent<NoteCommand>(noteCommandEvent, { detail: { path, discard: false } }));
+export const discardNote = (path: string) => window.dispatchEvent(new CustomEvent<NoteCommand>(noteCommandEvent, { detail: { path, discard: true } }));
+
 // Abrir a busca na página por fora do teclado (paleta de comandos).
 export const findOpenEvent = 'obnotion:find-open';
 
@@ -207,6 +214,9 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
     void write.finally(() => pendingWrites.get(path) === write && pendingWrites.delete(path));
   };
 
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+
   // Rola até o título pedido e põe o cursor nele: pelo índice quando o texto confere, senão pelo texto.
   const showHeading = (request: HeadingRequest) => {
     const headings = headingBlocks(editor.document);
@@ -262,14 +272,23 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
       setFinding(true);
       window.dispatchEvent(new Event(findFocusEvent));
     };
+    const onCommand = (event: Event) => {
+      const command = (event as CustomEvent<NoteCommand>).detail;
+      if (command.path !== path) return;
+      if (!command.discard) return flushRef.current();
+      window.clearTimeout(s.timer);
+      s.ready = false;
+    };
     window.addEventListener(gotoHeadingEvent, onHeading);
     window.addEventListener('keydown', onKey);
     window.addEventListener(findOpenEvent, onFindOpen);
+    window.addEventListener(noteCommandEvent, onCommand);
     return () => {
       alive = false;
       window.removeEventListener(gotoHeadingEvent, onHeading);
       window.removeEventListener('keydown', onKey);
       window.removeEventListener(findOpenEvent, onFindOpen);
+      window.removeEventListener(noteCommandEvent, onCommand);
       flush();
     };
     // O componente é remontado a cada troca de nota (key = path).

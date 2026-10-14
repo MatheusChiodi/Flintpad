@@ -3,7 +3,14 @@ import { useEffect } from 'react';
 const OK_MS = 4000;
 const ERROR_MS = 8000;
 
-export type ToastMessage = { id: number; kind: 'ok' | 'error'; text: string; detail?: string };
+export type ToastMessage = {
+  id: number;
+  kind: 'ok' | 'error';
+  text: string;
+  detail?: string;
+  /** Ação oferecida no próprio aviso (ex.: Desfazer). */
+  action?: { label: string; run: () => void };
+};
 
 type Props = { message: ToastMessage | null; onClose: () => void };
 
@@ -12,7 +19,7 @@ type Props = { message: ToastMessage | null; onClose: () => void };
 export function Toast({ message, onClose }: Props) {
   useEffect(() => {
     if (!message) return;
-    const timer = window.setTimeout(onClose, message.kind === 'error' ? ERROR_MS : OK_MS);
+    const timer = window.setTimeout(onClose, message.kind === 'error' || message.action ? ERROR_MS : OK_MS);
     return () => window.clearTimeout(timer);
     // Uma mensagem nova (id) reinicia a contagem.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -32,6 +39,18 @@ export function Toast({ message, onClose }: Props) {
           </span>
         )}
       </span>
+      {message.action && (
+        <button
+          className="toast-action"
+          onClick={(event) => {
+            event.stopPropagation();
+            message.action?.run();
+            onClose();
+          }}
+        >
+          {message.action.label}
+        </button>
+      )}
     </div>
   );
 }

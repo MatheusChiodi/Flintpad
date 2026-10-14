@@ -150,6 +150,36 @@ export const OutlinkIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Recolher tudo: duas setas que se encontram.
+export const CollapseAllIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m5 2.75 3 3 3-3M5 13.25l3-3 3 3" />
+  </Icon>
+);
+
+// Expandir tudo: duas setas que se afastam.
+export const ExpandAllIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m5 5.75 3-3 3 3M5 10.25l3 3 3-3" />
+  </Icon>
+);
+
+// Revelar a página aberta na árvore: uma mira.
+export const LocateIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="8" cy="8" r="4.25" />
+    <circle cx="8" cy="8" r="1.1" fill="currentColor" />
+    <path d="M8 1.75v2M8 12.25v2M1.75 8h2M12.25 8h2" />
+  </Icon>
+);
+
+// Fixar guia: um alfinete.
+export const PinIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M6 2.75h4M6.75 2.75v3.5L4.5 9h7L9.25 6.25v-3.5M8 9v4.25" />
+  </Icon>
+);
+
 // Marca: uma lasca de obsidiana com uma faceta acesa.
 export function Mark({ size = 20, className }: { size?: number; className?: string }) {
   return (
