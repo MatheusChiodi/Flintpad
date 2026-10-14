@@ -525,7 +525,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
     try {
       const entries = await Promise.all(requests.map(async (r) => ({ path: r.path, request: drafts.get(r.path) ?? (await window.api.bruRead(r.path)) })));
       const title = folder.split('/').pop() || ROOT_FOLDER;
-      await onCreateNote(t('requests.docs.noteName', { folder: title }), collectionToMarkdown(title, entries, docLabels()));
+      await onCreateNote(t('requests.docs.noteName', { folder: title }), collectionToMarkdown(entries, docLabels()));
     } catch (error) {
       setProblem((error as Error).message);
     }
@@ -538,13 +538,14 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
       const md = responseToMarkdown(
         { ...input, at: `${at.toLocaleDateString()} ${timeOf(input.at)}`, size: input.result.ok ? formatSize(input.result.size) : '' },
         {
-          request: t('requests.collection'),
           status: t('requests.docs.status'),
           time: t('requests.docs.time'),
           size: t('requests.docs.size'),
           headers: t('requests.tab.headers'),
           body: t('requests.tab.body'),
           sentAt: t('requests.docs.sentAt'),
+          name: t('requests.cookie.name'),
+          value: t('common.value'),
         },
       );
       await onCreateNote(t('requests.response.noteName', { name: input.name, date: localDay(input.at) }), md);
@@ -607,7 +608,9 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
   const finalUrl = useMemo(() => {
     if (!draft || (!draft.http.url.includes('{{') && !pathParamNames(draft.http.url).length)) return '';
     try {
-      return buildRequest(draft, vars, 'preview').url;
+      const url = buildRequest(draft, vars, 'preview').url;
+      // Com variável sem valor a prévia engana (o host sai em minúsculas e com {{ }} codificado).
+      return /\{\{|%7B%7B/i.test(url) ? '' : url;
     } catch {
       return '';
     }

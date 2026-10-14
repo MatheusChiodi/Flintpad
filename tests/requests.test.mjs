@@ -190,8 +190,9 @@ test('documentação Markdown escapa tabelas e usa cerca maior que o conteúdo',
     body: { json: 'tem ``` dentro' },
     assertions: [{ name: 'res.status', value: 'eq 200', enabled: true }],
   };
-  const md = r.collectionToMarkdown('API', [{ request, path: 'Requests/Criar.bru' }], labels);
-  assert.match(md, /^# API\n\n## Criar\n/);
+  const md = r.collectionToMarkdown([{ request, path: 'Requests/Criar.bru' }], labels);
+  assert.match(md, /^## Criar\n\n`POST` `\/u`\n/);
+  assert.doesNotMatch(md, /\n\n\n/);
   assert.match(md, /\| X \| a\\\|b \|/);
   assert.doesNotMatch(md, /Off/);
   assert.match(md, /````json\ntem ``` dentro\n````/);
@@ -200,7 +201,7 @@ test('documentação Markdown escapa tabelas e usa cerca maior que o conteúdo',
 });
 
 test('responseToMarkdown formata JSON e lista headers', () => {
-  const labels = { request: 'Request', status: 'Status', time: 'Tempo', size: 'Tamanho', headers: 'Headers', body: 'Corpo', sentAt: 'Enviada' };
+  const labels = { status: 'Status', time: 'Tempo', size: 'Tamanho', headers: 'Headers', body: 'Corpo', sentAt: 'Enviada', name: 'Nome', value: 'Valor' };
   const md = r.responseToMarkdown(
     { name: 'Lista', method: 'GET', url: 'http://x', at: 'hoje', size: '1 KB', result: { ok: true, status: 200, statusText: 'OK', headers: [['a', 'b']], size: 1, time: 5, truncated: false, body: '{"a":1}' } },
     labels,

@@ -653,45 +653,48 @@ function codeBlock(text: string, language = '') {
 function pairTable(title: string, rows: Pair[] | undefined, nameHeader: string, valueHeader: string) {
   const active = (rows ?? []).filter((row) => row.enabled && row.name);
   if (!active.length) return '';
-  return [`**${title}**`, '', `| ${nameHeader} | ${valueHeader} |`, '| --- | --- |', ...active.map((row) => `| ${cell(row.name)} | ${cell(row.value)} |`), ''].join('\n');
+  return [`**${title}**`, '', `| ${nameHeader} | ${valueHeader} |`, '| --- | --- |', ...active.map((row) => `| ${cell(row.name)} | ${cell(row.value)} |`)].join('\n');
 }
 
 export type DocLabels = { params: string; pathParams: string; headers: string; body: string; auth: string; name: string; value: string; file: string; assertions: string };
 
+/** Uma seção "## Nome" por request; blocos vazios ficam de fora e os demais vêm separados por uma linha. */
 export function requestToMarkdown(request: BruRequest, path: string, labels: DocLabels): string {
   const method = request.http.method.toUpperCase();
-  const parts = [`## ${request.meta.name}`, '', `\`${method}\` \`${request.http.url}\``, '', `${labels.file}: [[${path}|${request.meta.name}]]`, ''];
-  if (request.docs?.trim()) parts.push(request.docs.trim(), '');
-  parts.push(pairTable(labels.params, request.params?.filter((p) => p.type !== 'path'), labels.name, labels.value));
-  parts.push(pairTable(labels.pathParams, request.params?.filter((p) => p.type === 'path'), labels.name, labels.value));
-  parts.push(pairTable(labels.headers, request.headers, labels.name, labels.value));
+  const blocks = [`## ${request.meta.name}`, `\`${method}\` \`${request.http.url}\``, `${labels.file}: [[${path}|${request.meta.name}]]`];
+  if (request.docs?.trim()) blocks.push(request.docs.trim());
+  blocks.push(pairTable(labels.params, request.params?.filter((p) => p.type !== 'path'), labels.name, labels.value));
+  blocks.push(pairTable(labels.pathParams, request.params?.filter((p) => p.type === 'path'), labels.name, labels.value));
+  blocks.push(pairTable(labels.headers, request.headers, labels.name, labels.value));
   const mode = request.http.auth;
-  if (mode && mode !== 'none') parts.push(`**${labels.auth}**: ${mode}`, '');
+  if (mode && mode !== 'none') blocks.push(`**${labels.auth}**: ${mode}`);
   const bodyMode = request.http.body;
   if (bodyMode === 'json' || bodyMode === 'text' || bodyMode === 'xml') {
     const text = String(request.body?.[bodyMode] ?? '').trim();
-    if (text) parts.push(`**${labels.body}**`, '', codeBlock(text, bodyMode === 'text' ? '' : bodyMode), '');
-  } else if (bodyMode === 'formUrlEncoded') parts.push(pairTable(labels.body, request.body?.formUrlEncoded, labels.name, labels.value));
+    if (text) blocks.push(`**${labels.body}**\n\n${codeBlock(text, bodyMode === 'text' ? '' : bodyMode)}`);
+  } else if (bodyMode === 'formUrlEncoded') blocks.push(pairTable(labels.body, request.body?.formUrlEncoded, labels.name, labels.value));
   const asserts = (request.assertions as Assertion[] | undefined)?.filter((a) => a.enabled);
-  if (asserts?.length) parts.push(`**${labels.assertions}**`, '', ...asserts.map((a) => `- \`${a.name}\` ${a.value}`), '');
-  return parts.filter((part, i, all) => !(part === '' && all[i - 1] === '')).join('\n').trim();
+  if (asserts?.length) blocks.push([`**${labels.assertions}**`, '', ...asserts.map((a) => `- \`${a.name}\` ${a.value}`)].join('\n'));
+  return blocks.filter(Boolean).join('\n\n');
 }
 
-export function collectionToMarkdown(title: string, entries: { request: BruRequest; path: string }[], labels: DocLabels): string {
-  return [`# ${title}`, '', ...entries.map(({ request, path }) => `${requestToMarkdown(request, path, labels)}\n`)].join('\n').trim() + '\n';
+/** Página de documentação de uma pasta (o título da página já é o nome do arquivo). */
+export function collectionToMarkdown(entries: { request: BruRequest; path: string }[], labels: DocLabels): string {
+  return entries.map(({ request, path }) => requestToMarkdown(request, path, labels)).join('\n\n') + '\n';
 }
 
-export type ResponseLabels = { request: string; status: string; time: string; size: string; headers: string; body: string; sentAt: string };
+export type ResponseLabels = { status: string; time: string; size: string; headers: string; body: string; sentAt: string; name: string; value: string };
 
 export function responseToMarkdown(input: { name: string; method: string; url: string; at: string; result: HttpResult; size: string }, labels: ResponseLabels): string {
   const { result } = input;
-  const lines = [`# ${input.name}`, '', `\`${input.method}\` \`${input.url}\``, '', `- ${labels.sentAt}: ${input.at}`];
+  // O nome da request vai no título da página; aqui começa direto pelo envio.
+  const lines = [`\`${input.method}\` \`${input.url}\``, '', `- ${labels.sentAt}: ${input.at}`];
   if (!result.ok) {
     lines.push(`- ${labels.status}: ${result.error}`);
     return lines.join('\n') + '\n';
   }
   lines.push(`- ${labels.status}: ${result.status} ${result.statusText}`, `- ${labels.time}: ${result.time} ms`, `- ${labels.size}: ${input.size}`, '');
-  if (result.headers.length) lines.push(`## ${labels.headers}`, '', '| | |', '| --- | --- |', ...result.headers.map(([n, v]) => `| ${cell(n)} | ${cell(v)} |`), '');
+  if (result.headers.length) lines.push(`## ${labels.headers}`, '', `| ${labels.name} | ${labels.value} |`, '| --- | --- |', ...result.headers.map(([n, v]) => `| ${cell(n)} | ${cell(v)} |`), '');
   const isJson = /^\s*[[{]/.test(result.body);
   let body = result.body;
   if (isJson) {
