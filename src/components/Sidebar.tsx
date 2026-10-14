@@ -1,8 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type KeyboardEvent } from 'react';
 
 import { Trans, useT } from '../lib/i18n';
 import type { Note } from '../types';
 import { ChevronIcon, FolderIcon, GraphIcon, CalendarIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, SidebarIcon, StarIcon, TasksIcon, TrashIcon, WhiteboardIcon } from './Icons';
+
+// Linhas que não são <button> (têm botões dentro) respondem a Enter e Espaço como um botão.
+export const onActivateKey =
+  (action: (event: KeyboardEvent<HTMLElement>) => void) => (event: KeyboardEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return;
+    event.preventDefault();
+    action(event);
+  };
 
 type Folder = { name: string; path: string; folders: Folder[]; notes: Note[] };
 
@@ -83,13 +91,17 @@ export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite,
   };
 
   const renderFolder = (folder: Folder, depth: number) => (
-    <div key={folder.path} className={depth ? 'tree-group' : undefined}>
+    <div key={folder.path} className={depth ? 'tree-group' : undefined} role={depth ? 'group' : undefined}>
       {folder.folders.map((child) => (
         <div key={child.path}>
           <div
             className="row group cursor-pointer pr-1 text-[13px]"
             style={{ paddingLeft: 6 + depth * 14 }}
+            role="treeitem"
+            tabIndex={0}
+            aria-expanded={!collapsed.has(child.path)}
             onClick={() => toggle(child.path)}
+            onKeyDown={onActivateKey(() => toggle(child.path))}
           >
             <ChevronIcon
               size={12}
@@ -119,7 +131,11 @@ export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite,
           data-active={note.path === activePath}
           style={{ paddingLeft: 26 + depth * 14 }}
           title={note.path}
+          role="treeitem"
+          tabIndex={0}
+          aria-current={note.path === activePath ? 'page' : undefined}
           onClick={(event) => onOpen(note.path, event.ctrlKey || event.metaKey)}
+          onKeyDown={onActivateKey((event) => onOpen(note.path, event.ctrlKey || event.metaKey))}
           onAuxClick={(event) => event.button === 1 && onOpen(note.path, true)}
         >
           <PageIcon size={14} className="row-icon" />
@@ -208,14 +224,17 @@ export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite,
             <span className="tabular-nums">{favoriteNotes.length}</span>
           </div>
           <div className="rail-tree max-h-[30%] shrink-0 overflow-y-auto px-2">
-            <div className="pb-3">
+            <div className="pb-3" role="list" aria-label={t('favorites.title')}>
               {favoriteNotes.map((note) => (
                 <div
                   key={note.path}
                   className="row group cursor-pointer pl-2 pr-1 text-[13px]"
                   data-active={note.path === activePath}
                   title={note.path}
+                  role="listitem"
+                  tabIndex={0}
                   onClick={(event) => onOpen(note.path, event.ctrlKey || event.metaKey)}
+                  onKeyDown={onActivateKey((event) => onOpen(note.path, event.ctrlKey || event.metaKey))}
                   onAuxClick={(event) => event.button === 1 && onOpen(note.path, true)}
                 >
                   <PageIcon size={14} className="row-icon" />
@@ -231,7 +250,7 @@ export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite,
         <span>{t('sidebar.pages')}</span>
         {notes.length > 0 && <span className="tabular-nums">{notes.length}</span>}
       </div>
-      <div className="rail-tree flex-1 overflow-y-auto px-2 pb-4">
+      <div className="rail-tree flex-1 overflow-y-auto px-2 pb-4" role="tree" aria-label={t('sidebar.pages')}>
         {notes.length ? (
           renderFolder(tree, 0)
         ) : (

@@ -30,7 +30,7 @@ type TabBarProps = {
 export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onShowSidebar }: TabBarProps) {
   const t = useT();
   return (
-    <div className="flex h-11 shrink-0 items-end gap-1 pl-[18px] pr-3">
+    <div className="flex h-11 shrink-0 items-end gap-1 pl-[18px] pr-3" role="tablist" aria-label={t('tabs.label')}>
       {onShowSidebar && (
         <button className="icon-button mb-1.5 mr-1 h-7 w-7 shrink-0" title={`${t('sidebar.show')} (Ctrl+\\)`} aria-label={t('sidebar.show')} onClick={onShowSidebar}>
           <SidebarIcon size={16} />
@@ -45,7 +45,25 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onShowSidebar
             className="tab group flex h-[34px] min-w-0 max-w-52 flex-1 cursor-pointer items-center gap-2 rounded-t-lg pl-3 pr-1.5 text-[13px]"
             data-active={tab.id === activeId}
             data-sheet={Boolean(path) && !isSpecialPath(path)}
+            role="tab"
+            tabIndex={tab.id === activeId ? 0 : -1}
+            aria-selected={tab.id === activeId}
+            title={path && !isSpecialPath(path) ? path : undefined}
             onClick={() => onSelect(tab.id)}
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget) return;
+              // Setas andam entre as guias, como num tablist; Delete fecha.
+              const index = tabs.findIndex((item) => item.id === tab.id);
+              const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+              if (step) {
+                const next = tabs[(index + step + tabs.length) % tabs.length];
+                onSelect(next.id);
+                (event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="tab"]')[tabs.indexOf(next)])?.focus();
+              } else if (event.key === 'Delete') onClose(tab.id);
+              else if (event.key === 'Enter' || event.key === ' ') onSelect(tab.id);
+              else return;
+              event.preventDefault();
+            }}
             onAuxClick={(event) => event.button === 1 && onClose(tab.id)}
           >
             <TabIcon size={14} className="row-icon" />
@@ -87,7 +105,7 @@ export function LinksPanel({ backlinks, outgoing, favorite, onToggleFavorite, on
   const empty = 'px-4 pb-1 text-[13px] leading-relaxed text-frost-500';
 
   return (
-    <aside className="pane hidden w-60 shrink-0 overflow-y-auto pb-4 lg:block">
+    <aside className="pane hidden w-60 shrink-0 overflow-y-auto pb-4 lg:block" aria-label={t('links.panel')}>
       <div className="px-2 pt-3">
         <button
           className={row}
@@ -205,7 +223,14 @@ export function QuickSwitcher({ notes, contents, recents, onOpen, onCreate, onCl
   const recentCount = query.trim() ? 0 : recents.length;
   const sectionLabel = 'section-label px-2.5 pb-1.5 pt-2';
 
+  const list = useRef<HTMLDivElement>(null);
+
   useEffect(() => input.current?.focus(), []);
+
+  // A seleção pelas setas acompanha a rolagem da lista.
+  useEffect(() => {
+    list.current?.querySelector(`#switcher-option-${index}`)?.scrollIntoView({ block: 'nearest' });
+  }, [index]);
 
   const confirm = () => {
     const picked = results[index]?.note;
@@ -218,6 +243,9 @@ export function QuickSwitcher({ notes, contents, recents, onOpen, onCreate, onCl
     <div className="scrim fixed inset-0 z-50 flex items-start justify-center pt-24" onMouseDown={onClose}>
       <div
         className="palette w-[560px] max-w-[90vw] overflow-hidden rounded-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('switcher.label')}
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-(--hairline) px-4">
@@ -227,6 +255,10 @@ export function QuickSwitcher({ notes, contents, recents, onOpen, onCreate, onCl
             className="w-full bg-transparent py-3.5 text-[15px] text-frost-100 caret-sheen-400 outline-none placeholder:text-frost-500"
             placeholder={t('switcher.placeholder')}
             aria-label={t('switcher.label')}
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="switcher-list"
+            aria-activedescendant={results[index] ? `switcher-option-${index}` : undefined}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -242,12 +274,15 @@ export function QuickSwitcher({ notes, contents, recents, onOpen, onCreate, onCl
             }}
           />
         </div>
-        <div className="max-h-80 overflow-y-auto p-1.5">
+        <div ref={list} id="switcher-list" className="max-h-80 overflow-y-auto p-1.5" role="listbox" aria-label={t('switcher.results')}>
           {results.map(({ note, excerpt }, i) => (
             <Fragment key={note.path}>
               {recentCount > 0 && i === 0 && <p className={sectionLabel}>{t('recents.title')}</p>}
               {recentCount > 0 && i === recentCount && <p className={`${sectionLabel} mt-1`}>{t('sidebar.pages')}</p>}
               <div
+                id={`switcher-option-${i}`}
+                role="option"
+                aria-selected={i === index}
                 className="row cursor-pointer px-2.5 py-1 text-[13px]"
                 data-active={i === index}
                 onMouseEnter={() => setIndex(i)}

@@ -5,6 +5,7 @@ import { createReactInlineContentSpec, SuggestionMenuController, useCreateBlockN
 import { useEffect, useRef, useState } from 'react';
 
 import { useLanguage, useT } from '../lib/i18n';
+import { sanitizeNoteName } from '../lib/notes';
 import { baseName, isRequestTarget, linkRegex, restoreWikilinks, splitFrontmatter } from '../lib/links';
 import { getRequestIndex, useRequestSummary } from '../lib/requestIndex';
 import type { Note } from '../types';
@@ -108,25 +109,35 @@ type Props = {
   onToggleFavorite: () => void;
   onSaved: (path: string, content: string) => void;
   onRename: (path: string, name: string) => void;
+  /** Falha ao gravar no disco: quem chama avisa o usuário. */
+  onSaveError: (error: unknown) => void;
 };
 
-export function Editor({ path, notes, favorite, onToggleFavorite, onSaved, onRename }: Props) {
+export function Editor({ path, notes, favorite, onToggleFavorite, onSaved, onRename, onSaveError }: Props) {
   const t = useT();
   // O dicionário só é lido na criação: a troca de língua remonta o componente (key em App).
   const { language } = useLanguage();
   const editor = useCreateBlockNote({ schema, dictionary: language === 'en' ? en : pt });
   const [title, setTitle] = useState(baseName(path));
-  const session = useRef({ front: '', saved: '', latest: '', ready: false, timer: 0 });
+  const session = useRef({ front: '', saved: '', latest: '', ready: false, failed: false, timer: 0 });
 
   const toMarkdown = async () => restoreWikilinks(await editor.blocksToMarkdownLossy(editor.document));
 
   const flush = () => {
     const s = session.current;
     window.clearTimeout(s.timer);
-    if (!s.ready || s.latest === s.saved) return;
+    if (!s.ready || (s.latest === s.saved && !s.failed)) return;
+    s.failed = false;
     s.saved = s.latest;
     const content = s.front + s.latest;
-    const write = window.api.write(path, content).then(() => onSaved(path, content));
+    const write = window.api.write(path, content).then(
+      () => onSaved(path, content),
+      (error) => {
+        // A próxima edição (ou a saída da nota) tenta gravar de novo.
+        s.failed = true;
+        onSaveError(error);
+      },
+    );
     pendingWrites.set(path, write);
     void write.finally(() => pendingWrites.get(path) === write && pendingWrites.delete(path));
   };
@@ -164,7 +175,7 @@ export function Editor({ path, notes, favorite, onToggleFavorite, onSaved, onRen
   };
 
   const commitTitle = () => {
-    const name = title.trim().replace(/[\\/:*?"<>|]/g, '');
+    const name = sanitizeNoteName(title);
     if (!name || name === baseName(path)) return setTitle(baseName(path));
     flush();
     onRename(path, name);

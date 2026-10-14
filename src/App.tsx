@@ -14,6 +14,7 @@ import { handleCodeMenu } from './lib/codeBridge';
 import { translate, Trans, useLanguage, useT } from './lib/i18n';
 import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks } from './lib/links';
 import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIndex';
+import { sanitizeNotePath } from './lib/notes';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
 
@@ -154,10 +155,23 @@ export default function App() {
     setActiveId(tabs[(index + delta + tabs.length) % tabs.length].id);
   };
 
+  const notify = (kind: ToastMessage['kind'], text: string, detail?: string) => setToast({ id: Date.now(), kind, text, detail });
+  const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+  // O nome vem de quem digitou (busca rápida, link para página nova): sai limpo para o disco e para o link.
   const createNote = async (name = t('note.untitled'), folder = '') => {
-    const path = await window.api.create(`${folder}${name}.md`);
+    const path = await window.api.create(`${folder}${sanitizeNotePath(name) || t('note.untitled')}.md`);
     await refresh();
     return path;
+  };
+
+  // Versão para ações do usuário: uma falha vira aviso em vez de exceção solta.
+  const createAndOpen = async (name?: string, folder?: string) => {
+    try {
+      open(await createNote(name, folder));
+    } catch (error) {
+      notify('error', translate('notes.error.create'), reason(error));
+    }
   };
 
   const openTarget = async (target: string) => {
@@ -169,12 +183,22 @@ export default function App() {
       openRequests();
       return;
     }
-    open(resolveLink(target, latest.current.notes) ?? (await createNote(target)));
+    const existing = resolveLink(target, latest.current.notes);
+    if (existing) open(existing);
+    else await createAndOpen(target);
   };
 
   const renameNote = async (path: string, name: string) => {
-    const renamed = await window.api.rename(path, `${dirName(path)}${name}.md`);
+    let renamed: string;
+    try {
+      renamed = await window.api.rename(path, `${dirName(path)}${name}.md`);
+    } catch (error) {
+      notify('error', translate('notes.error.rename'), reason(error));
+      await refresh();
+      return;
+    }
     setTabs(latest.current.tabs.map((t) => ({ ...t, stack: t.stack.map((p) => (p === path ? renamed : p)) })));
+    setClosed(latest.current.closed.map((p) => (p === path ? renamed : p)));
     updatePins((current) => renamePath(current, path, renamed));
     // Como no Obsidian, os links das outras páginas acompanham o novo nome.
     // A própria página fica de fora: ela está aberta no editor, que regravaria por cima.
@@ -189,7 +213,11 @@ export default function App() {
   };
 
   const deleteNote = async (path: string) => {
-    await window.api.remove(path);
+    try {
+      await window.api.remove(path);
+    } catch (error) {
+      return notify('error', translate('notes.error.delete'), reason(error));
+    }
     const { tabs, activeId } = latest.current;
     const rest = tabs
       .map((t) => {
@@ -224,13 +252,12 @@ export default function App() {
     const note = notes.find((n) => n.path === currentPath(tabs.find((t) => t.id === activeId)));
     if (!note || exporting.current) return;
     exporting.current = true;
-    const notify = (kind: ToastMessage['kind'], text: string, detail?: string) => setToast({ id: Date.now(), kind, text, detail });
     try {
       const result = await window.api.exportPdf(note.name);
       if (result?.path) notify('ok', translate('export.saved'), result.path);
       else if (result) notify('error', translate('export.failed'), result.error);
     } catch (error) {
-      notify('error', translate('export.failed'), error instanceof Error ? error.message : String(error));
+      notify('error', translate('export.failed'), reason(error));
     } finally {
       exporting.current = false;
     }
@@ -261,7 +288,7 @@ export default function App() {
   };
 
   const menu: Record<MenuAction, () => void> = {
-    'new-note': async () => open(await createNote()),
+    'new-note': () => void createAndOpen(),
     'new-tab': () => open('', true),
     'reopen-tab': reopenTab,
     'close-tab': () => closeTab(latest.current.activeId),
@@ -304,7 +331,13 @@ export default function App() {
       setVault(path);
       if (!path) return;
       void loadRequestIndex();
-      const list = await refresh();
+      // Pasta sumida (pendrive, nuvem fora do ar): a tela abre vazia com o motivo, em vez de quebrar.
+      let list: Note[] = [];
+      try {
+        list = await refresh();
+      } catch (error) {
+        notify('error', translate('notes.error.load'), reason(error));
+      }
       loadVaultPins(path, list);
       const start = window.api.startNote;
       if (start) open(isSpecialPath(start) || list.some((n) => n.path === start) ? start : GRAPH);
@@ -470,7 +503,7 @@ export default function App() {
           favorites={pins.favorites}
           onToggleFavorite={toggleFavoriteAt}
           onOpen={open}
-          onNew={async (folder) => open(await createNote(undefined, folder))}
+          onNew={(folder) => void createAndOpen(undefined, folder)}
           onDelete={deleteNote}
           onGraph={() => open(GRAPH, true)}
           onDaily={() => void openDaily()}
@@ -518,6 +551,7 @@ export default function App() {
               onToggleFavorite={toggleActiveFavorite}
               onSaved={saved}
               onRename={renameNote}
+              onSaveError={(error) => notify('error', translate('notes.error.save'), reason(error))}
             />
           ) : (
             <div className="stagger flex h-full flex-col items-center justify-center px-6 text-center">
@@ -580,7 +614,7 @@ export default function App() {
           contents={contents}
           recents={recentNotes}
           onOpen={(path) => open(path)}
-          onCreate={async (name) => open(await createNote(name))}
+          onCreate={(name) => void createAndOpen(name)}
           onClose={() => setSwitcher(false)}
         />
       </Presence>
