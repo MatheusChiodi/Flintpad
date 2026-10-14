@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 
 import { Trans, useT, type Translate } from '../lib/i18n';
 import { dirName } from '../lib/links';
@@ -73,12 +73,24 @@ function Method({ value }: { value: string }) {
   );
 }
 
-function Segmented<T extends string>({ value, options, onChange }: { value: T; options: readonly (readonly [T, ReactNode])[]; onChange: (value: T) => void }) {
+function Segmented<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  value: T;
+  options: readonly (readonly [T, ReactNode])[];
+  onChange: (value: T) => void;
+  label?: string;
+}) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
       {options.map(([key, label]) => (
         <button
           key={key}
+          type="button"
+          aria-pressed={key === value}
           className={`rounded-md px-2.5 py-1 text-[12.5px] ${
             key === value ? 'bg-[var(--hover-strong)] text-frost-100' : 'text-frost-500 hover:bg-[var(--hover)] hover:text-frost-300'
           }`}
@@ -122,24 +134,26 @@ function PairTable<T extends PairRow>({
               className="size-3.5 accent-[#4fbfb4]"
               checked={row.enabled}
               title={row.enabled ? t('requests.row.disable') : t('requests.row.enable')}
+              aria-label={`${row.enabled ? t('requests.row.disable') : t('requests.row.enable')} ${row.name}`}
               onChange={(event) => patch(index, { enabled: event.target.checked } as Partial<T>)}
             />
-            <input className={`${field} flex-[2]`} placeholder={namePlaceholder} value={row.name} spellCheck={false} onChange={(event) => patch(index, { name: event.target.value } as Partial<T>)} />
+            <input className={`${field} flex-[2]`} aria-label={namePlaceholder} placeholder={namePlaceholder} value={row.name} spellCheck={false} onChange={(event) => patch(index, { name: event.target.value } as Partial<T>)} />
             <input
               className={`${field} flex-[3] disabled:opacity-50`}
               placeholder={lockedReason ?? valuePlaceholder ?? t('common.value')}
+              aria-label={`${valuePlaceholder ?? t('common.value')} ${row.name}`}
               value={lockedReason ? '' : row.value}
               disabled={Boolean(lockedReason)}
               spellCheck={false}
               onChange={(event) => patch(index, { value: event.target.value } as Partial<T>)}
             />
-            <button className="rounded px-1.5 py-1 text-frost-500 hover:bg-[var(--hover)] hover:text-danger" title={t('requests.row.remove')} onClick={() => onChange(rows.filter((_, i) => i !== index))}>
+            <button type="button" className="rounded px-1.5 py-1 text-frost-500 hover:bg-[var(--hover)] hover:text-danger" title={t('requests.row.remove')} aria-label={`${t('requests.row.remove')} ${row.name}`} onClick={() => onChange(rows.filter((_, i) => i !== index))}>
               ×
             </button>
           </div>
         );
       })}
-      <button className={`${ghostButton} self-start`} onClick={() => onChange([...rows, blank])}>
+      <button type="button" className={`${ghostButton} self-start`} onClick={() => onChange([...rows, blank])}>
         {t('requests.row.add')}
       </button>
     </div>
@@ -151,11 +165,16 @@ function ResponseView({ result, sending }: { result: HttpResult | null; sending:
   const [tab, setTab] = useState<'body' | 'headers'>('body');
   const pretty = useMemo(() => (result?.ok ? formatBody(result.body, result.headers) : ''), [result]);
 
-  if (sending) return <p className="p-4 text-frost-500">{t('requests.response.sending')}</p>;
+  if (sending)
+    return (
+      <p className="p-4 text-frost-500" role="status">
+        {t('requests.response.sending')}
+      </p>
+    );
   if (!result) return <p className="p-4 text-frost-500">{t('requests.response.idle')}</p>;
   if (!result.ok) {
     return (
-      <div className="p-4">
+      <div className="p-4" role="alert">
         <p className="font-medium text-danger">{result.cancelled ? t('requests.response.cancelled') : t('requests.response.failed')}</p>
         {!result.cancelled && <p className="mt-1 font-mono text-[12.5px] text-frost-300">{result.error}</p>}
       </div>
@@ -166,8 +185,8 @@ function ResponseView({ result, sending }: { result: HttpResult | null; sending:
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-4 px-4 py-2">
-        <Segmented value={tab} onChange={setTab} options={[['body', t('requests.tab.body')], ['headers', t('requests.tabCount', { label: t('requests.tab.headers'), count: result.headers.length })]] as const} />
-        <span className="ml-auto font-mono text-[12.5px] font-semibold" style={{ color: statusColor }}>
+        <Segmented label={t('requests.response.label')} value={tab} onChange={setTab} options={[['body', t('requests.tab.body')], ['headers', t('requests.tabCount', { label: t('requests.tab.headers'), count: result.headers.length })]] as const} />
+        <span className="ml-auto font-mono text-[12.5px] font-semibold" role="status" style={{ color: statusColor }}>
           {result.status} {result.statusText}
         </span>
         <span className="font-mono text-[12px] text-frost-500">{result.time} ms</span>
@@ -239,6 +258,8 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
   const [historyId, setHistoryId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<SaveDialog | null>(null);
   const [, setDraftVersion] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const envPending = useRef<{ timer: number; write?: () => Promise<void> }>({ timer: 0 });
 
   const environment = listing.environments.find((e) => e.path === envPath);
@@ -258,7 +279,14 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
   };
 
   const select = async (path: string, known: HistoryEntry[] = history) => {
-    const request = drafts.get(path) ?? (await window.api.bruRead(path));
+    let request: BruRequest;
+    try {
+      request = drafts.get(path) ?? (await window.api.bruRead(path));
+    } catch (error) {
+      // Arquivo apagado por fora ou .bru inválido: avisa em vez de deixar a promessa solta.
+      setProblem(t('requests.error.read', { path, reason: (error as Error).message }));
+      return;
+    }
     setDraft(request);
     setSelected(path);
     setView('request');
@@ -270,14 +298,22 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
   };
   const selectRef = useRef(select);
   selectRef.current = select;
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
 
   useEffect(() => {
     void (async () => {
-      const [next, past] = await Promise.all([refresh(), window.api.historyList().catch(() => [] as HistoryEntry[])]);
-      setHistory(past);
-      const wanted = takeFocusedRequest();
-      const first = wanted ?? next.requests[0]?.path;
-      if (first) await select(first, past);
+      try {
+        const [next, past] = await Promise.all([refresh(), window.api.historyList().catch(() => [] as HistoryEntry[])]);
+        setHistory(past);
+        const wanted = takeFocusedRequest();
+        const first = wanted ?? next.requests[0]?.path;
+        if (first) await select(first, past);
+      } catch (error) {
+        setLoadError((error as Error).message);
+      } finally {
+        setLoading(false);
+      }
     })();
     // Link numa página com a aba já aberta: troca para a request citada.
     const onFocus = () => {
@@ -350,7 +386,12 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
       setSelected(null);
       setDraft(null);
     }
-    await window.api.remove(path);
+    try {
+      await window.api.remove(path);
+      flash(t('requests.trashed'));
+    } catch (error) {
+      setProblem((error as Error).message);
+    }
     await refresh();
   };
 
@@ -392,7 +433,8 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
     setSendingId(id);
     setResult(null);
     const response = await window.api.httpSend(outgoing);
-    setResult(response);
+    // Se o usuário trocou de request durante o envio, a resposta não aparece na outra.
+    if (selectedRef.current === source) setResult(response);
     setSendingId(null);
     const entry: HistoryEntry = {
       id,
@@ -486,6 +528,18 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
   const authMode = (draft?.http.auth === 'inherit' ? 'none' : draft?.http.auth ?? 'none') as AuthChoice;
   const counted = (label: string, count?: number) => (count ? t('requests.tabCount', { label, count }) : label);
   const textBodyKey = bodyMode === 'json' || bodyMode === 'text' || bodyMode === 'xml' ? bodyMode : null;
+  // Enter/Espaço abrem a linha; setas andam entre as linhas da lista lateral.
+  const onRowKey = (event: ReactKeyboardEvent<HTMLElement>, activate: () => void) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      activate();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const rows = [...(event.currentTarget.closest('aside')?.querySelectorAll<HTMLElement>('[data-request-row]') ?? [])];
+      rows[rows.indexOf(event.currentTarget) + (event.key === 'ArrowDown' ? 1 : -1)]?.focus();
+    }
+  };
   const toolButton = 'rounded-md px-2 py-1 text-[12px] text-frost-500 transition-colors hover:bg-[var(--hover)] hover:text-frost-100';
 
   return (
@@ -493,13 +547,14 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
       <aside className="flex w-64 shrink-0 flex-col border-r border-[var(--hairline)] max-[1100px]:w-52 max-[820px]:w-44">
         <div className="flex items-center gap-2 px-3 pb-2 pt-3">
           <Segmented
+            label={t('requests.sidebar')}
             value={side}
             onChange={setSide}
             options={[['collection', t('requests.collection')], ['history', counted(t('requests.history'), history.length)]] as const}
           />
           <span className="flex-1" />
           {side === 'collection' && (
-            <button className={`${ghostButton} shrink-0`} onClick={createRequest} title={t('requests.new')}>
+            <button className={`${ghostButton} shrink-0`} onClick={createRequest} title={t('requests.new')} aria-label={t('requests.new')}>
               +
             </button>
           )}
@@ -529,16 +584,23 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
                   {requests.map((request) => (
                     <div
                       key={request.path}
-                      className={`row group cursor-pointer px-2 ${request.path === selected && view === 'request' ? 'bg-[var(--hover-strong)] text-frost-100' : 'hover:bg-[var(--hover)]'}`}
+                      role="button"
+                      tabIndex={0}
+                      data-request-row
+                      aria-current={request.path === selected && view === 'request' ? 'true' : undefined}
+                      className={`row group cursor-pointer px-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-sheen-400 ${request.path === selected && view === 'request' ? 'bg-[var(--hover-strong)] text-frost-100' : 'hover:bg-[var(--hover)]'}`}
                       title={request.url}
                       onClick={() => void select(request.path)}
+                      onKeyDown={(event) => onRowKey(event, () => void select(request.path))}
                     >
                       <Method value={request.method} />
                       <span className="flex-1 truncate">{request.name}</span>
                       {drafts.has(request.path) && <span className="size-1.5 shrink-0 rounded-full bg-sheen-400 group-hover:hidden" title={t('requests.unsaved')} />}
                       <button
-                        className="rounded px-1 text-frost-500 opacity-0 hover:text-danger group-hover:opacity-100"
+                        type="button"
+                        className="rounded px-1 text-frost-500 opacity-0 hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
                         title={t('common.moveToTrash')}
+                        aria-label={`${t('common.moveToTrash')}: ${request.name}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           void deleteRequest(request.path);
@@ -550,7 +612,17 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
                   ))}
                 </div>
               ))}
-              {!listing.requests.length && <p className="px-2 py-1 text-frost-500">{t('requests.empty')}</p>}
+              {loading ? (
+                <p className="px-2 py-1 text-frost-500" role="status">
+                  {t('requests.loading')}
+                </p>
+              ) : loadError ? (
+                <p className="px-2 py-1 text-danger" role="alert">
+                  {t('requests.error.list', { reason: loadError })}
+                </p>
+              ) : (
+                !listing.requests.length && <p className="px-2 py-1 text-frost-500">{t('requests.empty')}</p>
+              )}
             </div>
           </>
         ) : (
@@ -562,7 +634,18 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
                 {entries.map((entry) => (
                   <div
                     key={entry.id}
-                    className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 ${entry.id === historyId && view === 'history' ? 'bg-[var(--hover-strong)] text-frost-100' : 'hover:bg-[var(--hover)]'}`}
+                    role="button"
+                    tabIndex={0}
+                    data-request-row
+                    aria-current={entry.id === historyId && view === 'history' ? 'true' : undefined}
+                    onKeyDown={(event) =>
+                      onRowKey(event, () => {
+                        setHistoryId(entry.id);
+                        setView('history');
+                        setProblem('');
+                      })
+                    }
+                    className={`group flex cursor-pointer focus-visible:outline focus-visible:outline-1 focus-visible:outline-sheen-400 items-center gap-2 rounded-md px-2 py-1.5 ${entry.id === historyId && view === 'history' ? 'bg-[var(--hover-strong)] text-frost-100' : 'hover:bg-[var(--hover)]'}`}
                     title={entry.url}
                     onClick={() => {
                       setHistoryId(entry.id);
@@ -677,6 +760,7 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
               <input
                 className="min-w-0 flex-1 bg-transparent font-display text-xl font-semibold text-frost-100 outline-none placeholder:text-frost-500"
                 value={draft.meta.name}
+                aria-label={t('requests.namePlaceholder')}
                 placeholder={t('requests.namePlaceholder')}
                 spellCheck={false}
                 onChange={(event) => update((r) => ({ ...r, meta: { ...r.meta, name: event.target.value } }))}
@@ -702,6 +786,7 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
             <div className="mt-3 flex flex-wrap gap-2">
               <select
                 className={`${field} w-28 shrink-0 font-semibold`}
+                aria-label={t('requests.method')}
                 style={{ color: METHOD_COLOR[draft.http.method.toUpperCase()] }}
                 value={draft.http.method.toUpperCase()}
                 onChange={(event) => update((r) => ({ ...r, http: { ...r.http, method: event.target.value.toLowerCase() } }))}
@@ -713,6 +798,7 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
               <input
                 className={`${field} min-w-48 flex-1`}
                 value={draft.http.url}
+                aria-label="URL"
                 placeholder={t('requests.urlPlaceholder')}
                 spellCheck={false}
                 onChange={(event) => update((r) => ({ ...r, http: { ...r.http, url: event.target.value }, params: paramsFromUrl(event.target.value, r.params) }))}
@@ -746,6 +832,7 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
             </div>
             <div className="mt-3">
               <Segmented
+                label={t('requests.sections')}
                 value={tab}
                 onChange={setTab}
                 options={
@@ -837,8 +924,13 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
           </div>
         </section>
       ) : (
-        <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3 text-frost-500">
-          <p className="font-display text-lg text-frost-100">{t('requests.noneSelected')}</p>
+        <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center text-frost-500">
+          <p className="font-display text-lg text-frost-100">{loading ? t('requests.loading') : t('requests.noneSelected')}</p>
+          {problem && (
+            <p className="max-w-md text-[12.5px] text-danger" role="alert">
+              {problem}
+            </p>
+          )}
           <button className={ghostButton} onClick={createRequest}>
             {t('requests.new')}
           </button>
@@ -854,6 +946,9 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
       {dialog && (
         <div className="scrim absolute inset-0 z-30 flex items-start justify-center pt-24" onMouseDown={() => setDialog(null)}>
           <form
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="request-save-title"
             className="w-[min(420px,calc(100%-32px))] rounded-xl bg-obsidian-800 p-5 shadow-2xl ring-1 ring-[var(--hairline-strong)]"
             onMouseDown={(event) => event.stopPropagation()}
             onSubmit={(event) => {
@@ -862,7 +957,9 @@ export function Requests({ notes, contents, onOpenNote }: Props) {
             }}
             onKeyDown={(event) => event.key === 'Escape' && setDialog(null)}
           >
-            <h2 className="font-display text-lg font-semibold text-frost-100">{t('requests.saveDialog.title')}</h2>
+            <h2 id="request-save-title" className="font-display text-lg font-semibold text-frost-100">
+              {t('requests.saveDialog.title')}
+            </h2>
             <label className="mt-4 block text-[12px] text-frost-500">
               {t('requests.saveDialog.name')}
               <input autoFocus className={`${field} mt-1 w-full font-sans`} value={dialog.name} spellCheck={false} onChange={(event) => setDialog({ ...dialog, name: event.target.value })} />

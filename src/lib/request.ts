@@ -86,9 +86,23 @@ export const envToVars = (env?: Environment): Record<string, string> =>
 export const interpolate = (text: string, vars: Record<string, string>) =>
   text.replace(VARIABLE, (all, name: string) => (name in vars ? vars[name] : all));
 
+// Só o que vai no envio conta: anotações, linhas desativadas e modos não escolhidos não geram aviso.
+function sentParts(request: BruRequest): unknown[] {
+  const on = (rows?: Pair[]) => (rows ?? []).filter((row) => row.enabled);
+  const authMode = request.http.auth;
+  const bodyMode = request.http.body;
+  return [
+    request.http.url,
+    on(request.params),
+    on(request.headers),
+    authMode && authMode !== 'none' && authMode !== 'inherit' ? request.auth?.[authMode] : null,
+    bodyMode === 'formUrlEncoded' ? on(request.body?.formUrlEncoded) : bodyMode && bodyMode !== 'none' ? request.body?.[bodyMode] : null,
+  ];
+}
+
 export function unresolvedVariables(request: BruRequest, vars: Record<string, string>): string[] {
   const missing = new Set<string>();
-  for (const match of JSON.stringify(request).matchAll(VARIABLE)) if (!(match[1] in vars)) missing.add(match[1]);
+  for (const match of JSON.stringify(sentParts(request)).matchAll(VARIABLE)) if (!(match[1] in vars)) missing.add(match[1]);
   return [...missing];
 }
 
