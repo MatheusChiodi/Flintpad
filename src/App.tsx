@@ -12,7 +12,8 @@ import { Tasks } from './components/Tasks';
 import { Toast, type ToastMessage } from './components/Toast';
 import { handleCodeMenu } from './lib/codeBridge';
 import { translate, Trans, useLanguage, useT } from './lib/i18n';
-import { baseName, dirName, outgoingTargets, resolveLink, retargetLinks } from './lib/links';
+import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks } from './lib/links';
+import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIndex';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, type MenuAction, type Note, type Tab } from './types';
 
@@ -158,6 +159,14 @@ export default function App() {
   };
 
   const openTarget = async (target: string) => {
+    // Link para request (.bru): abre a aba Requests já nela, em vez de criar uma página.
+    if (isRequestTarget(target)) {
+      const path = resolveRequestTarget(target, getRequestIndex()) ?? resolveRequestTarget(target, await loadRequestIndex());
+      if (!path) return setToast({ id: Date.now(), kind: 'error', text: translate('requests.notFound', { target }) });
+      focusRequest(path);
+      openRequests();
+      return;
+    }
     open(resolveLink(target, latest.current.notes) ?? (await createNote(target)));
   };
 
@@ -290,6 +299,7 @@ export default function App() {
     void window.api.getVault().then(async (path) => {
       setVault(path);
       if (!path) return;
+      void loadRequestIndex();
       const list = await refresh();
       loadVaultPins(path, list);
       const start = window.api.startNote;
@@ -328,7 +338,11 @@ export default function App() {
   const outgoing = useMemo(
     () =>
       isNote
-        ? outgoingTargets(contents[activePath] ?? '').map((target) => ({ target, path: resolveLink(target, notes) }))
+        ? outgoingTargets(contents[activePath] ?? '').map((target) => {
+            if (!isRequestTarget(target)) return { target, path: resolveLink(target, notes) };
+            const request = getRequestIndex().find((item) => item.path === resolveRequestTarget(target, getRequestIndex()));
+            return { target, path: request?.path, label: request ? `${request.method.toUpperCase()} ${request.name}` : target };
+          })
         : [],
     [isNote, contents, activePath, notes],
   );
@@ -476,7 +490,7 @@ export default function App() {
           className={`min-h-0 flex-1 overflow-y-auto ${isNote ? 'mx-2 mb-2' : ''}`}
         >
           {activePath === REQUESTS ? (
-            <Requests />
+            <Requests notes={notes} contents={contents} onOpenNote={(path) => open(path)} />
           ) : activePath === CODE ? (
             <Suspense fallback={<p className="p-5 text-frost-500">{t('code.loading')}</p>}>
               <Code />

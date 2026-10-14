@@ -72,7 +72,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onShowSidebar
 
 type LinksPanelProps = {
   backlinks: Note[];
-  outgoing: { target: string; path?: string }[];
+  outgoing: { target: string; path?: string; label?: string }[];
   favorite: boolean;
   onToggleFavorite: () => void;
   onOpen: (path: string) => void;
@@ -130,7 +130,7 @@ export function LinksPanel({ backlinks, outgoing, favorite, onToggleFavorite, on
             ) : (
               <PlusIcon size={14} className="row-icon" />
             )}
-            <span className="truncate">{link.target}</span>
+            <span className="truncate">{link.label ?? link.target}</span>
           </button>
         ))}
       </div>

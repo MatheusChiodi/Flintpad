@@ -86,6 +86,9 @@ The menu bar is hidden; press `Alt` to show it. In a narrow window (under 900 px
 - Environments with `{{variables}}`, and a warning when one has no value.
 - Response status, time, size, formatted body and headers. `Ctrl+Enter` sends; a running request can be cancelled.
 - Notes per request. Blocks the screen does not edit (scripts, tests, vars) are kept in the file.
+- **Saving**: edits stay as an unsaved draft (dot in the list) until `Ctrl+S` or **Save**; drafts survive switching requests and tabs. **Save as…** and **Duplicate** write a copy under a new name or folder.
+- **Mentions in pages**: type `[` in a page and pick a request; it shows as a chip with its method and opens the request when clicked. **Copy link** gives the same `[[Requests/Name.bru|Name]]` link to paste. Each request lists the pages that mention it, and a page's links panel lists its requests.
+- **History**: every send is kept with its response (last 200, in `.obnotion/request-history.json` inside the vault), grouped by day. Open one to read the response again, send it again, save it to the collection or jump to the original request. Opening a request shows its last response.
 
 Not there yet, compared to Bruno: scripts and tests, collection runner, GraphQL, gRPC, WebSocket, OAuth2/AWS/NTLM, multipart and file upload, cookies, proxy and certificates, Postman/OpenAPI import, auth inherited from the collection, Git integration, secret variables.
 

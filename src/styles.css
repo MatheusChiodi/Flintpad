@@ -511,6 +511,43 @@ button {
   opacity: 0.6;
 }
 
+/* Link para request: o método vai num selo de mono, na cor do método (a mesma da aba Requests). */
+.request-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+}
+.request-link[data-missing='true'] {
+  text-decoration: line-through;
+}
+.request-link-method {
+  align-self: center;
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.68em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0c4f49;
+  background: color-mix(in srgb, #4fbfb4 22%, transparent);
+}
+.request-link-method[data-method='POST'] {
+  color: #7a5a12;
+  background: color-mix(in srgb, #e6c07b 30%, transparent);
+}
+.request-link-method[data-method='PUT'] {
+  color: #24438c;
+  background: color-mix(in srgb, #8fb4ff 30%, transparent);
+}
+.request-link-method[data-method='PATCH'] {
+  color: #5b3a8c;
+  background: color-mix(in srgb, #c8a6f2 32%, transparent);
+}
+.request-link-method[data-method='DELETE'] {
+  color: #8c2a26;
+  background: color-mix(in srgb, #f0908d 30%, transparent);
+}
+
 /* Busca rápida */
 .scrim {
   background: rgb(3 5 9 / 0.62);

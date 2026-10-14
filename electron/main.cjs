@@ -21,6 +21,8 @@ if (app.isPackaged) {
 const MAX_INDEXED_BYTES = 1024 * 1024;
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const ENV_DIR = 'environments';
+const HISTORY_DIR = '.obnotion';
+const MAX_HISTORY = 200;
 // Margens do PDF exportado, em polegadas (cerca de 18 mm).
 const PDF_MARGINS_IN = { top: 0.7, bottom: 0.7, left: 0.7, right: 0.7 };
 const PDF_PAPER = '#ffffff';
@@ -427,6 +429,35 @@ function registerRequestIpc() {
   });
 
   ipcMain.handle('http:cancel', (_e, id) => inFlight.get(id)?.abort());
+
+  // Histórico de envios: um arquivo por vault, numa pasta oculta (fica fora das notas e da busca).
+  const historyFile = () => resolveInVault(path.join(HISTORY_DIR, 'request-history.json'));
+  const readHistory = async () => {
+    try {
+      const list = JSON.parse(await fsp.readFile(historyFile(), 'utf8'));
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return []; // ainda sem histórico, ou arquivo ilegível
+    }
+  };
+  const writeHistory = async (list) => {
+    const file = historyFile();
+    await fsp.mkdir(path.dirname(file), { recursive: true });
+    await fsp.writeFile(`${file}.tmp`, JSON.stringify(list));
+    await fsp.rename(`${file}.tmp`, file);
+  };
+  // Gravações em fila: dois envios seguidos não se atropelam no mesmo arquivo.
+  let historyQueue = Promise.resolve();
+  const updateHistory = (change) => {
+    const next = historyQueue.then(async () => writeHistory(change(await readHistory())));
+    historyQueue = next.catch(() => {});
+    return next;
+  };
+
+  ipcMain.handle('history:list', () => readHistory());
+  ipcMain.handle('history:add', (_e, entry) => updateHistory((list) => [entry, ...list.filter((item) => item.id !== entry.id)].slice(0, MAX_HISTORY)));
+  ipcMain.handle('history:remove', (_e, id) => updateHistory((list) => list.filter((item) => item.id !== id)));
+  ipcMain.handle('history:clear', () => updateHistory(() => []));
 }
 
 // Menu e atalhos espelhados do Notion Desktop; ações de página vão para o renderer.

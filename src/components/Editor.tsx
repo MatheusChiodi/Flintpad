@@ -5,7 +5,8 @@ import { createReactInlineContentSpec, SuggestionMenuController, useCreateBlockN
 import { useEffect, useRef, useState } from 'react';
 
 import { useLanguage, useT } from '../lib/i18n';
-import { baseName, linkRegex, restoreWikilinks, splitFrontmatter } from '../lib/links';
+import { baseName, isRequestTarget, linkRegex, restoreWikilinks, splitFrontmatter } from '../lib/links';
+import { getRequestIndex, useRequestSummary } from '../lib/requestIndex';
 import type { Note } from '../types';
 import { StarIcon } from './Icons';
 
@@ -14,11 +15,34 @@ const MAX_SUGGESTIONS = 12;
 
 export const openLinkEvent = 'obnotion:open-link';
 
+// Link para uma request (.bru): mostra o método e o nome; sem a request, fica riscado.
+function RequestChip({ target, alias }: { target: string; alias: string }) {
+  const t = useT();
+  const request = useRequestSummary(target);
+  const method = request?.method.toUpperCase() ?? '';
+  const label = alias || request?.name || target.split('/').pop()!.replace(/\.bru$/i, '');
+  return (
+    <span
+      className="wikilink request-link"
+      data-missing={!request}
+      title={request ? `${method} ${request.url}` : t('links.requestMissing')}
+      onMouseDown={(event) => {
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(openLinkEvent, { detail: target }));
+      }}
+    >
+      {method && <span className="request-link-method" data-method={method}>{method === 'DELETE' ? 'DEL' : method}</span>}
+      {label}
+    </span>
+  );
+}
+
 const Wikilink = createReactInlineContentSpec(
   { type: 'wikilink', propSchema: { target: { default: '' }, alias: { default: '' } }, content: 'none' } as const,
   {
     render: ({ inlineContent }) => {
       const { target, alias } = inlineContent.props;
+      if (isRequestTarget(target)) return <RequestChip target={target} alias={alias} />;
       return (
         <span
           className="wikilink"
@@ -146,9 +170,10 @@ export function Editor({ path, notes, favorite, onToggleFavorite, onSaved, onRen
     onRename(path, name);
   };
 
+  // "[" sugere páginas e requests; a request entra como link para o arquivo .bru, com o nome de apelido.
   const suggestNotes = async (query: string) => {
     const wanted = query.replace(/^\[/, '').toLowerCase();
-    return notes
+    const pages = notes
       .filter((n) => n.path !== path && n.name.toLowerCase().includes(wanted))
       .slice(0, MAX_SUGGESTIONS)
       .map((n) => ({
@@ -157,6 +182,17 @@ export function Editor({ path, notes, favorite, onToggleFavorite, onSaved, onRen
         onItemClick: () =>
           editor.insertInlineContent([{ type: 'wikilink', props: { target: n.name, alias: '' } }, ' ']),
       }));
+    const requests = getRequestIndex()
+      .filter((r) => `${r.name} ${r.url} ${r.method}`.toLowerCase().includes(wanted))
+      .slice(0, MAX_SUGGESTIONS)
+      .map((r) => ({
+        title: r.name,
+        subtext: `${r.method.toUpperCase()} ${r.url || r.path}`,
+        group: t('editor.suggest.requests'),
+        onItemClick: () =>
+          editor.insertInlineContent([{ type: 'wikilink', props: { target: r.path, alias: r.name.replace(/[\]|]/g, '') } }, ' ']),
+      }));
+    return [...pages.map((page) => ({ ...page, group: t('editor.suggest.pages') })), ...requests];
   };
 
   return (

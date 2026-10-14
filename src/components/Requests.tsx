@@ -17,7 +17,13 @@ import {
   type HttpResult,
   type Pair,
   type RequestSummary,
+  groupByDay,
+  historyResult,
+  type HistoryEntry,
 } from '../lib/request';
+import { requestLinkMarkdown, requestMentions } from '../lib/links';
+import { focusRequestEvent, setRequestIndex, takeFocusedRequest } from '../lib/requestIndex';
+import type { Note } from '../types';
 
 const ROOT_FOLDER = 'Requests';
 const SAVE_DELAY_MS = 500;
@@ -194,79 +200,153 @@ function ResponseView({ result, sending }: { result: HttpResult | null; sending:
 
 type Listing = { requests: RequestSummary[]; environments: Environment[] };
 type RequestTab = 'params' | 'headers' | 'body' | 'auth' | 'docs';
+type SaveDialog = { request: BruRequest; name: string; folder: string };
 
-export function Requests() {
+// Rascunhos não salvos por request: sobrevivem à troca de request e de aba (Ctrl+S grava).
+const drafts = new Map<string, BruRequest>();
+
+const requestFolder = (path: string) => dirName(path).replace(/\/$/, '') || ROOT_FOLDER;
+const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const shortUrl = (url: string) => url.replace(/^https?:\/\//i, '');
+
+function StatusBadge({ result }: { result: HttpResult }) {
+  const t = useT();
+  if (!result.ok) return <span className="font-mono text-[10.5px] text-danger">{result.cancelled ? t('requests.history.cancelled') : t('requests.history.failed')}</span>;
+  const color = result.status < 300 ? '#86d9cd' : result.status < 400 ? '#e6c07b' : '#f0908d';
+  return (
+    <span className="font-mono text-[10.5px] font-semibold" style={{ color }}>
+      {result.status}
+    </span>
+  );
+}
+
+type Props = { notes: Note[]; contents: Record<string, string>; onOpenNote: (path: string) => void };
+
+export function Requests({ notes, contents, onOpenNote }: Props) {
   const t = useT();
   const [listing, setListing] = useState<Listing>({ requests: [], environments: [] });
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<BruRequest | null>(null);
-  const [view, setView] = useState<'request' | 'environments'>('request');
+  const [view, setView] = useState<'request' | 'environments' | 'history'>('request');
+  const [side, setSide] = useState<'collection' | 'history'>('collection');
   const [tab, setTab] = useState<RequestTab>('params');
   const [envPath, setEnvPath] = useState(() => localStorage.getItem(ENV_STORAGE_KEY) ?? '');
   const [result, setResult] = useState<HttpResult | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [problem, setProblem] = useState('');
-  const pending = useRef<{ timer: number; save?: () => Promise<void> }>({ timer: 0 });
+  const [notice, setNotice] = useState('');
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyId, setHistoryId] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<SaveDialog | null>(null);
+  const [, setDraftVersion] = useState(0);
+  const envPending = useRef<{ timer: number; write?: () => Promise<void> }>({ timer: 0 });
 
   const environment = listing.environments.find((e) => e.path === envPath);
   const vars = useMemo(() => envToVars(environment), [environment]);
+  const dirty = selected !== null && drafts.has(selected);
 
   const refresh = async () => {
     const next: Listing = await window.api.bruList();
     setListing(next);
+    setRequestIndex(next.requests);
     return next;
   };
 
-  const flush = async () => {
-    window.clearTimeout(pending.current.timer);
-    const save = pending.current.save;
-    pending.current.save = undefined;
-    await save?.();
+  const flash = (text: string) => {
+    setNotice(text);
+    window.setTimeout(() => setNotice((current) => (current === text ? '' : current)), 3500);
   };
 
-  const schedule = (save: () => Promise<void>) => {
-    window.clearTimeout(pending.current.timer);
-    pending.current.save = save;
-    pending.current.timer = window.setTimeout(() => void flush(), SAVE_DELAY_MS);
-  };
-
-  useEffect(() => {
-    void refresh().then((next) => next.requests[0] && void select(next.requests[0].path));
-    return () => void flush();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const select = async (path: string) => {
-    await flush();
-    setDraft(await window.api.bruRead(path));
+  const select = async (path: string, known: HistoryEntry[] = history) => {
+    const request = drafts.get(path) ?? (await window.api.bruRead(path));
+    setDraft(request);
     setSelected(path);
     setView('request');
-    setResult(null);
+    setSide('collection');
+    setHistoryId(null);
+    // A última resposta desta request, se houver, aparece de volta.
+    setResult(known.find((entry) => entry.source === path)?.result ?? null);
     setProblem('');
   };
+  const selectRef = useRef(select);
+  selectRef.current = select;
+
+  useEffect(() => {
+    void (async () => {
+      const [next, past] = await Promise.all([refresh(), window.api.historyList().catch(() => [] as HistoryEntry[])]);
+      setHistory(past);
+      const wanted = takeFocusedRequest();
+      const first = wanted ?? next.requests[0]?.path;
+      if (first) await select(first, past);
+    })();
+    // Link numa página com a aba já aberta: troca para a request citada.
+    const onFocus = () => {
+      const path = takeFocusedRequest();
+      if (path) void selectRef.current(path);
+    };
+    window.addEventListener(focusRequestEvent, onFocus);
+    const pending = envPending.current;
+    return () => {
+      window.removeEventListener(focusRequestEvent, onFocus);
+      // Variáveis editadas logo antes de sair da aba ainda são gravadas.
+      window.clearTimeout(pending.timer);
+      void pending.write?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const update = (change: (request: BruRequest) => BruRequest) => {
     if (!draft || !selected) return;
     const next = change(draft);
     const path = selected;
+    drafts.set(path, next);
     setDraft(next);
     setListing((prev) => ({
       ...prev,
       requests: prev.requests.map((r) => (r.path === path ? { ...r, name: next.meta.name, method: next.http.method, url: next.http.url } : r)),
     }));
-    schedule(() => window.api.bruWrite(path, next));
   };
 
+  const save = async () => {
+    if (!selected || !draft || !drafts.has(selected)) return;
+    const path = selected;
+    const request = draft;
+    try {
+      await window.api.bruWrite(path, request);
+      // Só limpa se nada mudou durante a gravação.
+      if (drafts.get(path) === request) drafts.delete(path);
+      setDraftVersion((n) => n + 1);
+      await refresh();
+      flash(t('requests.saved'));
+    } catch (error) {
+      setProblem((error as Error).message);
+    }
+  };
+  const saveRef = useRef(save);
+  saveRef.current = save;
+
+  // Ctrl+S salva a request aberta (a aba só existe montada quando está à vista).
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        void saveRef.current();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const createRequest = async () => {
-    const folder = selected ? dirName(selected).replace(/\/$/, '') || ROOT_FOLDER : ROOT_FOLDER;
+    const folder = selected ? requestFolder(selected) : ROOT_FOLDER;
     const path: string = await window.api.bruCreate(folder, t('requests.new'));
     await refresh();
     await select(path);
   };
 
   const deleteRequest = async (path: string) => {
+    drafts.delete(path);
     if (path === selected) {
-      pending.current.save = undefined;
       setSelected(null);
       setDraft(null);
     }
@@ -274,29 +354,74 @@ export function Requests() {
     await refresh();
   };
 
-  const send = async () => {
-    if (!draft || sendingId) return;
+  const openSaveDialog = (request: BruRequest, name: string, folder: string) => setDialog({ request, name, folder });
+
+  const confirmSave = async () => {
+    if (!dialog) return;
+    const name = dialog.name.trim().replace(/[\\/:*?"<>|]/g, '');
+    const folder = dialog.folder.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '') || ROOT_FOLDER;
+    if (!name) return;
+    try {
+      const path: string = await window.api.bruCreate(folder, name);
+      await window.api.bruWrite(path, { ...dialog.request, meta: { ...dialog.request.meta, name } });
+      setDialog(null);
+      await refresh();
+      await select(path);
+      flash(t('requests.saved'));
+    } catch (error) {
+      setProblem((error as Error).message);
+    }
+  };
+
+  const copyLink = async (path: string, name: string) => {
+    await navigator.clipboard.writeText(requestLinkMarkdown(path, name));
+    flash(t('requests.linkCopied'));
+  };
+
+  // Envia a request (a aberta ou uma do histórico) e guarda o envio no histórico.
+  const send = async (request: BruRequest | null = draft, source: string | null = selected) => {
+    if (!request || sendingId) return;
     setProblem('');
     const id = crypto.randomUUID();
     let outgoing;
     try {
-      outgoing = buildRequest(draft, vars, id);
+      outgoing = buildRequest(request, vars, id);
     } catch (error) {
       return setProblem((error as Error).message);
     }
     setSendingId(id);
     setResult(null);
-    setResult(await window.api.httpSend(outgoing));
+    const response = await window.api.httpSend(outgoing);
+    setResult(response);
     setSendingId(null);
+    const entry: HistoryEntry = {
+      id,
+      at: new Date().toISOString(),
+      source,
+      name: request.meta.name,
+      method: outgoing.method,
+      url: outgoing.url,
+      environment: environment?.name ?? null,
+      request,
+      result: historyResult(response),
+    };
+    setHistory((prev) => [entry, ...prev].slice(0, 200));
+    if (view === 'history') setHistoryId(id);
+    void window.api.historyAdd(entry).catch(() => {});
   };
 
   const saveEnvironment = (env: Environment, variables: EnvVar[]) => {
     setListing((prev) => ({ ...prev, environments: prev.environments.map((e) => (e.path === env.path ? { ...e, variables } : e)) }));
-    schedule(() => window.api.envWrite(env.path, variables));
+    const pending = envPending.current;
+    window.clearTimeout(pending.timer);
+    pending.write = () => window.api.envWrite(env.path, variables);
+    pending.timer = window.setTimeout(() => {
+      void pending.write?.();
+      pending.write = undefined;
+    }, SAVE_DELAY_MS);
   };
 
   const createEnvironment = async () => {
-    await flush();
     const taken = new Set(listing.environments.map((e) => e.name));
     const base = t('requests.env.defaultName');
     let name = base;
@@ -312,6 +437,22 @@ export function Requests() {
     localStorage.setItem(ENV_STORAGE_KEY, path);
   };
 
+  const removeHistory = async (id: string) => {
+    setHistory((prev) => prev.filter((entry) => entry.id !== id));
+    if (historyId === id) {
+      setHistoryId(null);
+      setView('request');
+    }
+    await window.api.historyRemove(id).catch(() => {});
+  };
+
+  const clearHistory = async () => {
+    setHistory([]);
+    setHistoryId(null);
+    if (view === 'history') setView('request');
+    await window.api.historyClear().catch(() => {});
+  };
+
   const groups = useMemo(() => {
     const byFolder = new Map<string, RequestSummary[]>();
     for (const request of listing.requests) {
@@ -321,65 +462,134 @@ export function Requests() {
     return [...byFolder.entries()];
   }, [listing.requests]);
 
+  const folders = useMemo(() => [...new Set([ROOT_FOLDER, ...listing.requests.map((r) => requestFolder(r.path))])].sort(), [listing.requests]);
+  const mentions = useMemo(() => (selected ? requestMentions(selected, notes, contents) : []), [selected, notes, contents]);
+  const historyEntry = history.find((entry) => entry.id === historyId) ?? null;
+
+  const dayLabel = (day: string) => {
+    const today = new Date();
+    const iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const yesterday = new Date(today.getTime() - 86_400_000);
+    // As datas do histórico estão em UTC; o rótulo usa o dia local de cada envio.
+    if (day === iso(today)) return t('requests.history.today');
+    if (day === iso(yesterday)) return t('requests.history.yesterday');
+    return new Date(`${day}T12:00:00`).toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+  const localDay = (iso: string) => {
+    const date = new Date(iso);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  const historyGroups = useMemo(() => groupByDay(history.map((entry) => ({ ...entry, at: localDay(entry.at) + entry.at.slice(10) }))), [history]);
+
   const missing = draft ? unresolvedVariables(draft, vars) : [];
   const bodyMode = (draft?.http.body ?? 'none') as BodyChoice;
   const authMode = (draft?.http.auth === 'inherit' ? 'none' : draft?.http.auth ?? 'none') as AuthChoice;
   const counted = (label: string, count?: number) => (count ? t('requests.tabCount', { label, count }) : label);
   const textBodyKey = bodyMode === 'json' || bodyMode === 'text' || bodyMode === 'xml' ? bodyMode : null;
+  const toolButton = 'rounded-md px-2 py-1 text-[12px] text-frost-500 transition-colors hover:bg-[var(--hover)] hover:text-frost-100';
 
   return (
-    <div className="flex h-full min-h-0 text-[13px]">
+    <div className="relative flex h-full min-h-0 text-[13px]">
       <aside className="flex w-64 shrink-0 flex-col border-r border-[var(--hairline)] max-[1100px]:w-52 max-[820px]:w-44">
         <div className="flex items-center gap-2 px-3 pb-2 pt-3">
-          <span className="section-label flex-1">{t('nav.requests')}</span>
-          <button className={ghostButton} onClick={createRequest}>
-            {t('requests.new')}
-          </button>
+          <Segmented
+            value={side}
+            onChange={setSide}
+            options={[['collection', t('requests.collection')], ['history', counted(t('requests.history'), history.length)]] as const}
+          />
+          <span className="flex-1" />
+          {side === 'collection' && (
+            <button className={`${ghostButton} shrink-0`} onClick={createRequest} title={t('requests.new')}>
+              +
+            </button>
+          )}
         </div>
-        <div className="flex items-center gap-2 px-3 pb-3">
-          <select className={`${field} flex-1 font-sans`} value={environment?.path ?? ''} title={t('requests.activeEnvironment')} onChange={(event) => chooseEnvironment(event.target.value)}>
-            <option value="">{t('requests.noEnvironment')}</option>
-            {listing.environments.map((env) => (
-              <option key={env.path} value={env.path}>
-                {env.name}
-              </option>
-            ))}
-          </select>
-          <button className={`${ghostButton} shrink-0 ${view === 'environments' ? 'bg-[var(--hover-strong)] text-frost-100' : ''}`} onClick={() => setView(view === 'environments' ? 'request' : 'environments')}>
-            {t('requests.variables')}
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-          {groups.map(([folder, requests]) => (
-            <div key={folder} className="mb-2">
-              <div className="truncate px-2 py-1 font-mono text-[11px] text-frost-500" title={folder}>
-                {folder || '/'}
-              </div>
-              {requests.map((request) => (
-                <div
-                  key={request.path}
-                  className={`row group cursor-pointer px-2 ${request.path === selected && view === 'request' ? 'bg-[var(--hover-strong)] text-frost-100' : 'hover:bg-[var(--hover)]'}`}
-                  title={request.url}
-                  onClick={() => void select(request.path)}
-                >
-                  <Method value={request.method} />
-                  <span className="flex-1 truncate">{request.name}</span>
-                  <button
-                    className="rounded px-1 text-frost-500 opacity-0 hover:text-danger group-hover:opacity-100"
-                    title={t('common.moveToTrash')}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void deleteRequest(request.path);
-                    }}
-                  >
-                    ×
-                  </button>
+
+        {side === 'collection' ? (
+          <>
+            <div className="flex items-center gap-2 px-3 pb-3">
+              <select className={`${field} flex-1 font-sans`} value={environment?.path ?? ''} title={t('requests.activeEnvironment')} onChange={(event) => chooseEnvironment(event.target.value)}>
+                <option value="">{t('requests.noEnvironment')}</option>
+                {listing.environments.map((env) => (
+                  <option key={env.path} value={env.path}>
+                    {env.name}
+                  </option>
+                ))}
+              </select>
+              <button className={`${ghostButton} shrink-0 ${view === 'environments' ? 'bg-[var(--hover-strong)] text-frost-100' : ''}`} onClick={() => setView(view === 'environments' ? 'request' : 'environments')}>
+                {t('requests.variables')}
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+              {groups.map(([folder, requests]) => (
+                <div key={folder} className="mb-2">
+                  <div className="truncate px-2 py-1 font-mono text-[11px] text-frost-500" title={folder}>
+                    {folder || '/'}
+                  </div>
+                  {requests.map((request) => (
+                    <div
+                      key={request.path}
+                      className={`row group cursor-pointer px-2 ${request.path === selected && view === 'request' ? 'bg-[var(--hover-strong)] text-frost-100' : 'hover:bg-[var(--hover)]'}`}
+                      title={request.url}
+                      onClick={() => void select(request.path)}
+                    >
+                      <Method value={request.method} />
+                      <span className="flex-1 truncate">{request.name}</span>
+                      {drafts.has(request.path) && <span className="size-1.5 shrink-0 rounded-full bg-sheen-400 group-hover:hidden" title={t('requests.unsaved')} />}
+                      <button
+                        className="rounded px-1 text-frost-500 opacity-0 hover:text-danger group-hover:opacity-100"
+                        title={t('common.moveToTrash')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void deleteRequest(request.path);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
                 </div>
               ))}
+              {!listing.requests.length && <p className="px-2 py-1 text-frost-500">{t('requests.empty')}</p>}
             </div>
-          ))}
-          {!listing.requests.length && <p className="px-2 py-1 text-frost-500">{t('requests.empty')}</p>}
-        </div>
+          </>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+            {!history.length && <p className="px-2 py-1 text-frost-500">{t('requests.history.empty')}</p>}
+            {historyGroups.map(([day, entries]) => (
+              <div key={day} className="mb-2">
+                <div className="px-2 py-1 text-[11px] font-medium text-frost-500">{dayLabel(day)}</div>
+                {entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 ${entry.id === historyId && view === 'history' ? 'bg-[var(--hover-strong)] text-frost-100' : 'hover:bg-[var(--hover)]'}`}
+                    title={entry.url}
+                    onClick={() => {
+                      setHistoryId(entry.id);
+                      setView('history');
+                      setProblem('');
+                    }}
+                  >
+                    <Method value={entry.method} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{entry.name}</span>
+                      <span className="block truncate font-mono text-[10.5px] text-frost-500">{shortUrl(entry.url)}</span>
+                    </span>
+                    <span className="flex shrink-0 flex-col items-end gap-0.5">
+                      <StatusBadge result={entry.result} />
+                      <span className="font-mono text-[10px] text-frost-500">{timeOf(history.find((item) => item.id === entry.id)?.at ?? entry.at)}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+            {history.length > 0 && (
+              <button className={`${ghostButton} mx-2 mt-2`} onClick={() => void clearHistory()}>
+                {t('requests.history.clear')}
+              </button>
+            )}
+          </div>
+        )}
       </aside>
 
       {view === 'environments' ? (
@@ -413,6 +623,48 @@ export function Requests() {
             <p className="text-frost-500">{t('requests.env.choose')}</p>
           )}
         </section>
+      ) : view === 'history' && historyEntry ? (
+        <section className="flex min-w-0 flex-1 flex-col">
+          <div className="px-5 pt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="min-w-0 flex-1 truncate font-display text-xl font-semibold text-frost-100">{historyEntry.name}</h2>
+              {historyEntry.source && listing.requests.some((r) => r.path === historyEntry.source) ? (
+                <button className={toolButton} onClick={() => void select(historyEntry.source!)}>
+                  {t('requests.history.openSource')}
+                </button>
+              ) : (
+                historyEntry.source && <span className="text-[12px] text-frost-500">{t('requests.history.sourceGone')}</span>
+              )}
+              <button className={toolButton} onClick={() => openSaveDialog(historyEntry.request, historyEntry.name, historyEntry.source ? requestFolder(historyEntry.source) : ROOT_FOLDER)}>
+                {t('requests.history.saveToCollection')}
+              </button>
+              <button className={`${toolButton} hover:text-danger`} onClick={() => void removeHistory(historyEntry.id)}>
+                {t('requests.history.remove')}
+              </button>
+              {sendingId ? (
+                <button className="shrink-0 rounded-md px-4 py-1.5 font-medium text-danger ring-1 ring-danger/50 hover:bg-danger/10" onClick={() => void window.api.httpCancel(sendingId)}>
+                  {t('requests.cancel')}
+                </button>
+              ) : (
+                <button className="shrink-0 rounded-md bg-sheen-400 px-4 py-1.5 font-semibold text-obsidian-950 hover:bg-sheen-300" onClick={() => void send(historyEntry.request, historyEntry.source)}>
+                  {t('requests.history.resend')}
+                </button>
+              )}
+            </div>
+            <div className="mt-3 flex items-center gap-2 rounded-md bg-obsidian-950/60 px-3 py-2 ring-1 ring-[var(--hairline-strong)]">
+              <Method value={historyEntry.method} />
+              <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-frost-100 select-text">{historyEntry.url}</span>
+            </div>
+            <p className="mt-2 text-[12px] text-frost-500">
+              {t('requests.history.sentAt', { time: `${new Date(historyEntry.at).toLocaleDateString()} ${timeOf(historyEntry.at)}` })}
+              {historyEntry.environment && ` · ${t('requests.history.environment', { name: historyEntry.environment })}`}
+            </p>
+            {problem && <p className="mt-2 text-[12.5px] text-danger">{problem}</p>}
+          </div>
+          <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-[var(--hairline)] bg-obsidian-950/40">
+            <ResponseView result={sendingId ? null : historyEntry.result} sending={Boolean(sendingId)} />
+          </div>
+        </section>
       ) : draft && selected ? (
         <section
           className="flex min-w-0 flex-1 flex-col"
@@ -421,13 +673,32 @@ export function Requests() {
           }}
         >
           <div className="px-5 pt-4">
-            <input
-              className="w-full bg-transparent font-display text-xl font-semibold text-frost-100 outline-none placeholder:text-frost-500"
-              value={draft.meta.name}
-              placeholder={t('requests.namePlaceholder')}
-              spellCheck={false}
-              onChange={(event) => update((r) => ({ ...r, meta: { ...r.meta, name: event.target.value } }))}
-            />
+            <div className="flex items-center gap-2">
+              <input
+                className="min-w-0 flex-1 bg-transparent font-display text-xl font-semibold text-frost-100 outline-none placeholder:text-frost-500"
+                value={draft.meta.name}
+                placeholder={t('requests.namePlaceholder')}
+                spellCheck={false}
+                onChange={(event) => update((r) => ({ ...r, meta: { ...r.meta, name: event.target.value } }))}
+              />
+              <button
+                className={`shrink-0 rounded-md px-3 py-1 text-[12.5px] font-medium transition-colors ${dirty ? 'bg-sheen-400/15 text-sheen-300 ring-1 ring-sheen-400/40 hover:bg-sheen-400/25' : 'text-frost-500'}`}
+                disabled={!dirty}
+                title={dirty ? t('requests.unsaved') : undefined}
+                onClick={() => void save()}
+              >
+                {dirty ? t('requests.save') : t('requests.saved')}
+              </button>
+              <button className={toolButton} onClick={() => openSaveDialog(draft, draft.meta.name, requestFolder(selected))}>
+                {t('requests.saveAs')}
+              </button>
+              <button className={toolButton} onClick={() => openSaveDialog(draft, `${draft.meta.name} ${t('requests.copySuffix')}`, requestFolder(selected))}>
+                {t('requests.duplicate')}
+              </button>
+              <button className={toolButton} onClick={() => void copyLink(selected, draft.meta.name)}>
+                {t('requests.copyLink')}
+              </button>
+            </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <select
                 className={`${field} w-28 shrink-0 font-semibold`}
@@ -461,6 +732,18 @@ export function Requests() {
                 {problem || t('requests.missingVariables', { names: missing.join(', ') })}
               </p>
             )}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px]">
+              <span className="text-frost-500">{t('requests.mentions')}:</span>
+              {mentions.length ? (
+                mentions.map((note) => (
+                  <button key={note.path} className="rounded-full px-2 py-0.5 text-sheen-300 ring-1 ring-[var(--hairline-strong)] transition-colors hover:bg-[var(--hover)]" title={note.path} onClick={() => onOpenNote(note.path)}>
+                    {note.name}
+                  </button>
+                ))
+              ) : (
+                <span className="text-frost-500">{t('requests.noMentions')}</span>
+              )}
+            </div>
             <div className="mt-3">
               <Segmented
                 value={tab}
@@ -560,6 +843,49 @@ export function Requests() {
             {t('requests.new')}
           </button>
         </section>
+      )}
+
+      {notice && (
+        <div role="status" className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-obsidian-800 px-3.5 py-2 text-[12.5px] text-frost-100 shadow-lg ring-1 ring-[var(--hairline-strong)]">
+          {notice}
+        </div>
+      )}
+
+      {dialog && (
+        <div className="scrim absolute inset-0 z-30 flex items-start justify-center pt-24" onMouseDown={() => setDialog(null)}>
+          <form
+            className="w-[min(420px,calc(100%-32px))] rounded-xl bg-obsidian-800 p-5 shadow-2xl ring-1 ring-[var(--hairline-strong)]"
+            onMouseDown={(event) => event.stopPropagation()}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void confirmSave();
+            }}
+            onKeyDown={(event) => event.key === 'Escape' && setDialog(null)}
+          >
+            <h2 className="font-display text-lg font-semibold text-frost-100">{t('requests.saveDialog.title')}</h2>
+            <label className="mt-4 block text-[12px] text-frost-500">
+              {t('requests.saveDialog.name')}
+              <input autoFocus className={`${field} mt-1 w-full font-sans`} value={dialog.name} spellCheck={false} onChange={(event) => setDialog({ ...dialog, name: event.target.value })} />
+            </label>
+            <label className="mt-3 block text-[12px] text-frost-500">
+              {t('requests.saveDialog.folder')}
+              <input className={`${field} mt-1 w-full`} list="request-folders" value={dialog.folder} spellCheck={false} onChange={(event) => setDialog({ ...dialog, folder: event.target.value })} />
+              <datalist id="request-folders">
+                {folders.map((folder) => (
+                  <option key={folder} value={folder} />
+                ))}
+              </datalist>
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" className={ghostButton} onClick={() => setDialog(null)}>
+                {t('requests.cancel')}
+              </button>
+              <button type="submit" className="rounded-md bg-sheen-400 px-4 py-1.5 font-semibold text-obsidian-950 hover:bg-sheen-300 disabled:opacity-50" disabled={!dialog.name.trim()}>
+                {t('requests.saveDialog.confirm')}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );

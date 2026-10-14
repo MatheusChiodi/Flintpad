@@ -40,3 +40,22 @@ export function restoreWikilinks(markdown: string): string {
   const escapedChar = new RegExp(String.raw`\\(.)`, 'g');
   return markdown.replace(escapedLink, (_all, inner: string) => '[[' + inner.replace(escapedChar, '$1') + ']]');
 }
+
+// Links para requests: o alvo é o caminho do arquivo .bru no vault ([[Requests/Listar.bru|Listar]]),
+// o mesmo formato que o Obsidian usa para ligar arquivos que não são notas.
+export const isRequestTarget = (target: string) => /\.bru$/i.test(target.trim());
+
+const requestKey = (path: string) => path.trim().replace(/\\/g, '/').replace(/^\/+/, '').toLowerCase();
+
+export function resolveRequestTarget(target: string, requests: { path: string }[]): string | undefined {
+  const wanted = requestKey(target);
+  return requests.find((r) => requestKey(r.path) === wanted)?.path;
+}
+
+/** Notas que citam a request, pela ordem em que aparecem na lista. */
+export function requestMentions(path: string, notes: Note[], contents: Record<string, string>): Note[] {
+  const wanted = requestKey(path);
+  return notes.filter((note) => outgoingTargets(contents[note.path] ?? '').some((target) => requestKey(target) === wanted));
+}
+
+export const requestLinkMarkdown = (path: string, name: string) => `[[${path}|${name.replace(/[\]|]/g, '')}]]`;

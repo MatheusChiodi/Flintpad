@@ -1,6 +1,6 @@
 import type { Language } from './lib/i18n';
 import type { VsExtension, VsSnippet, VsTheme } from './lib/vscode';
-import type { BruRequest, Environment, EnvVar, HttpResult, OutgoingRequest, RequestSummary } from './lib/request';
+import type { BruRequest, Environment, EnvVar, HistoryEntry, HttpResult, OutgoingRequest, RequestSummary } from './lib/request';
 
 export type Note = { path: string; name: string };
 
@@ -70,6 +70,10 @@ declare global {
       envWrite(rel: string, variables: EnvVar[]): Promise<void>;
       httpSend(request: OutgoingRequest): Promise<HttpResult>;
       httpCancel(id: string): Promise<void>;
+      historyList(): Promise<HistoryEntry[]>;
+      historyAdd(entry: HistoryEntry): Promise<void>;
+      historyRemove(id: string): Promise<void>;
+      historyClear(): Promise<void>;
       filesList(): Promise<string[]>;
       extList(): Promise<VsExtension[]>;
       extTheme(file: string): Promise<VsTheme>;

@@ -62,3 +62,24 @@ test('fuzzyFilter sem consulta devolve a lista na ordem, até o limite', () => {
     ['a', 'b'],
   );
 });
+
+import { isRequestTarget, requestLinkMarkdown, requestMentions, resolveRequestTarget } from '../src/lib/links.ts';
+
+test('links para requests: alvo .bru, resolvido sem diferenciar caixa nem barra inicial', () => {
+  const requests = [{ path: 'Requests/Users/Listar.bru' }, { path: 'Requests/Login.bru' }];
+  assert.ok(isRequestTarget('Requests/Login.bru'));
+  assert.ok(!isRequestTarget('Login'));
+  assert.equal(resolveRequestTarget('requests/login.BRU', requests), 'Requests/Login.bru');
+  assert.equal(resolveRequestTarget('/Requests/Users/Listar.bru', requests), 'Requests/Users/Listar.bru');
+  assert.equal(resolveRequestTarget('Requests/Outra.bru', requests), undefined);
+});
+
+test('requestMentions acha as páginas que citam a request, com ou sem apelido', () => {
+  const notes = [{ path: 'a.md', name: 'a' }, { path: 'b.md', name: 'b' }, { path: 'c.md', name: 'c' }];
+  const contents = { 'a.md': 'ver [[Requests/Login.bru|Login]]', 'b.md': '[[requests/login.bru]] e [[c]]', 'c.md': 'nada' };
+  assert.deepEqual(requestMentions('Requests/Login.bru', notes, contents).map((n) => n.path), ['a.md', 'b.md']);
+});
+
+test('requestLinkMarkdown tira do apelido o que quebraria o link', () => {
+  assert.equal(requestLinkMarkdown('Requests/A.bru', 'Lista | todos]'), '[[Requests/A.bru|Lista  todos]]');
+});

@@ -41,6 +41,39 @@ export type HttpResult =
     }
   | { ok: false; cancelled?: boolean; error: string; time?: number };
 
+// Um envio guardado no histórico: a request como estava (sem variáveis resolvidas) e a resposta.
+export type HistoryEntry = {
+  id: string;
+  at: string;
+  /** Arquivo .bru de origem, quando o envio partiu de uma request salva. */
+  source: string | null;
+  name: string;
+  method: string;
+  /** URL já com as variáveis do ambiente aplicadas. */
+  url: string;
+  environment: string | null;
+  request: BruRequest;
+  result: HttpResult;
+};
+
+// Respostas grandes entram cortadas no histórico: o arquivo fica leve e rápido de ler.
+export const MAX_HISTORY_BODY = 256 * 1024;
+
+export function historyResult(result: HttpResult): HttpResult {
+  if (!result.ok || result.body.length <= MAX_HISTORY_BODY) return result;
+  return { ...result, body: result.body.slice(0, MAX_HISTORY_BODY), truncated: true };
+}
+
+/** Grupos por dia, do mais recente ao mais antigo (a lista já vem nessa ordem). */
+export function groupByDay<T extends { at: string }>(entries: T[]): [day: string, items: T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const entry of entries) {
+    const day = entry.at.slice(0, 10);
+    groups.set(day, [...(groups.get(day) ?? []), entry]);
+  }
+  return [...groups.entries()];
+}
+
 export type OutgoingRequest = { id: string; method: string; url: string; headers: [string, string][]; body?: string };
 
 export const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
