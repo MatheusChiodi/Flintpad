@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { discardNote, Editor, findOpenEvent, flushNote, openLinkEvent, pendingWrite, trackWrite } from './components/Editor';
+import { DailyNav } from './components/DailyNav';
+import { discardNote, Editor, findOpenEvent, flushNote, insertMarkdown, openLinkEvent, pendingWrite, trackWrite } from './components/Editor';
+import { LinkPreview } from './components/LinkPreview';
 import { Graph } from './components/Graph';
 import { FolderIcon, GraphIcon, Kbd, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon } from './components/Icons';
 import { Presence, Stage } from './components/Motion';
@@ -12,10 +14,10 @@ import { Tasks } from './components/Tasks';
 import { Toast, type ToastMessage } from './components/Toast';
 import { handleCodeMenu } from './lib/codeBridge';
 import { translate, Trans, useLanguage, useT, type Key } from './lib/i18n';
-import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks } from './lib/links';
+import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks, splitFrontmatter } from './lib/links';
 import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIndex';
 import { gotoHeading } from './lib/noteBridge';
-import { extractHeadings, folderList, linkContexts, linkMentions, parseLinkTarget, sanitizeNotePath, tagIndex, unlinkedMentions } from './lib/notes';
+import { applyTemplate, dailyNeighbors, extractHeadings, folderList, isDailyNote, isoDate, linkContexts, templatesIn, linkMentions, parseLinkTarget, sanitizeNotePath, tagIndex, unlinkedMentions } from './lib/notes';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
 import { closeOthers, closeToRight, loadSession, moveTab, restoreSession, saveSession, togglePin } from './lib/tabs';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
@@ -63,6 +65,7 @@ export default function App() {
   const [settings, setSettings] = useState(false);
   const [pins, setPins] = useState<Pins>(emptyPins);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [widePaths, setWidePaths] = useState<Set<string>>(new Set());
   const exporting = useRef(false);
   // Vault cuja sessão de guias já foi restaurada: antes disso, gravar apagaria a sessão salva.
   const sessionVault = useRef<string | null>(null);
@@ -98,6 +101,12 @@ export default function App() {
   // As listas são por vault. Só as recentes são podadas na carga: se a listagem vier incompleta
   // (pasta em nuvem ainda sincronizando), os favoritos não se perdem; a barra lateral esconde os que faltam.
   const loadVaultPins = (path: string, list: Note[]) => {
+    try {
+      const wide = JSON.parse(localStorage.getItem(`obnotion:wide:${path}`) ?? '[]');
+      setWidePaths(new Set(Array.isArray(wide) ? wide.filter((item): item is string => typeof item === 'string') : []));
+    } catch {
+      setWidePaths(new Set());
+    }
     const stored = loadPins(path);
     const loaded = { ...stored, recents: prunePins(stored, list.map((n) => n.path)).recents };
     pinStore.current = { vault: path, pins: loaded };
@@ -388,16 +397,76 @@ export default function App() {
   const saved = (path: string, content: string) => setContents((prev) => ({ ...prev, [path]: content }));
 
   // Nota de hoje: uma página por dia numa pasta própria, criada na primeira vez que é aberta.
+  // Se a pasta de modelos tiver uma página com o nome da pasta do diário ("Modelos/Diário"), ela é o modelo.
   const openDaily = async () => {
     const now = new Date();
-    const pad = (value: number) => String(value).padStart(2, '0');
-    const path = `${translate('daily.folder')}/${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.md`;
+    const folder = translate('daily.folder');
+    const path = `${folder}/${isoDate(now)}.md`;
     if (!latest.current.notes.some((n) => n.path === path)) {
-      await window.api.create(path);
-      await refresh();
+      try {
+        const created = await window.api.create(path);
+        const template = `${translate('templates.folder')}/${folder}.md`;
+        if (latest.current.notes.some((n) => n.path === template)) {
+          await window.api.write(created, applyTemplate(await window.api.read(template), { title: isoDate(now), date: now }));
+        }
+        await refresh();
+      } catch (error) {
+        return notify('error', translate('notes.error.create'), reason(error));
+      }
     }
     open(path);
   };
+
+  // Modelos: páginas na pasta de modelos. Variáveis {{title}}, {{date}}, {{time}} e {{date:FORMATO}}.
+  const pickTemplate = (mode: 'new' | 'insert') => {
+    const folder = translate('templates.folder');
+    const templates = templatesIn(latest.current.notes, folder);
+    if (!templates.length) return notify('error', translate('templates.none', { folder }));
+    const target = currentPath(latest.current.tabs.find((tab) => tab.id === latest.current.activeId));
+    setSwitcher({
+      picker: {
+        placeholder: translate(mode === 'new' ? 'templates.pickNew' : 'templates.pickInsert'),
+        empty: translate('templates.none', { folder }),
+        items: templates.map((note) => ({ id: note.path, label: note.name, detail: note.path })),
+        onPick: (path) => void fromTemplate(path, mode, target),
+      },
+    });
+  };
+
+  const fromTemplate = async (templatePath: string, mode: 'new' | 'insert', target: string) => {
+    try {
+      const now = new Date();
+      const raw = await window.api.read(templatePath);
+      if (mode === 'insert') {
+        // O frontmatter do modelo não entra no meio da página.
+        insertMarkdown(target, splitFrontmatter(applyTemplate(raw, { title: baseName(target), date: now }))[1]);
+        return;
+      }
+      const path = await window.api.create(`${t('note.untitled')}.md`);
+      await window.api.write(path, applyTemplate(raw, { title: baseName(path), date: now }));
+      await refresh();
+      open(path);
+      // Página nova: o cursor vai para o título, pronto para dar o nome.
+      requestAnimationFrame(() => window.setTimeout(() => document.querySelector<HTMLInputElement>('.title-input')?.select(), 300));
+    } catch (error) {
+      notify('error', translate('notes.error.create'), reason(error));
+    }
+  };
+
+  // Largura cheia por página (como no Notion), lembrada neste computador.
+  const toggleWide = (path: string) =>
+    setWidePaths((current) => {
+      const next = new Set(current);
+      if (!next.delete(path)) next.add(path);
+      if (vault) {
+        try {
+          localStorage.setItem(`obnotion:wide:${vault}`, JSON.stringify([...next]));
+        } catch {
+          // armazenamento indisponível: vale só nesta sessão
+        }
+      }
+      return next;
+    });
 
   const menu: Record<MenuAction, () => void> = {
     'new-note': () => void createAndOpen(),
@@ -460,6 +529,9 @@ export default function App() {
     ['new-note', 'cmd.newNote', 'Ctrl N', menu['new-note']],
     ['daily-note', 'cmd.dailyNote', 'Ctrl D', menu['daily-note']],
     ['random-note', 'cmd.randomNote', undefined, openRandom, notes.length > 0],
+    ['new-from-template', 'cmd.newFromTemplate', undefined, () => pickTemplate('new')],
+    ['insert-template', 'cmd.insertTemplate', undefined, () => pickTemplate('insert'), isNote],
+    ['toggle-wide', 'cmd.toggleWide', undefined, () => toggleWide(activePath), isNote],
     ['rename-note', 'cmd.renameNote', undefined, () => document.querySelector<HTMLInputElement>('.title-input')?.focus(), isNote],
     ['duplicate-note', 'cmd.duplicateNote', undefined, () => void duplicateNote(activePath), isNote],
     ['move-note', 'cmd.moveNote', undefined, () => pickFolderFor(activePath), isNote],
@@ -759,6 +831,18 @@ export default function App() {
               onSaved={saved}
               onRename={renameNote}
               onSaveError={(error) => notify('error', translate('notes.error.save'), reason(error))}
+              wide={widePaths.has(activePath)}
+              onToggleWide={() => toggleWide(activePath)}
+              header={
+                isDailyNote(activePath, t('daily.folder')) ? (
+                  <DailyNav
+                    path={activePath}
+                    neighbors={dailyNeighbors(activePath, notes, t('daily.folder'))}
+                    onOpen={(path) => open(path)}
+                    onToday={() => void openDaily()}
+                  />
+                ) : undefined
+              }
             />
           ) : (
             <div className="stagger flex h-full flex-col items-center justify-center px-6 text-center">
@@ -825,6 +909,8 @@ export default function App() {
           onOpenTarget={openTarget}
         />
       </Presence>
+
+      <LinkPreview notes={notes} contents={contents} onOpen={(path) => open(path)} />
 
       <Presence when={Boolean(switcher)} name="switcher">
         <QuickSwitcher

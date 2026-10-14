@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { useT } from '../lib/i18n';
 import type { TextStats } from '../lib/notes';
-import { ChevronIcon, CloseIcon } from './Icons';
+import { ChevronIcon, CloseIcon, WidthIcon } from './Icons';
 
 // Ferramentas da folha: busca na página (Ctrl+F) e barra de status (gravação e contagem de palavras).
 
@@ -141,7 +141,9 @@ export function FindBar({ root, version, onClose }: FindBarProps) {
 
 export type SaveState = 'saved' | 'saving' | 'error';
 
-export function StatusBar({ state, stats, onRetry }: { state: SaveState; stats: TextStats; onRetry: () => void }) {
+type StatusBarProps = { state: SaveState; stats: TextStats; onRetry: () => void; wide: boolean; onToggleWide: () => void };
+
+export function StatusBar({ state, stats, onRetry, wide, onToggleWide }: StatusBarProps) {
   const t = useT();
   return (
     <div className="note-status" data-state={state}>
@@ -158,6 +160,15 @@ export function StatusBar({ state, stats, onRetry }: { state: SaveState; stats: 
       <span>{t('status.words', { count: stats.words })}</span>
       <span>{t('status.characters', { count: stats.characters })}</span>
       {stats.minutes > 0 && <span>{t('status.reading', { count: stats.minutes })}</span>}
+      <button
+        className="note-status-wide"
+        aria-pressed={wide}
+        title={t(wide ? 'status.readable' : 'status.wide')}
+        aria-label={t(wide ? 'status.readable' : 'status.wide')}
+        onClick={onToggleWide}
+      >
+        <WidthIcon size={13} wide={wide} />
+      </button>
     </div>
   );
 }

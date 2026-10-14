@@ -121,3 +121,14 @@ test('folderList, ancestorFolders e filterNotes', () => {
   assert.deepEqual(n.filterNotes(notes, 'acao').map((x) => x.path), ['Ação/d.md']);
   assert.equal(n.filterNotes(notes, ' ').length, 3);
 });
+
+test('previewLines começa na seção, tira marcas e classifica as linhas', () => {
+  const md = '---\na: 1\n---\n# Um\ntexto **forte**\n## Dois\n- item [[X|y]]\n\n```\n# código\n```\nfim';
+  assert.deepEqual(n.previewLines(md, 'dois'), [
+    { kind: 'heading', text: 'Dois' },
+    { kind: 'item', text: 'item y' },
+    { kind: 'text', text: '# código' },
+    { kind: 'text', text: 'fim' },
+  ]);
+  assert.equal(n.previewLines(md, '', 2).length, 2);
+});

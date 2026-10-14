@@ -173,6 +173,14 @@ export const LocateIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Largura da página: setas para fora (largura cheia) ou para dentro (coluna de leitura).
+export const WidthIcon = ({ wide, ...props }: IconProps & { wide?: boolean }) => (
+  <Icon {...props}>
+    <path d="M2.25 3v10M13.75 3v10" />
+    {wide ? <path d="M9.5 8h-5m1.75-1.75L4.5 8l1.75 1.75" /> : <path d="M4.5 8h7M9.75 6.25 11.5 8l-1.75 1.75M6.25 6.25 4.5 8l1.75 1.75" />}
+  </Icon>
+);
+
 // Fixar guia: um alfinete.
 export const PinIcon = (props: IconProps) => (
   <Icon {...props}>

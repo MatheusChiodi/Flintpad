@@ -26,6 +26,11 @@ type NoteCommand = { path: string; discard: boolean };
 export const flushNote = (path: string) => window.dispatchEvent(new CustomEvent<NoteCommand>(noteCommandEvent, { detail: { path, discard: false } }));
 export const discardNote = (path: string) => window.dispatchEvent(new CustomEvent<NoteCommand>(noteCommandEvent, { detail: { path, discard: true } }));
 
+// Inserir Markdown no ponto do cursor (modelos): vira blocos, com os wikilinks já clicáveis.
+const insertMarkdownEvent = 'obnotion:insert-markdown';
+export const insertMarkdown = (path: string, markdown: string) =>
+  window.dispatchEvent(new CustomEvent(insertMarkdownEvent, { detail: { path, markdown } }));
+
 // Abrir a busca na página por fora do teclado (paleta de comandos).
 export const findOpenEvent = 'obnotion:find-open';
 
@@ -172,9 +177,10 @@ type Props = {
   header?: ReactNode;
   /** Largura cheia em vez da coluna de leitura. */
   wide?: boolean;
+  onToggleWide: () => void;
 };
 
-export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSaved, onRename, onSaveError, header, wide }: Props) {
+export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSaved, onRename, onSaveError, header, wide, onToggleWide }: Props) {
   const t = useT();
   // O dicionário só é lido na criação: a troca de língua remonta o componente (key em App).
   const { language } = useLanguage();
@@ -283,12 +289,28 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
     window.addEventListener('keydown', onKey);
     window.addEventListener(findOpenEvent, onFindOpen);
     window.addEventListener(noteCommandEvent, onCommand);
+    const onInsert = (event: Event) => {
+      const detail = (event as CustomEvent<{ path: string; markdown: string }>).detail;
+      if (detail.path !== path || !s.ready) return;
+      void (async () => {
+        const blocks = linkify(await editor.tryParseMarkdownToBlocks(detail.markdown));
+        if (!blocks.length) return;
+        const anchor = editor.getTextCursorPosition().block;
+        // Num parágrafo vazio o modelo toma o lugar dele; senão entra logo abaixo.
+        const empty = anchor.type === 'paragraph' && Array.isArray(anchor.content) && anchor.content.length === 0;
+        if (empty) editor.replaceBlocks([anchor], blocks);
+        else editor.insertBlocks(blocks, anchor, 'after');
+        editor.focus();
+      })();
+    };
+    window.addEventListener(insertMarkdownEvent, onInsert);
     return () => {
       alive = false;
       window.removeEventListener(gotoHeadingEvent, onHeading);
       window.removeEventListener('keydown', onKey);
       window.removeEventListener(findOpenEvent, onFindOpen);
       window.removeEventListener(noteCommandEvent, onCommand);
+      window.removeEventListener(insertMarkdownEvent, onInsert);
       flush();
     };
     // O componente é remontado a cada troca de nota (key = path).
@@ -413,7 +435,7 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
           <SuggestionMenuController triggerCharacter="[" getItems={suggestNotes} />
         </BlockNoteView>
       </div>
-      <StatusBar state={saveState} stats={stats} onRetry={retry} />
+      <StatusBar state={saveState} stats={stats} onRetry={retry} wide={Boolean(wide)} onToggleWide={onToggleWide} />
     </div>
   );
 }

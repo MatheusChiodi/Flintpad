@@ -107,6 +107,35 @@ export const headingKey = (text: string) =>
     .toLowerCase();
 
 // ---------------------------------------------------------------------------------------------
+// Prévia de link
+
+export type PreviewLine = { kind: 'heading' | 'item' | 'text'; text: string };
+
+/** Linhas para a prévia de um link: a partir da seção (se houver), sem marcas, no máximo `max`. */
+export function previewLines(markdown: string, section = '', max = 16): PreviewLine[] {
+  const [, body] = splitFrontmatter(markdown);
+  let lines = body.split('\n');
+  if (section) {
+    const wanted = headingKey(section);
+    const start = lines.findIndex((line) => /^\s{0,3}#{1,6}\s/.test(line) && headingKey(plainText(line)) === wanted);
+    if (start >= 0) lines = lines.slice(start);
+  }
+  const out: PreviewLine[] = [];
+  let fenced = false;
+  for (const line of lines) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    const text = fenced ? line : plainText(line).trim();
+    if (!text) continue;
+    out.push({ kind: /^\s{0,3}#{1,6}\s/.test(line) && !fenced ? 'heading' : /^\s*([-*+]|\d+[.)])\s/.test(line) ? 'item' : 'text', text });
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Tags: #tag no texto e "tags:" no frontmatter.
 
 // Pelo menos uma letra ou "_": "#123" e "#--" não são tags.
