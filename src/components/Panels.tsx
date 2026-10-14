@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Trans, useT, type Translate } from '../lib/i18n';
 import { baseName } from '../lib/links';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, type Note, type Tab } from '../types';
-import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, TasksIcon } from './Icons';
+import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon } from './Icons';
 
 const currentPath = (tab: Tab) => tab.stack[tab.idx] ?? '';
 
@@ -66,11 +66,13 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew }: TabBarProps
 type LinksPanelProps = {
   backlinks: Note[];
   outgoing: { target: string; path?: string }[];
+  favorite: boolean;
+  onToggleFavorite: () => void;
   onOpen: (path: string) => void;
   onOpenTarget: (target: string) => void;
 };
 
-export function LinksPanel({ backlinks, outgoing, onOpen, onOpenTarget }: LinksPanelProps) {
+export function LinksPanel({ backlinks, outgoing, favorite, onToggleFavorite, onOpen, onOpenTarget }: LinksPanelProps) {
   const t = useT();
   const heading = 'section-label flex items-center justify-between px-4 pb-2 pt-4';
   const row = 'row w-full px-2 text-left text-[13px]';
@@ -78,7 +80,19 @@ export function LinksPanel({ backlinks, outgoing, onOpen, onOpenTarget }: LinksP
 
   return (
     <aside className="pane hidden w-60 shrink-0 overflow-y-auto pb-4 lg:block">
-      <div className={heading}>
+      <div className="px-2 pt-3">
+        <button
+          className={row}
+          title={t(favorite ? 'favorites.remove' : 'favorites.add')}
+          aria-pressed={favorite}
+          onClick={onToggleFavorite}
+        >
+          <StarIcon size={14} filled={favorite} className={favorite ? 'shrink-0 text-sheen-400' : 'row-icon'} />
+          <span className="flex-1 truncate">{t(favorite ? 'favorites.on' : 'favorites.off')}</span>
+          <Kbd>Ctrl Shift F</Kbd>
+        </button>
+      </div>
+      <div className={`${heading} mt-3 border-t border-(--hairline)`}>
         <span>{t('links.backlinks')}</span>
         <span className="tabular-nums">{backlinks.length}</span>
       </div>
@@ -125,6 +139,8 @@ export function LinksPanel({ backlinks, outgoing, onOpen, onOpenTarget }: LinksP
 type SwitcherProps = {
   notes: Note[];
   contents: Record<string, string>;
+  // Páginas abertas por último, da mais recente para a mais antiga.
+  recents: Note[];
   onOpen: (path: string) => void;
   onCreate: (name: string) => void;
   onClose: () => void;
@@ -150,7 +166,7 @@ function excerptAround(text: string, at: number, length: number): Excerpt {
   };
 }
 
-export function QuickSwitcher({ notes, contents, onOpen, onCreate, onClose }: SwitcherProps) {
+export function QuickSwitcher({ notes, contents, recents, onOpen, onCreate, onClose }: SwitcherProps) {
   const t = useT();
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
@@ -159,6 +175,12 @@ export function QuickSwitcher({ notes, contents, onOpen, onCreate, onClose }: Sw
   // Primeiro as páginas cujo nome casa; depois as que têm o termo no texto.
   const results = useMemo(() => {
     const wanted = query.trim().toLowerCase();
+    // Sem nada digitado: as recentes primeiro, depois o resto na ordem de sempre.
+    if (!wanted) {
+      const recent = new Set(recents.map((note) => note.path));
+      const rest = notes.filter((note) => !recent.has(note.path));
+      return [...recents, ...rest].slice(0, MAX_RESULTS).map((note): SearchResult => ({ note }));
+    }
     const byName: SearchResult[] = notes.filter((n) => n.path.toLowerCase().includes(wanted)).map((note) => ({ note }));
     if (wanted.length < MIN_CONTENT_QUERY) return byName.slice(0, MAX_RESULTS);
     const named = new Set(byName.map((result) => result.note.path));
@@ -171,7 +193,9 @@ export function QuickSwitcher({ notes, contents, onOpen, onCreate, onClose }: Sw
       if (at >= 0) byContent.push({ note, excerpt: excerptAround(text, at, wanted.length) });
     }
     return [...byName, ...byContent].slice(0, MAX_RESULTS);
-  }, [notes, contents, query]);
+  }, [notes, contents, recents, query]);
+  const recentCount = query.trim() ? 0 : recents.length;
+  const sectionLabel = 'section-label px-2.5 pb-1.5 pt-2';
 
   useEffect(() => input.current?.focus(), []);
 
@@ -212,28 +236,31 @@ export function QuickSwitcher({ notes, contents, onOpen, onCreate, onClose }: Sw
         </div>
         <div className="max-h-80 overflow-y-auto p-1.5">
           {results.map(({ note, excerpt }, i) => (
-            <div
-              key={note.path}
-              className="row cursor-pointer px-2.5 py-1 text-[13px]"
-              data-active={i === index}
-              onMouseEnter={() => setIndex(i)}
-              onClick={() => {
-                onOpen(note.path);
-                onClose();
-              }}
-            >
-              <PageIcon size={14} className="row-icon" />
-              <span className="shrink-0 truncate">{note.name}</span>
-              {excerpt ? (
-                <span className="min-w-0 flex-1 truncate pl-3 text-[12px] text-frost-500">
-                  {excerpt.before}
-                  <mark className="rounded-sm bg-sheen-400/25 px-0.5 text-frost-100">{excerpt.match}</mark>
-                  {excerpt.after}
-                </span>
-              ) : (
-                <span className="ml-auto truncate pl-4 font-mono text-[11px] text-frost-500">{note.path}</span>
-              )}
-            </div>
+            <Fragment key={note.path}>
+              {recentCount > 0 && i === 0 && <p className={sectionLabel}>{t('recents.title')}</p>}
+              {recentCount > 0 && i === recentCount && <p className={`${sectionLabel} mt-1`}>{t('sidebar.pages')}</p>}
+              <div
+                className="row cursor-pointer px-2.5 py-1 text-[13px]"
+                data-active={i === index}
+                onMouseEnter={() => setIndex(i)}
+                onClick={() => {
+                  onOpen(note.path);
+                  onClose();
+                }}
+              >
+                <PageIcon size={14} className="row-icon" />
+                <span className="shrink-0 truncate">{note.name}</span>
+                {excerpt ? (
+                  <span className="min-w-0 flex-1 truncate pl-3 text-[12px] text-frost-500">
+                    {excerpt.before}
+                    <mark className="rounded-sm bg-sheen-400/25 px-0.5 text-frost-100">{excerpt.match}</mark>
+                    {excerpt.after}
+                  </span>
+                ) : (
+                  <span className="ml-auto truncate pl-4 font-mono text-[11px] text-frost-500">{note.path}</span>
+                )}
+              </div>
+            </Fragment>
           ))}
           {!results.length && (
             <p className="flex items-center gap-2 px-2.5 py-2 text-[13px] text-frost-300">

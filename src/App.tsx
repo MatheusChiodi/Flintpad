@@ -11,10 +11,13 @@ import { Sidebar } from './components/Sidebar';
 import { Tasks } from './components/Tasks';
 import { translate, Trans, useLanguage, useT } from './lib/i18n';
 import { baseName, dirName, outgoingTargets, resolveLink, retargetLinks } from './lib/links';
+import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, type MenuAction, type Note, type Tab } from './types';
 
 // O editor de código é pesado (Monaco): só é baixado quando a guia abre.
 const Code = lazy(() => import('./components/Code'));
+
+const MAX_EMPTY_RECENTS = 5;
 
 const currentPath = (tab?: Tab) => tab?.stack[tab.idx] ?? '';
 
@@ -31,7 +34,10 @@ export default function App() {
   const [sidebar, setSidebar] = useState(true);
   const [switcher, setSwitcher] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [pins, setPins] = useState<Pins>(emptyPins);
   const nextId = useRef(1);
+  // Favoritos e recentes do vault aberto: a referência guarda de qual vault são, para gravar na chave certa.
+  const pinStore = useRef<{ vault: string | null; pins: Pins }>({ vault: null, pins: emptyPins });
 
   // Handlers de menu e de eventos globais leem sempre o estado mais recente.
   const latest = useRef({ tabs, activeId, notes, closed });
@@ -47,6 +53,29 @@ export default function App() {
     setNotes(list);
     setContents(Object.fromEntries(all.map((n) => [n.path, n.content])));
     return list;
+  };
+
+  const updatePins = (change: (pins: Pins) => Pins) => {
+    const store = pinStore.current;
+    const next = change(store.pins);
+    if (!store.vault || next === store.pins) return;
+    store.pins = next;
+    savePins(store.vault, next);
+    setPins(next);
+  };
+
+  // As listas são por vault; o que não existe mais na pasta fica de fora.
+  const loadVaultPins = (path: string, list: Note[]) => {
+    const loaded = prunePins(loadPins(path), list.map((n) => n.path));
+    pinStore.current = { vault: path, pins: loaded };
+    setPins(loaded);
+  };
+
+  const toggleFavoriteAt = (path: string) => updatePins((current) => toggleFavorite(current, path));
+  const toggleActiveFavorite = () => {
+    const { tabs, activeId, notes } = latest.current;
+    const path = currentPath(tabs.find((t) => t.id === activeId));
+    if (notes.some((n) => n.path === path)) toggleFavoriteAt(path);
   };
 
   const open = (path: string, newTab = false) => {
@@ -111,6 +140,7 @@ export default function App() {
   const renameNote = async (path: string, name: string) => {
     const renamed = await window.api.rename(path, `${dirName(path)}${name}.md`);
     setTabs(latest.current.tabs.map((t) => ({ ...t, stack: t.stack.map((p) => (p === path ? renamed : p)) })));
+    updatePins((current) => renamePath(current, path, renamed));
     // Como no Obsidian, os links das outras páginas acompanham o novo nome.
     // A própria página fica de fora: ela está aberta no editor, que regravaria por cima.
     const all = await window.api.readAll();
@@ -134,6 +164,7 @@ export default function App() {
       .filter((t) => t.stack.length);
     setTabs(rest);
     if (!rest.some((t) => t.id === activeId)) setActiveId(rest[0]?.id ?? 0);
+    updatePins((current) => removePath(current, path));
     await refresh();
   };
 
@@ -143,7 +174,7 @@ export default function App() {
     setTabs([]);
     setClosed([]);
     setVault(chosen);
-    await refresh();
+    loadVaultPins(chosen, await refresh());
   };
 
   const copyActive = (format: (note: Note) => string) => {
@@ -187,6 +218,7 @@ export default function App() {
     },
     'copy-link': () => copyActive((n) => `[[${n.name}]]`),
     'copy-name': () => copyActive((n) => n.name),
+    'toggle-favorite': toggleActiveFavorite,
     'quick-switcher': () => {
       setSettings(false);
       setSwitcher(true);
@@ -212,6 +244,7 @@ export default function App() {
       setVault(path);
       if (!path) return;
       const list = await refresh();
+      loadVaultPins(path, list);
       const start = window.api.startNote;
       if (start) open(isSpecialPath(start) || list.some((n) => n.path === start) ? start : GRAPH);
     });
@@ -246,6 +279,19 @@ export default function App() {
         ? outgoingTargets(contents[activePath] ?? '').map((target) => ({ target, path: resolveLink(target, notes) }))
         : [],
     [isNote, contents, activePath, notes],
+  );
+
+  // Toda nota que passa pela guia ativa entra nas recentes (guias especiais e guia vazia, não).
+  useEffect(() => {
+    if (notes.some((n) => n.path === activePath)) updatePins((current) => touchRecent(current, activePath));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePath, notes]);
+
+  const favorite = pins.favorites.includes(activePath);
+  // A página aberta fica de fora: ela já está na tela.
+  const recentNotes = useMemo(
+    () => pins.recents.filter((path) => path !== activePath).flatMap((path) => notes.find((n) => n.path === path) ?? []),
+    [pins.recents, notes, activePath],
   );
 
   if (vault === undefined) return null;
@@ -351,6 +397,8 @@ export default function App() {
           vault={vault}
           notes={notes}
           activePath={activePath}
+          favorites={pins.favorites}
+          onToggleFavorite={toggleFavoriteAt}
           onOpen={open}
           onNew={async (folder) => open(await createNote(undefined, folder))}
           onDelete={deleteNote}
@@ -387,6 +435,8 @@ export default function App() {
               key={`${activeId}:${activePath}:${language}`}
               path={activePath}
               notes={notes}
+              favorite={favorite}
+              onToggleFavorite={toggleActiveFavorite}
               onSaved={saved}
               onRename={renameNote}
             />
@@ -420,19 +470,36 @@ export default function App() {
                   <Kbd>Ctrl G</Kbd>
                 </dd>
               </dl>
+              {recentNotes.length > 0 && (
+                <div className="mt-7 w-64 max-w-full border-t border-(--hairline) pt-4 text-left">
+                  <p className="section-label px-2 pb-1.5">{t('recents.title')}</p>
+                  {recentNotes.slice(0, MAX_EMPTY_RECENTS).map((note) => (
+                    <button
+                      key={note.path}
+                      className="row w-full px-2 text-left text-[13px]"
+                      title={note.path}
+                      onClick={(event) => open(note.path, event.ctrlKey || event.metaKey)}
+                    >
+                      <PageIcon size={14} className="row-icon" />
+                      <span className="truncate">{note.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </Stage>
       </main>
 
       <Presence when={isNote} name="links">
-        <LinksPanel backlinks={backlinks} outgoing={outgoing} onOpen={(path) => open(path)} onOpenTarget={openTarget} />
+        <LinksPanel backlinks={backlinks} outgoing={outgoing} favorite={favorite} onToggleFavorite={toggleActiveFavorite} onOpen={(path) => open(path)} onOpenTarget={openTarget} />
       </Presence>
 
       <Presence when={switcher} name="switcher">
         <QuickSwitcher
           notes={notes}
           contents={contents}
+          recents={recentNotes}
           onOpen={(path) => open(path)}
           onCreate={async (name) => open(await createNote(name))}
           onClose={() => setSwitcher(false)}

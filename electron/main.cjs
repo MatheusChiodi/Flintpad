@@ -358,6 +358,7 @@ function buildMenu(lang) {
         { type: 'separator' },
         item(t('menu.copyLink'), 'CmdOrCtrl+L', 'copy-link'),
         item(t('menu.copyName'), 'CmdOrCtrl+Alt+L', 'copy-name'),
+        item(t('menu.toggleFavorite'), 'CmdOrCtrl+Shift+F', 'toggle-favorite'),
       ],
     },
     {

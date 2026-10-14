@@ -49,6 +49,8 @@ Link pages with `[[Page]]`, `[[Page|alias]]` or `[[Page#section]]`; type `[` to 
 
 Pages open in tabs with their own back/forward history, next to a collapsible page tree. Quick search (`Ctrl+P`) matches page names first and then the text inside notes, showing the passage around each hit. Shortcuts match the Notion desktop app.
 
+Star a page to pin it in a Favorites section above the page tree: from the links panel, the star beside the title in smaller windows, the page tree, or `Ctrl+Shift+F`. The last 20 pages you opened come first in quick search while the field is empty, and the five most recent are listed when no page is open. Both lists are kept per vault.
+
 | Action | Shortcut |
 |---|---|
 | New page / New tab | `Ctrl+N` / `Ctrl+T` |
@@ -58,6 +60,7 @@ Pages open in tabs with their own back/forward history, next to a collapsible pa
 | Back / Forward | `Ctrl+[` / `Ctrl+]` |
 | Toggle sidebar | `Ctrl+\` |
 | Copy page link / page name | `Ctrl+L` / `Ctrl+Alt+L` |
+| Add / remove current page from favorites | `Ctrl+Shift+F` |
 | Paste without formatting | `Ctrl+Shift+V` |
 | Quick search (creates the page if missing) | `Ctrl+P` |
 | Tasks | `Ctrl+Shift+J` |

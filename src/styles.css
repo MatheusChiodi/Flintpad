@@ -192,6 +192,25 @@ button {
   color: var(--color-danger);
 }
 
+/* Estado ligado (estrela de favorito). */
+.icon-button[data-on='true'] {
+  color: var(--color-sheen-400);
+}
+
+/* Sobre a folha clara, o botão usa a tinta. */
+.sheet-button {
+  color: var(--color-ink-faint);
+}
+
+.sheet-button:hover {
+  background: var(--color-paper-line);
+  color: var(--color-ink);
+}
+
+.sheet-button[data-on='true'] {
+  color: var(--color-sheen-700);
+}
+
 /* Ações que só aparecem ao passar o mouse continuam alcançáveis pelo teclado. */
 .reveal {
   opacity: 0;

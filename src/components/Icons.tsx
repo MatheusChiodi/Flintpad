@@ -108,6 +108,12 @@ export const TrashIcon =(props: IconProps) => (
   </Icon>
 );
 
+export const StarIcon = ({ filled, ...props }: IconProps & { filled?: boolean }) => (
+  <Icon fill={filled ? 'currentColor' : 'none'} {...props}>
+    <path d="m8 2.4 1.7 3.5 3.85.55-2.8 2.7.67 3.8L8 11.15l-3.42 1.8.67-3.8-2.8-2.7 3.85-.55z" />
+  </Icon>
+);
+
 export const SettingsIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="m12.41 7.12 1.55.17v1.42l-1.55.17-.67 1.62.97 1.21-1 1-1.21-.97-1.62.67-.17 1.55H7.29l-.17-1.55-1.62-.67-1.21.97-1-1 .97-1.21-.67-1.62-1.55-.17V7.29l1.55-.17.67-1.62-.97-1.21 1-1 1.21.97 1.62-.67.17-1.55h1.42l.17 1.55 1.62.67 1.21-.97 1 1-.97 1.21z" />

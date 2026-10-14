@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Trans, useT } from '../lib/i18n';
 import type { Note } from '../types';
-import { ChevronIcon, FolderIcon, GraphIcon, CalendarIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, TasksIcon, TrashIcon } from './Icons';
+import { ChevronIcon, FolderIcon, GraphIcon, CalendarIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, StarIcon, TasksIcon, TrashIcon } from './Icons';
 
 type Folder = { name: string; path: string; folders: Folder[]; notes: Note[] };
 
@@ -28,6 +28,8 @@ type Props = {
   vault: string;
   notes: Note[];
   activePath: string;
+  favorites: string[];
+  onToggleFavorite: (path: string) => void;
   onOpen: (path: string, newTab: boolean) => void;
   onNew: (folder: string) => void;
   onDelete: (path: string) => void;
@@ -40,10 +42,15 @@ type Props = {
   onSettings: () => void;
 };
 
-export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onGraph, onDaily, onTasks, onRequests, onCode, onSearch, onSettings }: Props) {
+export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite, onOpen, onNew, onDelete, onGraph, onDaily, onTasks, onRequests, onCode, onSearch, onSettings }: Props) {
   const t = useT();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tree = useMemo(() => buildTree(notes), [notes]);
+  // Só entram os favoritos que ainda existem no vault.
+  const favoriteNotes = useMemo(
+    () => favorites.flatMap((path) => notes.find((n) => n.path === path) ?? []),
+    [favorites, notes],
+  );
 
   const toggle = (path: string) =>
     setCollapsed((prev) => {
@@ -51,6 +58,25 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
       if (!next.delete(path)) next.add(path);
       return next;
     });
+
+  const favoriteButton = (note: Note) => {
+    const on = favorites.includes(note.path);
+    return (
+      <button
+        className="icon-button reveal"
+        data-on={on}
+        title={t(on ? 'favorites.remove' : 'favorites.add')}
+        aria-label={t(on ? 'favorites.removeNamed' : 'favorites.addNamed', { name: note.name })}
+        aria-pressed={on}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleFavorite(note.path);
+        }}
+      >
+        <StarIcon size={14} filled={on} />
+      </button>
+    );
+  };
 
   const renderFolder = (folder: Folder, depth: number) => (
     <div key={folder.path} className={depth ? 'tree-group' : undefined}>
@@ -94,6 +120,7 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
         >
           <PageIcon size={14} className="row-icon" />
           <span className="flex-1 truncate">{note.name}</span>
+          {favoriteButton(note)}
           <button
             className="icon-button reveal"
             data-danger="true"
@@ -156,6 +183,32 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
           <Kbd>Ctrl Shift K</Kbd>
         </button>
       </nav>
+      {favoriteNotes.length > 0 && (
+        <>
+          <div className="rail-hide section-label flex items-center justify-between border-t border-(--hairline) px-4 pb-2 pt-3.5">
+            <span>{t('favorites.title')}</span>
+            <span className="tabular-nums">{favoriteNotes.length}</span>
+          </div>
+          <div className="rail-tree max-h-[30%] shrink-0 overflow-y-auto px-2">
+            <div className="pb-3">
+              {favoriteNotes.map((note) => (
+                <div
+                  key={note.path}
+                  className="row group cursor-pointer pl-2 pr-1 text-[13px]"
+                  data-active={note.path === activePath}
+                  title={note.path}
+                  onClick={(event) => onOpen(note.path, event.ctrlKey || event.metaKey)}
+                  onAuxClick={(event) => event.button === 1 && onOpen(note.path, true)}
+                >
+                  <PageIcon size={14} className="row-icon" />
+                  <span className="flex-1 truncate">{note.name}</span>
+                  {favoriteButton(note)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
       <div className="rail-hide section-label flex items-center justify-between border-t border-(--hairline) px-4 pb-2 pt-3.5">
         <span>{t('sidebar.pages')}</span>
         {notes.length > 0 && <span className="tabular-nums">{notes.length}</span>}

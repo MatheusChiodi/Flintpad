@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLanguage, useT } from '../lib/i18n';
 import { baseName, linkRegex, restoreWikilinks, splitFrontmatter } from '../lib/links';
 import type { Note } from '../types';
+import { StarIcon } from './Icons';
 
 const SAVE_DELAY_MS = 400;
 const MAX_SUGGESTIONS = 12;
@@ -72,11 +73,13 @@ export const pendingWrite = (path: string) => pendingWrites.get(path)?.catch(() 
 type Props = {
   path: string;
   notes: Note[];
+  favorite: boolean;
+  onToggleFavorite: () => void;
   onSaved: (path: string, content: string) => void;
   onRename: (path: string, name: string) => void;
 };
 
-export function Editor({ path, notes, onSaved, onRename }: Props) {
+export function Editor({ path, notes, favorite, onToggleFavorite, onSaved, onRename }: Props) {
   const t = useT();
   // O dicionário só é lido na criação: a troca de língua remonta o componente (key em App).
   const { language } = useLanguage();
@@ -151,20 +154,35 @@ export function Editor({ path, notes, onSaved, onRename }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-[820px] px-6 pb-40 pt-16">
-      <input
-        className="title-input mb-5 w-full bg-transparent px-[54px] outline-none"
-        value={title}
-        placeholder={t('note.untitled')}
-        aria-label={t('editor.titleLabel')}
-        spellCheck={false}
-        onChange={(event) => setTitle(event.target.value)}
-        onBlur={commitTitle}
-        onKeyDown={(event) => {
-          if (event.key !== 'Enter') return;
-          event.preventDefault();
-          editor.focus();
-        }}
-      />
+      <div className="relative mb-5">
+        <input
+          className="title-input block w-full bg-transparent px-[54px] outline-none"
+          value={title}
+          placeholder={t('note.untitled')}
+          aria-label={t('editor.titleLabel')}
+          spellCheck={false}
+          onChange={(event) => setTitle(event.target.value)}
+          onBlur={commitTitle}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            editor.focus();
+          }}
+        />
+        {/* Com o painel de links oculto (janela menor), a estrela fica na margem do título. */}
+        <div className="absolute right-3.5 top-3 lg:hidden">
+          <button
+            className="icon-button sheet-button"
+            data-on={favorite}
+            title={t(favorite ? 'favorites.remove' : 'favorites.add')}
+            aria-label={t(favorite ? 'favorites.remove' : 'favorites.add')}
+            aria-pressed={favorite}
+            onClick={onToggleFavorite}
+          >
+            <StarIcon size={15} filled={favorite} />
+          </button>
+        </div>
+      </div>
       <BlockNoteView editor={editor} theme="light" onChange={handleChange}>
         <SuggestionMenuController triggerCharacter="[" getItems={suggestNotes} />
       </BlockNoteView>

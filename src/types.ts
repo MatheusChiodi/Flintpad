@@ -26,6 +26,7 @@ export type MenuAction =
   | 'settings'
   | 'copy-link'
   | 'copy-name'
+  | 'toggle-favorite'
   | 'quick-switcher'
   | 'graph'
   | 'daily-note'
