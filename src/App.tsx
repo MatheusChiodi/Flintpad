@@ -64,9 +64,11 @@ export default function App() {
     setPins(next);
   };
 
-  // As listas são por vault; o que não existe mais na pasta fica de fora.
+  // As listas são por vault. Só as recentes são podadas na carga: se a listagem vier incompleta
+  // (pasta em nuvem ainda sincronizando), os favoritos não se perdem; a barra lateral esconde os que faltam.
   const loadVaultPins = (path: string, list: Note[]) => {
-    const loaded = prunePins(loadPins(path), list.map((n) => n.path));
+    const stored = loadPins(path);
+    const loaded = { ...stored, recents: prunePins(stored, list.map((n) => n.path)).recents };
     pinStore.current = { vault: path, pins: loaded };
     setPins(loaded);
   };
