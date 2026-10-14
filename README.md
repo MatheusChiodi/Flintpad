@@ -109,6 +109,7 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - Obsidian-only syntax (callouts `> [!note]`, embeds `![[...]]`, Dataview, canvas) shows as plain text.
 - No Notion databases, no sync, no plugins.
 - Files and folders starting with `.` are ignored.
+- Favorites and recent pages are stored in the app, keyed by the vault's folder path, not in the vault: moving or renaming the vault folder resets them.
 
 ## Project layout
 
@@ -117,6 +118,7 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - `src/App.tsx`: state (tabs, link index).
 - `src/components/`: `Editor` (BlockNote + wikilinks), `Sidebar`, `Panels` (tabs, links, search), `Graph`, `Tasks`, `Requests`, `Code`.
 - `src/lib/`: link parsing, task extraction, `.bru` request model, VS Code theme and snippet conversion.
+- `tests/`: unit tests for `src/lib`, run with `npm test` (Node's built-in test runner).
 - `docs/`: illustrations used in this file.
 
 ## Credits
