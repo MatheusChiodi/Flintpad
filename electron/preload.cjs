@@ -27,9 +27,53 @@ contextBridge.exposeInMainWorld('api', {
   extList: () => ipcRenderer.invoke('ext:list'),
   extTheme: (file) => ipcRenderer.invoke('ext:theme', file),
   extSnippets: (file) => ipcRenderer.invoke('ext:snippets', file),
-  onMenu: (callback) => {
-    const listener = (_event, action) => callback(action);
-    ipcRenderer.on('menu', listener);
-    return () => ipcRenderer.removeListener('menu', listener);
+  extReadText: (file) => ipcRenderer.invoke('ext:readText', file),
+  extReadJsonc: (file) => ipcRenderer.invoke('ext:readJsonc', file),
+  extReadBinary: (file) => ipcRenderer.invoke('ext:readBinary', file),
+  tmWasm: () => ipcRenderer.invoke('tm:wasm'),
+  ws: {
+    get: () => ipcRenderer.invoke('ws:get'),
+    openFolder: () => ipcRenderer.invoke('ws:openFolder'),
+    addFolder: () => ipcRenderer.invoke('ws:addFolder'),
+    removeFolder: (dir) => ipcRenderer.invoke('ws:removeFolder', dir),
+    setRoot: (dir) => ipcRenderer.invoke('ws:setRoot', dir),
+    openFile: () => ipcRenderer.invoke('ws:openFile'),
+    saveAs: (suggested) => ipcRenderer.invoke('ws:saveAs', suggested),
+    readDir: (dir) => ipcRenderer.invoke('ws:readDir', dir),
+    listFiles: () => ipcRenderer.invoke('ws:listFiles'),
+    read: (file) => ipcRenderer.invoke('ws:read', file),
+    write: (file, content) => ipcRenderer.invoke('ws:write', file, content),
+    create: (target, isDir) => ipcRenderer.invoke('ws:create', target, isDir),
+    rename: (from, to) => ipcRenderer.invoke('ws:rename', from, to),
+    remove: (target) => ipcRenderer.invoke('ws:delete', target),
+    reveal: (target) => ipcRenderer.invoke('ws:reveal', target),
+    realpath: (target) => ipcRenderer.invoke('ws:realpath', target),
+    stat: (target) => ipcRenderer.invoke('ws:stat', target),
+    onChanged: (callback) => listen('ws:changed', callback),
   },
+  term: {
+    create: (size) => ipcRenderer.invoke('term:create', size),
+    list: () => ipcRenderer.invoke('term:list'),
+    write: (id, data) => ipcRenderer.invoke('term:write', id, data),
+    resize: (id, cols, rows) => ipcRenderer.invoke('term:resize', id, cols, rows),
+    kill: (id) => ipcRenderer.invoke('term:kill', id),
+    onData: (callback) => listen('term:data', callback),
+    onExit: (callback) => listen('term:exit', callback),
+  },
+  lsp: {
+    start: (kind, cwd) => ipcRenderer.invoke('lsp:start', kind, cwd),
+    send: (kind, body) => ipcRenderer.invoke('lsp:send', kind, body),
+    stop: (kind) => ipcRenderer.invoke('lsp:stop', kind),
+    fetch: (url) => ipcRenderer.invoke('lsp:fetch', url),
+    onMessage: (callback) => listen('lsp:message', callback),
+    onExit: (callback) => listen('lsp:exit', callback),
+  },
+  onMenu: (callback) => listen('menu', callback),
 });
+
+// Assina um canal do processo principal; devolve a função que cancela a assinatura.
+function listen(channel, callback) {
+  const listener = (_event, ...args) => callback(...args);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+}

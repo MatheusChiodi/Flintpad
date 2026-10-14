@@ -70,6 +70,13 @@ const pendingWrites = new Map<string, Promise<void>>();
 // Quem lê a nota do disco fora do editor (guia Tarefas) espera a gravação em andamento.
 export const pendingWrite = (path: string) => pendingWrites.get(path)?.catch(() => undefined);
 
+// Quem grava a nota fora do editor registra a gravação, para o editor esperar por ela ao abrir.
+export function trackWrite(path: string, write: Promise<void>): Promise<void> {
+  pendingWrites.set(path, write);
+  void write.finally(() => pendingWrites.get(path) === write && pendingWrites.delete(path)).catch(() => undefined);
+  return write;
+}
+
 type Props = {
   path: string;
   notes: Note[];

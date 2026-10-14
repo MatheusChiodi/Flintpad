@@ -17,7 +17,9 @@ export function extractTasks(path: string, content: string): Task[] {
   let open = '';
   for (let line = front ? front.split('\n').length - (front.endsWith('\n') ? 1 : 0) : 0; line < lines.length; line++) {
     const text = withoutCr(lines[line]);
-    const marker = fence.exec(text)?.[1];
+    const fenced = fence.exec(text);
+    // Crases depois da marca significam código inline na mesma linha, não a abertura de um bloco.
+    const marker = fenced && !(fenced[1][0] === '`' && text.slice(fenced[0].length).includes('`')) ? fenced[1] : undefined;
     if (open) {
       // Só fecha com a mesma marca, em quantidade igual ou maior, sozinha na linha.
       if (marker && marker[0] === open[0] && marker.length >= open.length && text.trim() === marker) open = '';

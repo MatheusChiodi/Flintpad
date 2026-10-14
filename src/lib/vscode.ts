@@ -4,19 +4,50 @@ import type * as Monaco from 'monaco-editor';
 export type VsThemeRef = { label: string; uiTheme: string; path: string };
 export type VsSnippetRef = { language: string; path: string };
 
+export type VsIconThemeRef = { id: string; label: string; path: string };
+export type VsGrammarRef = {
+  language?: string;
+  scopeName: string;
+  path: string;
+  embeddedLanguages: Record<string, string>;
+  tokenTypes: Record<string, string>;
+  injectTo: string[];
+  balancedBracketScopes?: string[];
+  unbalancedBracketScopes?: string[];
+};
+export type VsLanguageRef = {
+  id: string;
+  aliases: string[];
+  extensions: string[];
+  filenames: string[];
+  filenamePatterns: string[];
+  firstLine?: string;
+  mimetypes: string[];
+  configuration?: string;
+};
+export type VsJsonValidation = { fileMatch: string[]; url: string };
+
 export type VsExtension = {
   id: string;
   name: string;
+  description: string;
+  publisher: string;
   version: string;
+  folder: string;
   builtin: boolean;
   hasCode: boolean;
-  grammars: number;
+  activationEvents: string[];
+  commands: number;
+  grammars: VsGrammarRef[];
+  languages: VsLanguageRef[];
   themes: VsThemeRef[];
+  iconThemes: VsIconThemeRef[];
   snippets: VsSnippetRef[];
+  jsonValidation: VsJsonValidation[];
 };
 
-type TokenColor = { scope?: string | string[]; settings?: { foreground?: string; background?: string; fontStyle?: string } };
-export type VsTheme = { type?: string; colors?: Record<string, string>; tokenColors?: TokenColor[] };
+export type TokenColor = { name?: string; scope?: string | string[]; settings?: { foreground?: string; background?: string; fontStyle?: string } };
+export type VsTheme = { name?: string; type?: string; colors?: Record<string, string>; tokenColors?: TokenColor[] };
 export type VsSnippet = { prefix?: string | string[]; body?: string | string[]; description?: string };
 
 // O Monaco colore com tokens próprios; os temas do VS Code falam em escopos TextMate.
@@ -67,10 +98,6 @@ export function toMonacoTheme(theme: VsTheme, uiTheme: string): Monaco.editor.IS
   return { base, inherit: true, rules, colors };
 }
 
-// O VS Code separa as variantes React; o Monaco trata tudo como JS/TS.
-const LANGUAGE_ALIAS: Record<string, string> = { javascriptreact: 'javascript', typescriptreact: 'typescript', jsonc: 'json' };
-
-export const monacoLanguage = (vscodeLanguage: string) => LANGUAGE_ALIAS[vscodeLanguage] ?? vscodeLanguage;
 
 export type SnippetEntry = { label: string; body: string; description: string };
 

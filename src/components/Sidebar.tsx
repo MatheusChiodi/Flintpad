@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Trans, useT } from '../lib/i18n';
 import type { Note } from '../types';
-import { ChevronIcon, FolderIcon, GraphIcon, CalendarIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, StarIcon, TasksIcon, TrashIcon } from './Icons';
+import { ChevronIcon, FolderIcon, GraphIcon, CalendarIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, SidebarIcon, StarIcon, TasksIcon, TrashIcon } from './Icons';
 
 type Folder = { name: string; path: string; folders: Folder[]; notes: Note[] };
 
@@ -40,9 +40,12 @@ type Props = {
   onCode: () => void;
   onSearch: () => void;
   onSettings: () => void;
+  /** Trilho de ícones: a barra encolhe e o conteúdo ganha a largura. */
+  rail: boolean;
+  onToggleRail: () => void;
 };
 
-export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite, onOpen, onNew, onDelete, onGraph, onDaily, onTasks, onRequests, onCode, onSearch, onSettings }: Props) {
+export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite, onOpen, onNew, onDelete, onGraph, onDaily, onTasks, onRequests, onCode, onSearch, onSettings, rail, onToggleRail }: Props) {
   const t = useT();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tree = useMemo(() => buildTree(notes), [notes]);
@@ -139,12 +142,21 @@ export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite,
   );
 
   return (
-    <aside className="sidebar pane flex w-64 shrink-0 flex-col border-r border-(--hairline)">
-      <div className="flex items-center gap-2.5 px-4 pb-3 pt-4" title={vault}>
-        <Mark size={22} className="shrink-0" />
-        <span className="rail-hide truncate font-display text-[17px] font-semibold tracking-tight text-frost-100">
+    <aside className="sidebar pane flex w-64 shrink-0 flex-col border-r border-(--hairline)" data-rail={rail}>
+      <div className="sidebar-head flex items-center gap-2.5 px-4 pb-3 pt-4" title={vault}>
+        <Mark size={22} className="rail-mark shrink-0" />
+        <span className="rail-hide flex-1 truncate font-display text-[17px] font-semibold tracking-tight text-frost-100">
           {vault.split(/[\\/]/).pop()}
         </span>
+        <button
+          className="rail-toggle icon-button h-7 w-7 shrink-0"
+          title={`${t(rail ? 'sidebar.expand' : 'sidebar.collapse')} (Ctrl+Shift+\\)`}
+          aria-label={t(rail ? 'sidebar.expand' : 'sidebar.collapse')}
+          aria-pressed={rail}
+          onClick={onToggleRail}
+        >
+          <SidebarIcon size={16} />
+        </button>
       </div>
       <nav className="flex flex-col gap-px px-2 pb-3">
         <button className="row w-full px-2 text-[13px]" title={t('sidebar.search')} onClick={onSearch}>

@@ -8,6 +8,15 @@ const os = require('node:os');
 const { parse: parseJsonc } = require('jsonc-parser');
 const { bruToJsonV2, jsonToBruV2, bruToEnvJsonV2, envJsonToBruV2 } = require('@usebruno/lang');
 const { LANGUAGES, translator } = require('./i18n.cjs');
+const { registerWorkspaceIpc } = require('./workspace.cjs');
+const { registerTerminalIpc } = require('./terminal.cjs');
+const { registerLspIpc } = require('./lsp.cjs');
+
+// Os ganchos de teste só existem em desenvolvimento: no app empacotado as variáveis são descartadas
+// (o preload herda o ambiente já limpo).
+if (app.isPackaged) {
+  for (const hook of ['OBNOTION_SHOT', 'OBNOTION_EVAL', 'OBNOTION_TYPE', 'OBNOTION_EXPORT_TO']) delete process.env[hook];
+}
 
 const MAX_INDEXED_BYTES = 1024 * 1024;
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
@@ -25,6 +34,9 @@ const inFlight = new Map();
 const configFile = () => path.join(app.getPath('userData'), 'config.json');
 
 let win = null;
+let workspace = null;
+let terminals = null;
+let languageServers = null;
 let vault = process.env.OBNOTION_VAULT || null;
 let language = 'pt-BR';
 let t = translator(language);
@@ -244,15 +256,54 @@ function registerCodeIpc() {
           const contributes = pkg.contributes ?? {};
           const themes = (contributes.themes ?? []).map((theme) => ({ label: text(theme.label) || theme.id || path.basename(theme.path), uiTheme: theme.uiTheme ?? 'vs-dark', path: path.join(folder, theme.path) }));
           const snippets = (contributes.snippets ?? []).map((snippet) => ({ language: snippet.language, path: path.join(folder, snippet.path) }));
+          const inFolder = (rel) => (typeof rel === 'string' ? path.join(folder, rel) : undefined);
+          const iconThemes = (contributes.iconThemes ?? []).map((theme) => ({ id: theme.id, label: text(theme.label) || theme.id, path: path.join(folder, theme.path) }));
+          const languages = (contributes.languages ?? []).map((lang) => ({
+            id: lang.id,
+            aliases: lang.aliases ?? [],
+            extensions: lang.extensions ?? [],
+            filenames: lang.filenames ?? [],
+            filenamePatterns: lang.filenamePatterns ?? [],
+            firstLine: lang.firstLine,
+            mimetypes: lang.mimetypes ?? [],
+            configuration: inFolder(lang.configuration),
+          }));
+          const grammars = (contributes.grammars ?? [])
+            .filter((grammar) => grammar.scopeName && grammar.path)
+            .map((grammar) => ({
+              language: grammar.language,
+              scopeName: grammar.scopeName,
+              path: path.join(folder, grammar.path),
+              embeddedLanguages: grammar.embeddedLanguages ?? {},
+              tokenTypes: grammar.tokenTypes ?? {},
+              injectTo: grammar.injectTo ?? [],
+              balancedBracketScopes: grammar.balancedBracketScopes,
+              unbalancedBracketScopes: grammar.unbalancedBracketScopes,
+            }));
+          // Esquemas de validação JSON; caminhos relativos apontam para dentro da extensão.
+          const jsonValidation = (contributes.jsonValidation ?? [])
+            .filter((entry) => entry.url && entry.fileMatch)
+            .map((entry) => ({
+              fileMatch: Array.isArray(entry.fileMatch) ? entry.fileMatch : [entry.fileMatch],
+              url: /^[a-z][\w+.-]*:/i.test(entry.url) ? entry.url : require('node:url').pathToFileURL(path.join(folder, entry.url)).href,
+            }));
           extensions.push({
             id: `${pkg.publisher ?? 'vscode'}.${pkg.name}`,
             name: text(pkg.displayName) || pkg.name,
+            description: text(pkg.description),
+            publisher: pkg.publisher ?? '',
             version: pkg.version ?? '',
+            folder,
             builtin,
             hasCode: Boolean(pkg.main || pkg.browser),
-            grammars: (contributes.grammars ?? []).length,
+            activationEvents: pkg.activationEvents ?? [],
+            commands: (contributes.commands ?? []).length,
+            grammars,
+            languages,
             themes,
+            iconThemes,
             snippets,
+            jsonValidation,
           });
         } catch {
           // pasta que não é uma extensão válida
@@ -265,6 +316,29 @@ function registerCodeIpc() {
   ipcMain.handle('ext:theme', (_e, file) => readTheme(resolveInExtensions(file)));
 
   ipcMain.handle('ext:snippets', async (_e, file) => (await readJsonc(resolveInExtensions(file))) ?? {});
+
+  // Arquivos das extensões (gramáticas, temas de ícones, fontes, SVGs, language-configuration).
+  ipcMain.handle('ext:readText', (_e, file) => fsp.readFile(resolveInExtensions(file), 'utf8'));
+  ipcMain.handle('ext:readJsonc', async (_e, file) => (await readJsonc(resolveInExtensions(file))) ?? null);
+  ipcMain.handle('ext:readBinary', async (_e, file) => new Uint8Array(await fsp.readFile(resolveInExtensions(file))));
+
+  // Motor de expressões regulares das gramáticas TextMate (o mesmo Oniguruma do VS Code).
+  ipcMain.handle('tm:wasm', async () => new Uint8Array(await fsp.readFile(require.resolve('vscode-oniguruma/release/onig.wasm'))));
+
+  workspace = registerWorkspaceIpc({
+    getWin: () => win,
+    getVault: () => vault,
+    readConfig,
+    saveConfig,
+    // Leitura sem escrita: extensões do VS Code e as definições de tipos do próprio TypeScript.
+    readOnlyRoots: () => {
+      const modules = path.join(__dirname, '..', 'node_modules');
+      return [...extensionRoots(), modules, modules.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)];
+    },
+    t: (key) => t(key),
+  });
+  terminals = registerTerminalIpc({ getWin: () => win, getCwd: () => workspace.currentRoot() });
+  languageServers = registerLspIpc({ getWin: () => win });
 }
 
 const isEnvFile = (rel) => rel.split('/').slice(-2, -1)[0] === ENV_DIR;
@@ -405,6 +479,7 @@ function buildMenu(lang) {
         item(t('menu.requests'), 'CmdOrCtrl+Shift+E', 'requests'),
         item(t('menu.code'), 'CmdOrCtrl+Shift+K', 'code'),
         item(t('menu.toggleSidebar'), 'CmdOrCtrl+\\', 'toggle-sidebar'),
+        item(t('menu.toggleRail'), 'CmdOrCtrl+Shift+\\', 'toggle-rail'),
         { type: 'separator' },
         { role: 'reload', label: t('menu.reload') },
         { role: 'forceReload', label: t('menu.forceReload') },
@@ -496,6 +571,13 @@ app.whenReady().then(() => {
   loadConfig();
   registerIpc();
   createWindow();
+});
+
+// Terminais e language servers são processos filhos: saem junto com o app.
+app.on('will-quit', () => {
+  terminals?.disposeAll();
+  languageServers?.disposeAll();
+  workspace?.dispose();
 });
 
 app.on('window-all-closed', () => app.quit());

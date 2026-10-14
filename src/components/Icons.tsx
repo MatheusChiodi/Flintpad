@@ -23,6 +23,14 @@ function Icon({ size = 16, children, ...rest }: IconProps & { children: ReactNod
   );
 }
 
+// Painel lateral: a coluna da esquerda marcada.
+export const SidebarIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="2" y="2.75" width="12" height="10.5" rx="1.75" />
+    <path d="M6 2.75v10.5" />
+  </Icon>
+);
+
 export const SearchIcon = (props: IconProps) => (
   <Icon {...props}>
     <circle cx="7" cy="7" r="4.25" />

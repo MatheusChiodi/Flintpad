@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Trans, useT } from '../lib/i18n';
 import { extractTasks, toggleTaskLine, type Task } from '../lib/tasks';
 import type { Note } from '../types';
-import { pendingWrite } from './Editor';
+import { pendingWrite, trackWrite } from './Editor';
 import { Kbd, PageIcon, SearchIcon } from './Icons';
 
 const FILTERS = ['open', 'done', 'all'] as const;
@@ -44,7 +44,7 @@ export function Tasks({ notes, contents, onOpen, onSaved }: Props) {
         // A nota pode ter mudado desde a listagem: só grava se a linha ainda for esta tarefa; senão, só relê.
         const same = extractTasks(task.path, disk).some((now) => now.line === task.line && now.text === task.text && now.done === task.done);
         const next = same ? toggleTaskLine(disk, task.line) : disk;
-        if (same) await window.api.write(task.path, next);
+        if (same) await trackWrite(task.path, window.api.write(task.path, next));
         onSaved(task.path, next);
         setProblem('');
       } catch {

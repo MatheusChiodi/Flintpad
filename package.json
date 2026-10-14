@@ -20,6 +20,11 @@
       "electron/**",
       "package.json"
     ],
+    "asarUnpack": [
+      "node_modules/@typescript/**",
+      "node_modules/@lydell/**",
+      "node_modules/vscode-langservers-extracted/**"
+    ],
     "directories": {
       "output": "release"
     }
@@ -31,14 +36,21 @@
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/instrument-sans": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@lydell/node-pty": "^1.2.0-beta.15",
     "@mantine/core": "^9.7.2",
     "@mantine/hooks": "^9.7.2",
     "@usebruno/lang": "^0.40.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "d3-force": "^3.0.0",
     "jsonc-parser": "^3.3.1",
     "monaco-editor": "^0.57.0",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "typescript": "^7.0.2",
+    "vscode-langservers-extracted": "^4.10.0",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -51,7 +63,6 @@
     "electron": "^44.7.1",
     "electron-builder": "^26.15.3",
     "tailwindcss": "^4.3.3",
-    "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "wait-on": "^9.5.1"
   }

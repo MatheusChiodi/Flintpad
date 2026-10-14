@@ -10,6 +10,7 @@ import { Settings } from './components/Settings';
 import { Sidebar } from './components/Sidebar';
 import { Tasks } from './components/Tasks';
 import { Toast, type ToastMessage } from './components/Toast';
+import { handleCodeMenu } from './lib/codeBridge';
 import { translate, Trans, useLanguage, useT } from './lib/i18n';
 import { baseName, dirName, outgoingTargets, resolveLink, retargetLinks } from './lib/links';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
@@ -20,6 +21,7 @@ const Code = lazy(() => import('./components/Code'));
 
 const MAX_EMPTY_RECENTS = 5;
 
+const RAIL_STORAGE_KEY = 'obnotion:sidebar-rail';
 const currentPath = (tab?: Tab) => tab?.stack[tab.idx] ?? '';
 
 export default function App() {
@@ -33,6 +35,23 @@ export default function App() {
   const [activeId, setActiveId] = useState(0);
   const [closed, setClosed] = useState<string[]>([]);
   const [sidebar, setSidebar] = useState(true);
+  // Trilho de ícones: a escolha fica guardada entre sessões.
+  const [rail, setRail] = useState(() => {
+    try {
+      return localStorage.getItem(RAIL_STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleRail = () =>
+    setRail((current) => {
+      try {
+        localStorage.setItem(RAIL_STORAGE_KEY, current ? '0' : '1');
+      } catch {
+        // armazenamento indisponível: vale só nesta sessão
+      }
+      return !current;
+    });
   const [switcher, setSwitcher] = useState(false);
   const [settings, setSettings] = useState(false);
   const [pins, setPins] = useState<Pins>(emptyPins);
@@ -253,6 +272,10 @@ export default function App() {
     code: () => openCode(),
     tasks: () => openTasks(),
     'toggle-sidebar': () => setSidebar((visible) => !visible),
+    'toggle-rail': () => {
+      setSidebar(true);
+      toggleRail();
+    },
     back: () => navigate(-1),
     forward: () => navigate(1),
     'next-tab': () => cycleTab(1),
@@ -272,7 +295,12 @@ export default function App() {
       const start = window.api.startNote;
       if (start) open(isSpecialPath(start) || list.some((n) => n.path === start) ? start : GRAPH);
     });
-    const offMenu = window.api.onMenu((action) => menuRef.current[action]?.());
+    const offMenu = window.api.onMenu((action) => {
+      // Na aba Código, atalhos como Ctrl+P e Ctrl+Shift+P seguem o VS Code.
+      const active = latest.current.tabs.find((tab) => tab.id === latest.current.activeId);
+      if (active && currentPath(active) === CODE && handleCodeMenu(action)) return;
+      menuRef.current[action]?.();
+    });
     const onLink = (event: Event) => void openTargetRef.current((event as CustomEvent<string>).detail);
     window.addEventListener(openLinkEvent, onLink);
     return () => {
@@ -433,11 +461,15 @@ export default function App() {
           onCode={openCode}
           onSearch={() => setSwitcher(true)}
           onSettings={() => setSettings(true)}
+          rail={rail}
+          onToggleRail={toggleRail}
         />
       </Presence>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <TabBar tabs={tabs} activeId={activeId} onSelect={setActiveId} onClose={closeTab} onNew={() => open('', true)} />
+        <TabBar tabs={tabs} activeId={activeId} onSelect={setActiveId} onClose={closeTab} onNew={() => open('', true)} onShowSidebar={sidebar ? undefined : () => setSidebar(true)} />
+        {/* Só na impressão: o título da tela é um campo de uma linha, que cortaria nomes longos no PDF. */}
+        {isNote && <h1 className="print-title">{baseName(activePath)}</h1>}
         <Stage
           swapKey={`${activeId}:${activePath}`}
           material={isNote ? 'sheet' : 'well'}

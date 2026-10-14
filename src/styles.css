@@ -307,6 +307,11 @@ button {
   caret-color: var(--color-sheen-700);
 }
 
+/* Título para o PDF (ver @media print); na tela quem aparece é o campo acima. */
+.print-title {
+  display: none;
+}
+
 .title-input::placeholder {
   color: var(--color-ink-faint);
   opacity: 0.6;
@@ -927,7 +932,24 @@ button {
   }
 }
 
-/* Janela estreita: a barra lateral vira um trilho de ícones. */
+/* Trilho de ícones: pedido pelo botão da barra (data-rail) ou forçado pela janela estreita. */
+.sidebar[data-rail='true'] {
+  width: 52px;
+}
+
+.sidebar[data-rail='true'] .rail-hide,
+.sidebar[data-rail='true'] .rail-tree > *,
+.sidebar[data-rail='true'] .kbd,
+.sidebar[data-rail='true'] .rail-mark {
+  display: none;
+}
+
+.sidebar[data-rail='true'] .row,
+.sidebar[data-rail='true'] .sidebar-head {
+  justify-content: center;
+  padding-inline: 0;
+}
+
 @media (max-width: 900px) {
   .sidebar {
     width: 52px;
@@ -935,7 +957,8 @@ button {
 
   .sidebar .rail-hide,
   .sidebar .rail-tree > *,
-  .sidebar .kbd {
+  .sidebar .kbd,
+  .sidebar[data-rail='false'] .rail-toggle {
     display: none;
   }
 
@@ -974,8 +997,27 @@ button {
 
   /* Barra lateral, painel de links, busca, configurações e avisos; dentro de main, a barra de guias. */
   .frame > :not(main),
-  .frame > main > :not(.stage),
+  .frame > main > :not(.stage, .print-title),
   .stage > .ghost {
+    display: none !important;
+  }
+
+  /* O título impresso é um h1, que quebra linha; o campo de uma linha (e a estrela ao lado) saem. */
+  .frame > main > .print-title {
+    display: block !important;
+    margin: 0 0 20px;
+    font-family: var(--font-display);
+    font-size: 42px;
+    font-weight: 650;
+    line-height: 1.12;
+    letter-spacing: -0.022em;
+    font-variation-settings: 'opsz' 48;
+    color: #000;
+    overflow-wrap: anywhere;
+    break-after: avoid;
+  }
+
+  .stage.sheet > * > :has(> .title-input) {
     display: none !important;
   }
 
@@ -1034,8 +1076,48 @@ button {
     break-inside: avoid;
   }
 
+  /* A tabela larga encolhe até a largura da folha em vez de vazar: o editor fixa 120px por coluna. */
   .bn-container [data-content-type='table'] .tableWrapper {
     overflow: visible !important;
+    padding-inline: 0;
+  }
+
+  .bn-container [data-content-type='table'] table {
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+
+  /* A partir de seis colunas o mínimo de 120px por coluna já não cabe na folha. */
+  .bn-container [data-content-type='table'] table:has(col:nth-child(6)) {
+    --default-cell-min-width: 0px !important;
+  }
+
+  .bn-container [data-content-type='table'] th,
+  .bn-container [data-content-type='table'] td {
+    min-width: 0 !important;
+    overflow-wrap: anywhere;
+  }
+
+  /* Muitas colunas: letra e respiro menores, para as palavras não se partirem em colunas estreitas. */
+  .bn-container [data-content-type='table'] table:has(col:nth-child(7)) {
+    font-size: 11.5px;
+    line-height: 1.35;
+  }
+
+  .bn-container [data-content-type='table'] table:has(col:nth-child(7)) :is(th, td) {
+    padding: 3px 5px;
+  }
+
+  .bn-container [data-content-type='table'] table:has(col:nth-child(11)) {
+    font-size: 9px;
+  }
+
+  .bn-container [data-content-type='table'] table:has(col:nth-child(11)) :is(th, td) {
+    padding: 2px 3px;
+  }
+
+  .bn-container [data-content-type='table'] table:has(col:nth-child(7)) :is(th, td) > p {
+    min-height: 0;
   }
 
   .bn-container [data-content-type='table'] th,

@@ -3,7 +3,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useT, type Translate } from '../lib/i18n';
 import { baseName } from '../lib/links';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, type Note, type Tab } from '../types';
-import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon } from './Icons';
+import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, SidebarIcon, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon } from './Icons';
 
 const currentPath = (tab: Tab) => tab.stack[tab.idx] ?? '';
 
@@ -22,12 +22,19 @@ type TabBarProps = {
   onSelect: (id: number) => void;
   onClose: (id: number) => void;
   onNew: () => void;
+  /** Só com a barra lateral oculta: o botão que a traz de volta. */
+  onShowSidebar?: () => void;
 };
 
-export function TabBar({ tabs, activeId, onSelect, onClose, onNew }: TabBarProps) {
+export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onShowSidebar }: TabBarProps) {
   const t = useT();
   return (
     <div className="flex h-11 shrink-0 items-end gap-1 pl-[18px] pr-3">
+      {onShowSidebar && (
+        <button className="icon-button mb-1.5 mr-1 h-7 w-7 shrink-0" title={`${t('sidebar.show')} (Ctrl+\\)`} aria-label={t('sidebar.show')} onClick={onShowSidebar}>
+          <SidebarIcon size={16} />
+        </button>
+      )}
       {tabs.map((tab) => {
         const path = currentPath(tab);
         const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path === TASKS ? TasksIcon : path ? PageIcon : PlusIcon;
