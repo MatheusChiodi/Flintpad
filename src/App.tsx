@@ -8,7 +8,7 @@ import { LinksPanel, QuickSwitcher, TabBar } from './components/Panels';
 import { Requests } from './components/Requests';
 import { Settings } from './components/Settings';
 import { Sidebar } from './components/Sidebar';
-import { Trans, useLanguage, useT } from './lib/i18n';
+import { translate, Trans, useLanguage, useT } from './lib/i18n';
 import { baseName, dirName, outgoingTargets, resolveLink, retargetLinks } from './lib/links';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, type MenuAction, type Note, type Tab } from './types';
 
@@ -160,6 +160,18 @@ export default function App() {
   const openRequests = () => openSingleton(REQUESTS);
   const openCode = () => openSingleton(CODE);
 
+  // Nota de hoje: uma página por dia numa pasta própria, criada na primeira vez que é aberta.
+  const openDaily = async () => {
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const path = `${translate('daily.folder')}/${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.md`;
+    if (!latest.current.notes.some((n) => n.path === path)) {
+      await window.api.create(path);
+      await refresh();
+    }
+    open(path);
+  };
+
   const menu: Record<MenuAction, () => void> = {
     'new-note': async () => open(await createNote()),
     'new-tab': () => open('', true),
@@ -177,6 +189,7 @@ export default function App() {
       setSwitcher(true);
     },
     graph: () => open(GRAPH, true),
+    'daily-note': () => void openDaily(),
     requests: () => openRequests(),
     code: () => openCode(),
     'toggle-sidebar': () => setSidebar((visible) => !visible),
@@ -338,6 +351,7 @@ export default function App() {
           onNew={async (folder) => open(await createNote(undefined, folder))}
           onDelete={deleteNote}
           onGraph={() => open(GRAPH, true)}
+          onDaily={() => void openDaily()}
           onRequests={openRequests}
           onCode={openCode}
           onSearch={() => setSwitcher(true)}

@@ -17,6 +17,8 @@ const ptBR = {
   'common.value': 'Valor',
 
   'nav.graph': 'Grafo',
+  'nav.daily': 'Nota de hoje',
+  'daily.folder': 'Diário',
   'nav.requests': 'Requests',
   'nav.code': 'Código',
 
@@ -189,6 +191,8 @@ const en: Record<Key, Entry> = {
   'common.value': 'Value',
 
   'nav.graph': 'Graph',
+  'nav.daily': 'Today’s note',
+  'daily.folder': 'Daily',
   'nav.requests': 'Requests',
   'nav.code': 'Code',
 

@@ -27,6 +27,7 @@ export type MenuAction =
   | 'copy-name'
   | 'quick-switcher'
   | 'graph'
+  | 'daily-note'
   | 'requests'
   | 'code'
   | 'toggle-sidebar'

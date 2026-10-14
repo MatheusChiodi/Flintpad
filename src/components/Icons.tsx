@@ -77,6 +77,12 @@ export const GraphIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const CalendarIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M2.75 4.25h10.5v9h-10.5zM2.75 6.75h10.5M5.5 2.5v2.75M10.5 2.5v2.75" />
+  </Icon>
+);
+
 export const CodeIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="m5.5 4.5-3.25 3.5 3.25 3.5m5-7 3.25 3.5-3.25 3.5M9.1 3.25l-2.2 9.5" />

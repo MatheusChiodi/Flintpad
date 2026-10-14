@@ -364,6 +364,7 @@ function buildMenu(lang) {
       label: t('menu.view'),
       submenu: [
         item(t('menu.quickSwitcher'), 'CmdOrCtrl+P', 'quick-switcher'),
+        item(t('menu.dailyNote'), 'CmdOrCtrl+D', 'daily-note'),
         item(t('menu.graph'), 'CmdOrCtrl+G', 'graph'),
         item(t('menu.requests'), 'CmdOrCtrl+Shift+E', 'requests'),
         item(t('menu.code'), 'CmdOrCtrl+Shift+K', 'code'),

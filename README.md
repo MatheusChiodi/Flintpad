@@ -46,6 +46,7 @@ Pages open in tabs with their own back/forward history, next to a collapsible pa
 | Action | Shortcut |
 |---|---|
 | New page / New tab | `Ctrl+N` / `Ctrl+T` |
+| Today's note (one page per day, in the `Daily` folder) | `Ctrl+D` |
 | Close tab / Reopen last closed | `Ctrl+W` / `Ctrl+Shift+T` |
 | Next / previous tab | `Ctrl+Tab` / `Ctrl+Shift+Tab` |
 | Back / Forward | `Ctrl+[` / `Ctrl+]` |
