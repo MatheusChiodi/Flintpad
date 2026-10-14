@@ -849,3 +849,26 @@ button {
     --motion: 0;
   }
 }
+
+/* Janela estreita: a barra lateral vira um trilho de ícones. */
+@media (max-width: 900px) {
+  .sidebar {
+    width: 52px;
+  }
+
+  .sidebar .rail-hide,
+  .sidebar .rail-tree > *,
+  .sidebar .kbd {
+    display: none;
+  }
+
+  .sidebar .row {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .sidebar > div:first-child {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}

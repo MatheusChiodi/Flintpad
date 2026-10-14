@@ -69,7 +69,7 @@ function Method({ value }: { value: string }) {
 
 function Segmented<T extends string>({ value, options, onChange }: { value: T; options: readonly (readonly [T, ReactNode])[]; onChange: (value: T) => void }) {
   return (
-    <div className="flex gap-1">
+    <div className="flex flex-wrap gap-1">
       {options.map(([key, label]) => (
         <button
           key={key}
@@ -329,7 +329,7 @@ export function Requests() {
 
   return (
     <div className="flex h-full min-h-0 text-[13px]">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-[var(--hairline)]">
+      <aside className="flex w-64 shrink-0 flex-col border-r border-[var(--hairline)] max-[1100px]:w-52 max-[820px]:w-44">
         <div className="flex items-center gap-2 px-3 pb-2 pt-3">
           <span className="section-label flex-1">{t('nav.requests')}</span>
           <button className={ghostButton} onClick={createRequest}>
@@ -428,7 +428,7 @@ export function Requests() {
               spellCheck={false}
               onChange={(event) => update((r) => ({ ...r, meta: { ...r.meta, name: event.target.value } }))}
             />
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <select
                 className={`${field} w-28 shrink-0 font-semibold`}
                 style={{ color: METHOD_COLOR[draft.http.method.toUpperCase()] }}
@@ -440,7 +440,7 @@ export function Requests() {
                 ))}
               </select>
               <input
-                className={`${field} flex-1`}
+                className={`${field} min-w-48 flex-1`}
                 value={draft.http.url}
                 placeholder={t('requests.urlPlaceholder')}
                 spellCheck={false}

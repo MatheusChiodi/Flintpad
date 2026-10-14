@@ -111,50 +111,50 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
   );
 
   return (
-    <aside className="pane flex w-64 shrink-0 flex-col border-r border-(--hairline)">
+    <aside className="sidebar pane flex w-64 shrink-0 flex-col border-r border-(--hairline)">
       <div className="flex items-center gap-2.5 px-4 pb-3 pt-4" title={vault}>
         <Mark size={22} className="shrink-0" />
-        <span className="truncate font-display text-[17px] font-semibold tracking-tight text-frost-100">
+        <span className="rail-hide truncate font-display text-[17px] font-semibold tracking-tight text-frost-100">
           {vault.split(/[\\/]/).pop()}
         </span>
       </div>
       <nav className="flex flex-col gap-px px-2 pb-3">
-        <button className="row w-full px-2 text-[13px]" onClick={onSearch}>
+        <button className="row w-full px-2 text-[13px]" title={t('sidebar.search')} onClick={onSearch}>
           <SearchIcon className="row-icon" />
-          <span className="flex-1 text-left">{t('sidebar.search')}</span>
+          <span className="rail-hide flex-1 text-left">{t('sidebar.search')}</span>
           <Kbd>Ctrl P</Kbd>
         </button>
-        <button className="row w-full px-2 text-[13px]" onClick={() => onNew('')}>
+        <button className="row w-full px-2 text-[13px]" title={t('sidebar.newPage')} onClick={() => onNew('')}>
           <NewPageIcon className="row-icon" />
-          <span className="flex-1 text-left">{t('sidebar.newPage')}</span>
+          <span className="rail-hide flex-1 text-left">{t('sidebar.newPage')}</span>
           <Kbd>Ctrl N</Kbd>
         </button>
-        <button className="row w-full px-2 text-[13px]" onClick={onDaily}>
+        <button className="row w-full px-2 text-[13px]" title={t('nav.daily')} onClick={onDaily}>
           <CalendarIcon className="row-icon" />
-          <span className="flex-1 text-left">{t('nav.daily')}</span>
+          <span className="rail-hide flex-1 text-left">{t('nav.daily')}</span>
           <Kbd>Ctrl D</Kbd>
         </button>
-        <button className="row w-full px-2 text-[13px]" onClick={onGraph}>
+        <button className="row w-full px-2 text-[13px]" title={t('nav.graph')} onClick={onGraph}>
           <GraphIcon className="row-icon" />
-          <span className="flex-1 text-left">{t('nav.graph')}</span>
+          <span className="rail-hide flex-1 text-left">{t('nav.graph')}</span>
           <Kbd>Ctrl G</Kbd>
         </button>
-        <button className="row w-full px-2 text-[13px]" onClick={onRequests}>
+        <button className="row w-full px-2 text-[13px]" title={t('nav.requests')} onClick={onRequests}>
           <RequestIcon className="row-icon" />
-          <span className="flex-1 text-left">{t('nav.requests')}</span>
+          <span className="rail-hide flex-1 text-left">{t('nav.requests')}</span>
           <Kbd>Ctrl Shift E</Kbd>
         </button>
-        <button className="row w-full px-2 text-[13px]" onClick={onCode}>
+        <button className="row w-full px-2 text-[13px]" title={t('nav.code')} onClick={onCode}>
           <CodeIcon className="row-icon" />
-          <span className="flex-1 text-left">{t('nav.code')}</span>
+          <span className="rail-hide flex-1 text-left">{t('nav.code')}</span>
           <Kbd>Ctrl Shift K</Kbd>
         </button>
       </nav>
-      <div className="section-label flex items-center justify-between border-t border-(--hairline) px-4 pb-2 pt-3.5">
+      <div className="rail-hide section-label flex items-center justify-between border-t border-(--hairline) px-4 pb-2 pt-3.5">
         <span>{t('sidebar.pages')}</span>
         {notes.length > 0 && <span className="tabular-nums">{notes.length}</span>}
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-4">
+      <div className="rail-tree flex-1 overflow-y-auto px-2 pb-4">
         {notes.length ? (
           renderFolder(tree, 0)
         ) : (
@@ -167,9 +167,9 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
         )}
       </div>
       <div className="border-t border-(--hairline) p-2">
-        <button className="row w-full px-2 text-[13px]" onClick={onSettings}>
+        <button className="row w-full px-2 text-[13px]" title={t('sidebar.settings')} onClick={onSettings}>
           <SettingsIcon className="row-icon" />
-          <span className="flex-1 text-left">{t('sidebar.settings')}</span>
+          <span className="rail-hide flex-1 text-left">{t('sidebar.settings')}</span>
           <Kbd>Ctrl ,</Kbd>
         </button>
       </div>

@@ -397,8 +397,9 @@ function buildMenu(lang) {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1280,
-    height: 820,
+    // OBNOTION_SIZE=LARGURAxALTURA ajusta a janela nas capturas de teste.
+    width: Number(process.env.OBNOTION_SIZE?.split('x')[0]) || 1280,
+    height: Number(process.env.OBNOTION_SIZE?.split('x')[1]) || 820,
     minWidth: 720,
     minHeight: 480,
     backgroundColor: '#0a0d13',

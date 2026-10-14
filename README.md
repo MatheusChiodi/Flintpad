@@ -58,7 +58,7 @@ Pages open in tabs with their own back/forward history, next to a collapsible pa
 | Open another vault | `Ctrl+O` |
 | Quit | `Ctrl+Shift+Q` |
 
-The menu bar is hidden; press `Alt` to show it.
+The menu bar is hidden; press `Alt` to show it. In a narrow window (under 900 px) the sidebar collapses into an icon rail; use quick search to reach pages.
 
 ### Requests
 
