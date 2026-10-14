@@ -151,17 +151,26 @@ The menu bar is hidden; press `Alt` to show it. In a narrow window (under 900 px
 
 `Ctrl+Shift+E` opens an API client. Each request is a `.bru` file inside the vault, in the same format Bruno uses, so the `Requests` folder opens as a collection in Bruno and a Bruno collection copied into the vault shows up here.
 
-- Method, URL, query parameters (kept in sync with the URL) and headers.
-- Body as JSON, text, XML or URL-encoded form.
-- Bearer, Basic and API key authentication.
-- Environments with `{{variables}}`, and a warning when one has no value.
-- Response status, time, size, formatted body and headers. `Ctrl+Enter` sends; a running request can be cancelled.
+- Method, URL, query parameters (kept in sync with the URL) and headers, with suggestions for common header names and values.
+- **Path parameters**: write `:name` in the URL (`/users/:id`) and fill its value in its own table, as in Bruno. The URL that will actually go out, with variables and path parameters applied, shows under the URL bar.
+- **Import from cURL**: paste a `curl` command into the URL field and the method, URL, headers, body and Basic/Bearer authentication are filled in.
+- **Generate code**: **Code** shows the request as cURL, JavaScript `fetch`, Python `requests` or raw HTTP, with the active environment applied, ready to copy.
+- Body as JSON, text, XML or URL-encoded form. **Format JSON** (or `Shift+Alt+F` in the body) pretty-prints it while keeping `{{variables}}`, and points to the line and column of a syntax error.
+- **Bulk edit** for params, headers and form fields: one `name: value` line per pair, `//` disables a line.
+- Bearer, Basic and API key authentication; tokens, passwords and key values stay hidden until you click the eye.
+- Environments with `{{variables}}`, and a warning when one used by the request has no value (notes and disabled rows don't count). Environments can be renamed, duplicated and moved to the trash.
+- **Assertions** in Bruno's `assert` block (`res.status: eq 200`, `res.body.users.length: gt 0`, `res.headers.content-type: contains json`), checked on every send and listed in the response's **Tests** tab. Supported operators: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`, `notIn`, `contains`, `notContains`, `length`, `matches`, `notMatches`, `startsWith`, `endsWith`, `between`, `isEmpty`, `isNotEmpty`, `isNull`, `isUndefined`, `isDefined`, `isTruthy`, `isFalsy`, `isJson`, `isNumber`, `isString`, `isBoolean`, `isArray`.
+- Response status, time, size, headers and cookies. The body can be shown pretty or raw, searched (matches highlighted; `Enter`/`Shift+Enter` jump between them), narrowed with a JSON filter (`users[0].name`, `$.items[*].id`, `[-1]` for the last item), copied, or saved as a new page. `Ctrl+Enter` sends; a running request can be cancelled.
+- **Collection**: folders collapse (remembered per machine), a filter box searches names, URLs and folders (`post`, `get`… filter by method), and each folder can create a request inside it, **run** all its requests in order with a pass/fail summary (runs stay out of the history), or **generate a documentation page** listing every request with its parameters, headers, body and assertions.
 - Notes per request. Blocks the screen does not edit (scripts, tests, vars) are kept in the file.
 - **Saving**: edits stay as an unsaved draft (dot in the list) until `Ctrl+S` or **Save**; drafts survive switching requests and tabs. **Save as…** and **Duplicate** write a copy under a new name or folder.
 - **Mentions in pages**: type `[` in a page and pick a request; it shows as a chip with its method and opens the request when clicked. **Copy link** gives the same `[[Requests/Name.bru|Name]]` link to paste. Each request lists the pages that mention it, and a page's links panel lists its requests.
-- **History**: every send is kept with its response (last 200, in `.obnotion/request-history.json` inside the vault), grouped by day. Open one to read the response again, send it again, save it to the collection or jump to the original request. Opening a request shows its last response.
+- **History**: every send is kept with its response (last 200, in `.obnotion/request-history.json` inside the vault), grouped by day and filterable by text and status class (2xx, 4xx, failed…). Open one to read the response again, send it again, save it to the collection, save the response as a page or jump to the original request. Opening a request shows its last response.
+- Keyboard: the request and history lists open with `Enter` and move with the arrow keys; `Esc` clears the filters.
 
-Not there yet, compared to Bruno: scripts and tests, collection runner, GraphQL, gRPC, WebSocket, OAuth2/AWS/NTLM, multipart and file upload, cookies, proxy and certificates, Postman/OpenAPI import, auth inherited from the collection, Git integration, secret variables.
+The request logic that doesn't touch the screen (cURL parsing, code generation, path parameters, assertions, JSON filter, Markdown generation) lives in `src/lib/requestTools.ts` and is covered by `tests/requests.test.mjs`.
+
+Not there yet, compared to Bruno: pre/post-request scripts and `tests` blocks in JavaScript, GraphQL, gRPC, WebSocket, OAuth2/AWS/NTLM, multipart and file upload, a cookie jar shared between requests, proxy and certificates, Postman/OpenAPI import, auth inherited from the collection, Git integration, secret variables.
 
 ### Code
 
@@ -208,8 +217,8 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - `electron/preload.cjs`: the `window.api` bridge.
 - `src/App.tsx`: state (tabs, link index).
 - `src/whiteboard/`: the whiteboard module (see Whiteboards above).
-- `src/components/`: `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests`, `Code` and its parts in `code/` (explorer, quick input, terminal, extensions).
-- `src/lib/`: link parsing, note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model, VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
+- `src/components/`: `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, extensions).
+- `src/lib/`: link parsing, note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
 - `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `OBNOTION_SHOT`/`OBNOTION_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
 - `docs/`: illustrations used in this file.
 

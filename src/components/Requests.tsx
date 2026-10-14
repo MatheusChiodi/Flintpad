@@ -946,6 +946,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
           </div>
           <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-[var(--hairline)] bg-obsidian-950/40">
             <ResponsePanel
+              key={historyEntry.id}
               result={sendingId ? null : historyEntry.result}
               sending={Boolean(sendingId)}
               assertions={historyAssertions}
@@ -1220,6 +1221,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
 
           <div className="flex min-h-0 flex-1 flex-col border-t border-[var(--hairline)] bg-obsidian-950/40">
             <ResponsePanel
+              key={selected}
               result={result}
               sending={Boolean(sendingId)}
               assertions={assertionResults}
