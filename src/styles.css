@@ -704,7 +704,8 @@ button {
 
 @keyframes sheet-in {
   from {
-    opacity: 0;
+    /* Com movimento a folha desenrola opaca (papel meio transparente vira cinza); sem movimento, esmaece. */
+    opacity: var(--motion);
     clip-path: inset(0 0 calc(100% * var(--motion)) 0 round 10px);
   }
   to {

@@ -17,9 +17,9 @@ Na primeira abertura, escolha a pasta do vault. Pode ser um vault do Obsidian ex
 | Do Obsidian | Do Notion |
 |---|---|
 | Vault = pasta de arquivos `.md` | Editor de blocos com arrastar e menu `/` |
-| `[[Link]]`, `[[Link\|apelido]]`, digite `[` para sugerir páginas | Título grande editável (renomeia o arquivo) |
+| `[[Link]]`, `[[Link\|apelido]]`, digite `[` para sugerir páginas | Título grande editável (renomeia o arquivo e atualiza os links) |
 | Painel de backlinks e links da página | Guias, com reabrir guia fechada |
-| Grafo (Ctrl+G) | Barra lateral com árvore de páginas |
+| Grafo (Ctrl+G) com a física e os controles do Obsidian | Barra lateral com árvore de páginas |
 | Busca rápida (Ctrl+P), cria a página se não existir | Histórico voltar/avançar por guia |
 
 ## Atalhos (os do Notion Desktop)
@@ -57,7 +57,6 @@ Ainda não tem, em relação ao Bruno: scripts e testes, runner de coleção, Gr
 
 - A conversão bloco ↔ Markdown tem perdas: ao editar uma nota, a formatação é normalizada (ex.: `-` vira `*` em listas, tabelas são realinhadas). Abrir sem editar não altera o arquivo.
 - Sintaxe só do Obsidian (callouts `> [!note]`, embeds `![[...]]`, Dataview, canvas) aparece como texto comum.
-- Renomear uma página não atualiza os `[[links]]` que apontam para ela.
 - Sem bancos de dados do Notion, sem sincronização, sem plugins.
 - Pastas e arquivos que começam com `.` são ignorados.
 

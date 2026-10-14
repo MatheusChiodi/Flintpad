@@ -20,6 +20,15 @@ export function resolveLink(target: string, notes: Note[]): string | undefined {
   return notes.find((n) => n.name.toLowerCase() === wanted || n.path.toLowerCase() === `${wanted}.md`)?.path;
 }
 
+// Troca o alvo dos links que apontam para uma página renomeada, mantendo seção e apelido.
+export function retargetLinks(content: string, oldPath: string, newName: string): string {
+  const targets = [baseName(oldPath).toLowerCase(), oldPath.replace(/\.md$/i, '').toLowerCase()];
+  const detailed = new RegExp(String.raw`\[\[([^\]|#]+)(#[^\]|]*)?(\|[^\]]+)?\]\]`, 'g');
+  return content.replace(detailed, (all, target: string, section = '', alias = '') =>
+    targets.includes(target.trim().toLowerCase()) ? `[[${newName}${section}${alias}]]` : all,
+  );
+}
+
 export function splitFrontmatter(text: string): [front: string, body: string] {
   const match = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(text);
   return match ? [match[0], text.slice(match[0].length)] : ['', text];

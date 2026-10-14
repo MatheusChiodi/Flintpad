@@ -7,7 +7,7 @@ import { Presence, Stage } from './components/Motion';
 import { LinksPanel, QuickSwitcher, TabBar } from './components/Panels';
 import { Requests } from './components/Requests';
 import { Sidebar } from './components/Sidebar';
-import { baseName, dirName, outgoingTargets, resolveLink } from './lib/links';
+import { baseName, dirName, outgoingTargets, resolveLink, retargetLinks } from './lib/links';
 import { GRAPH, isSpecialPath, REQUESTS, type MenuAction, type Note, type Tab } from './types';
 
 const UNTITLED = 'Sem título';
@@ -103,6 +103,15 @@ export default function App() {
   const renameNote = async (path: string, name: string) => {
     const renamed = await window.api.rename(path, `${dirName(path)}${name}.md`);
     setTabs(latest.current.tabs.map((t) => ({ ...t, stack: t.stack.map((p) => (p === path ? renamed : p)) })));
+    // Como no Obsidian, os links das outras páginas acompanham o novo nome.
+    // A própria página fica de fora: ela está aberta no editor, que regravaria por cima.
+    const all = await window.api.readAll();
+    await Promise.all(
+      all.map(({ path: other, content }) => {
+        const updated = other === renamed ? content : retargetLinks(content, path, baseName(renamed));
+        return updated === content ? undefined : window.api.write(other, updated);
+      }),
+    );
     await refresh();
   };
 
