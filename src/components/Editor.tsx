@@ -19,6 +19,8 @@ const FLASH_MS = 1200;
 
 export const openLinkEvent = 'obnotion:open-link';
 export const findFocusEvent = 'obnotion:find-focus';
+// Abrir a busca na página por fora do teclado (paleta de comandos).
+export const findOpenEvent = 'obnotion:find-open';
 
 // Link para uma request (.bru): mostra o método e o nome; sem a request, fica riscado.
 function RequestChip({ target, alias }: { target: string; alias: string }) {
@@ -256,12 +258,18 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
       setFinding(true);
       window.dispatchEvent(new Event(findFocusEvent));
     };
+    const onFindOpen = () => {
+      setFinding(true);
+      window.dispatchEvent(new Event(findFocusEvent));
+    };
     window.addEventListener(gotoHeadingEvent, onHeading);
     window.addEventListener('keydown', onKey);
+    window.addEventListener(findOpenEvent, onFindOpen);
     return () => {
       alive = false;
       window.removeEventListener(gotoHeadingEvent, onHeading);
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener(findOpenEvent, onFindOpen);
       flush();
     };
     // O componente é remontado a cada troca de nota (key = path).

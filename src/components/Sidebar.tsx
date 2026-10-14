@@ -12,6 +12,25 @@ export const onActivateKey =
     action(event);
   };
 
+const TAGS_STORAGE_KEY = 'obnotion:sidebar-tags';
+
+// Preferências de exibição só deste computador: sem armazenamento, valem até fechar o app.
+function readFlag(key: string) {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeFlag(key: string, on: boolean) {
+  try {
+    localStorage.setItem(key, on ? '1' : '0');
+  } catch {
+    // armazenamento indisponível
+  }
+}
+
 type Folder = { name: string; path: string; folders: Folder[]; notes: Note[] };
 
 function buildTree(notes: Note[]): Folder {
@@ -49,12 +68,15 @@ type Props = {
   onCode: () => void;
   onSearch: () => void;
   onSettings: () => void;
+  /** Tags do vault (com as páginas de cada uma) e o que fazer ao escolher uma. */
+  tags: { tag: string; paths: string[] }[];
+  onTag: (tag: string) => void;
   /** Trilho de ícones: a barra encolhe e o conteúdo ganha a largura. */
   rail: boolean;
   onToggleRail: () => void;
 };
 
-export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite, onOpen, onNew, onDelete, onGraph, onDaily, onTasks, onWhiteboards, onRequests, onCode, onSearch, onSettings, rail, onToggleRail }: Props) {
+export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite, onOpen, onNew, onDelete, onGraph, onDaily, onTasks, onWhiteboards, onRequests, onCode, onSearch, onSettings, tags, onTag, rail, onToggleRail }: Props) {
   const t = useT();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tree = useMemo(() => buildTree(notes), [notes]);
@@ -63,6 +85,15 @@ export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite,
     () => favorites.flatMap((path) => notes.find((n) => n.path === path) ?? []),
     [favorites, notes],
   );
+
+  const [tagsOpen, setTagsOpen] = useState(() => readFlag(TAGS_STORAGE_KEY));
+  // Árvore de tags em ordem alfabética: "obra/casa" aparece recuada sob "obra".
+  const tagRows = useMemo(() => [...tags].sort((a, b) => a.tag.localeCompare(b.tag)), [tags]);
+  const toggleTags = () =>
+    setTagsOpen((open) => {
+      writeFlag(TAGS_STORAGE_KEY, !open);
+      return !open;
+    });
 
   const toggle = (path: string) =>
     setCollapsed((prev) => {
@@ -245,6 +276,38 @@ export function Sidebar({ vault, notes, activePath, favorites, onToggleFavorite,
             </div>
           </div>
         </>
+      )}
+      {tagRows.length > 0 && (
+        <div className="rail-hide border-t border-(--hairline) px-2 pt-1.5">
+          <button className="row section-label w-full px-2" aria-expanded={tagsOpen} aria-controls="sidebar-tags" onClick={toggleTags}>
+            <ChevronIcon size={12} className={`chevron row-icon ${tagsOpen ? 'rotate-90' : ''}`} />
+            <span className="flex-1 text-left">{t('tags.title')}</span>
+            <span className="tabular-nums">{tags.filter((entry) => !entry.tag.includes('/')).length}</span>
+          </button>
+          {tagsOpen && (
+            <ul id="sidebar-tags" className="max-h-44 overflow-y-auto pb-2" aria-label={t('tags.title')}>
+              {tagRows.map(({ tag, paths }) => {
+                const depth = tag.split('/').length - 1;
+                return (
+                  <li key={tag}>
+                    <button
+                      className="row w-full pr-2 text-left text-[13px]"
+                      style={{ paddingLeft: 10 + depth * 12 }}
+                      title={t('tags.search', { tag })}
+                      onClick={() => onTag(tag)}
+                    >
+                      <span className="tag-hash" aria-hidden="true">
+                        #
+                      </span>
+                      <span className="flex-1 truncate">{tag.split('/').pop()}</span>
+                      <span className="text-[11px] tabular-nums text-frost-500">{paths.length}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       )}
       <div className="rail-hide section-label flex items-center justify-between border-t border-(--hairline) px-4 pb-2 pt-3.5">
         <span>{t('sidebar.pages')}</span>

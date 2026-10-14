@@ -1,21 +1,21 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Editor, openLinkEvent } from './components/Editor';
+import { Editor, findOpenEvent, openLinkEvent, pendingWrite, trackWrite } from './components/Editor';
 import { Graph } from './components/Graph';
 import { FolderIcon, GraphIcon, Kbd, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon } from './components/Icons';
 import { Presence, Stage } from './components/Motion';
-import { LinksPanel, QuickSwitcher, TabBar } from './components/Panels';
+import { LinksPanel, QuickSwitcher, TabBar, type BacklinkItem, type Command, type Picker } from './components/Panels';
 import { Requests } from './components/Requests';
 import { Settings } from './components/Settings';
 import { Sidebar } from './components/Sidebar';
 import { Tasks } from './components/Tasks';
 import { Toast, type ToastMessage } from './components/Toast';
 import { handleCodeMenu } from './lib/codeBridge';
-import { translate, Trans, useLanguage, useT } from './lib/i18n';
+import { translate, Trans, useLanguage, useT, type Key } from './lib/i18n';
 import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks } from './lib/links';
 import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIndex';
 import { gotoHeading } from './lib/noteBridge';
-import { extractHeadings, parseLinkTarget, sanitizeNotePath } from './lib/notes';
+import { extractHeadings, linkContexts, linkMentions, parseLinkTarget, sanitizeNotePath, tagIndex, unlinkedMentions } from './lib/notes';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
 
@@ -57,7 +57,8 @@ export default function App() {
       }
       return !current;
     });
-  const [switcher, setSwitcher] = useState(false);
+  // Busca rápida: fechada (null), com um texto inicial (tag:x, >) ou como lista de escolha.
+  const [switcher, setSwitcher] = useState<{ query?: string; picker?: Picker } | null>(null);
   const [settings, setSettings] = useState(false);
   const [pins, setPins] = useState<Pins>(emptyPins);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -298,7 +299,7 @@ export default function App() {
     'close-tab': () => closeTab(latest.current.activeId),
     'choose-vault': chooseVault,
     settings: () => {
-      setSwitcher(false);
+      setSwitcher(null);
       setSettings(true);
     },
     'export-pdf': () => void exportPdf(),
@@ -307,7 +308,7 @@ export default function App() {
     'toggle-favorite': toggleActiveFavorite,
     'quick-switcher': () => {
       setSettings(false);
-      setSwitcher(true);
+      setSwitcher({});
     },
     graph: () => open(GRAPH, true),
     'daily-note': () => void openDaily(),
@@ -325,6 +326,57 @@ export default function App() {
     'next-tab': () => cycleTab(1),
     'prev-tab': () => cycleTab(-1),
   };
+  // Liga as menções do nome da página aberta numa outra página (painel "Menções sem link").
+  const linkMentionIn = async (path: string) => {
+    const current = currentPath(latest.current.tabs.find((tab) => tab.id === latest.current.activeId));
+    if (!current || isSpecialPath(current)) return;
+    try {
+      await pendingWrite(path);
+      const text = await window.api.read(path);
+      const next = linkMentions(text, baseName(current));
+      if (next === text) return;
+      await trackWrite(path, window.api.write(path, next));
+      saved(path, next);
+      notify('ok', translate('mentions.linked', { name: baseName(path) }));
+    } catch (error) {
+      notify('error', translate('notes.error.save'), reason(error));
+    }
+  };
+
+  const openRandom = () => {
+    const pool = latest.current.notes;
+    if (pool.length) open(pool[Math.floor(Math.random() * pool.length)].path);
+  };
+
+  // Paleta de comandos (">" na busca rápida). Os atalhos mostrados são os do menu.
+  const commandList: [id: string, label: Key, keys: string | undefined, run: () => void, enabled?: boolean][] = [
+    ['new-note', 'cmd.newNote', 'Ctrl N', menu['new-note']],
+    ['daily-note', 'cmd.dailyNote', 'Ctrl D', menu['daily-note']],
+    ['random-note', 'cmd.randomNote', undefined, openRandom, notes.length > 0],
+    ['find', 'cmd.find', 'Ctrl F', () => window.dispatchEvent(new Event(findOpenEvent)), isNote],
+    ['toggle-favorite', 'cmd.toggleFavorite', 'Ctrl Shift F', menu['toggle-favorite'], isNote],
+    ['copy-link', 'cmd.copyLink', 'Ctrl L', menu['copy-link'], isNote],
+    ['copy-name', 'cmd.copyName', 'Ctrl Alt L', menu['copy-name'], isNote],
+    ['export-pdf', 'cmd.exportPdf', 'Ctrl Shift P', menu['export-pdf'], isNote],
+    ['graph', 'cmd.graph', 'Ctrl G', menu.graph],
+    ['tasks', 'cmd.tasks', 'Ctrl Shift J', menu.tasks],
+    ['whiteboards', 'cmd.whiteboards', 'Ctrl Shift B', menu.whiteboards],
+    ['requests', 'cmd.requests', 'Ctrl Shift E', menu.requests],
+    ['code', 'cmd.code', 'Ctrl Shift K', menu.code],
+    ['new-tab', 'cmd.newTab', 'Ctrl T', menu['new-tab']],
+    ['close-tab', 'cmd.closeTab', 'Ctrl W', menu['close-tab'], tabs.length > 0],
+    ['reopen-tab', 'cmd.reopenTab', 'Ctrl Shift T', menu['reopen-tab'], closed.length > 0],
+    ['back', 'cmd.back', 'Ctrl [', menu.back],
+    ['forward', 'cmd.forward', 'Ctrl ]', menu.forward],
+    ['toggle-sidebar', 'cmd.toggleSidebar', 'Ctrl \\', menu['toggle-sidebar']],
+    ['toggle-rail', 'cmd.toggleRail', 'Ctrl Shift \\', menu['toggle-rail']],
+    ['settings', 'cmd.settings', 'Ctrl ,', menu.settings],
+    ['choose-vault', 'cmd.chooseVault', 'Ctrl O', menu['choose-vault']],
+  ];
+  const commands: Command[] = commandList
+    .filter(([, , , , enabled]) => enabled !== false)
+    .map(([id, label, keys, run]) => ({ id, label: t(label), keys, run }));
+
   const menuRef = useRef(menu);
   menuRef.current = menu;
   const openTargetRef = useRef(openTarget);
@@ -372,10 +424,19 @@ export default function App() {
     return result;
   }, [notes, contents]);
 
-  const backlinks = useMemo(
-    () => (isNote ? notes.filter((n) => edges.some(([from, to]) => to === activePath && from === n.path)) : []),
-    [isNote, notes, edges, activePath],
+  const activeNote = useMemo(() => notes.find((n) => n.path === activePath), [notes, activePath]);
+  // Backlinks com o trecho em volta de cada link, como no painel do Obsidian.
+  const backlinks = useMemo((): BacklinkItem[] => {
+    if (!isNote || !activeNote) return [];
+    return notes
+      .filter((n) => edges.some(([from, to]) => to === activePath && from === n.path))
+      .map((note) => ({ note, contexts: linkContexts(contents[note.path] ?? '', activeNote) }));
+  }, [isNote, activeNote, notes, edges, activePath, contents]);
+  const findMentions = useCallback(
+    () => (activeNote ? unlinkedMentions(activeNote, notes, contents, new Set(backlinks.map((item) => item.note.path))) : []),
+    [activeNote, notes, contents, backlinks],
   );
+  const tags = useMemo(() => tagIndex(notes, contents), [notes, contents]);
   const outgoing = useMemo(
     () =>
       isNote
@@ -518,7 +579,9 @@ export default function App() {
           onWhiteboards={openWhiteboards}
           onRequests={openRequests}
           onCode={openCode}
-          onSearch={() => setSwitcher(true)}
+          onSearch={() => setSwitcher({})}
+          tags={tags}
+          onTag={(tag) => setSwitcher({ query: `tag:${tag} ` })}
           onSettings={() => setSettings(true)}
           rail={rail}
           onToggleRail={toggleRail}
@@ -618,6 +681,8 @@ export default function App() {
           outgoing={outgoing}
           headings={headings}
           onHeading={(index) => headings[index] && gotoHeading({ path: activePath, text: headings[index].text, index })}
+          findMentions={findMentions}
+          onLinkMention={(path) => void linkMentionIn(path)}
           favorite={favorite}
           onToggleFavorite={toggleActiveFavorite}
           onOpen={(path) => open(path)}
@@ -625,14 +690,19 @@ export default function App() {
         />
       </Presence>
 
-      <Presence when={switcher} name="switcher">
+      <Presence when={Boolean(switcher)} name="switcher">
         <QuickSwitcher
+          // Cada abertura (texto inicial ou lista de escolha diferente) começa do zero.
+          key={switcher?.picker?.placeholder ?? switcher?.query ?? ''}
           notes={notes}
           contents={contents}
           recents={recentNotes}
-          onOpen={(path) => open(path)}
+          commands={commands}
+          initialQuery={switcher?.query}
+          picker={switcher?.picker}
+          onOpen={(path, newTab) => open(path, newTab)}
           onCreate={(name) => void createAndOpen(name)}
-          onClose={() => setSwitcher(false)}
+          onClose={() => setSwitcher(null)}
         />
       </Presence>
 

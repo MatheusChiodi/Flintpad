@@ -740,6 +740,75 @@ button {
   text-underline-offset: 2px;
 }
 
+/* Painel de links: sumário, backlinks com trecho e menções sem link. */
+.outline-row {
+  min-height: 26px;
+  color: var(--color-frost-500);
+}
+
+.outline-row[data-level='1'] {
+  color: var(--color-frost-300);
+  font-weight: 500;
+}
+
+.backlink-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding-block: 5px;
+}
+
+.snippet {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  padding-left: 22px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-frost-500);
+}
+
+.snippet mark {
+  border-radius: 2px;
+  padding: 0 1px;
+  background: color-mix(in srgb, var(--color-sheen-400) 22%, transparent);
+  color: var(--color-frost-100);
+}
+
+.mention-link {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-sheen-300);
+  background: color-mix(in srgb, var(--color-sheen-400) 14%, transparent);
+  transition: opacity 160ms var(--ease-out-quart), background-color 120ms var(--ease-out-quart);
+}
+
+.mention-link:hover {
+  background: color-mix(in srgb, var(--color-sheen-400) 26%, transparent);
+}
+
+.fuzzy-hit {
+  background: none;
+  color: var(--color-sheen-300);
+  font-weight: 650;
+}
+
+.tag-hash {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-frost-500);
+}
+
 /* Boas-vindas */
 .welcome-sheet {
   background: var(--color-paper);
