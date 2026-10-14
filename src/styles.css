@@ -932,6 +932,649 @@ button {
   }
 }
 
+/*
+  Aba Código (workbench). As cores vêm sempre do tema do VS Code em uso (--vsc-*);
+  aqui só ritmo, forma e movimento. Assinatura: o veio, traço luminoso na cor de destaque
+  do tema que desliza até o que está ativo (guia, arquivo, barra de atividades).
+*/
+.wb {
+  --wb-accent: var(--vsc-focusBorder);
+  --wb-vein-glow: 0 0 10px color-mix(in srgb, var(--wb-accent) 55%, transparent);
+  --wb-quiet: color-mix(in srgb, var(--vsc-foreground) 55%, transparent);
+  --wb-guide: color-mix(in srgb, var(--vsc-foreground) 11%, transparent);
+  --wb-hover: color-mix(in srgb, var(--vsc-foreground) 7%, transparent);
+  --wb-press: color-mix(in srgb, var(--vsc-foreground) 12%, transparent);
+  --wb-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --wb-fast: calc(140ms * var(--motion));
+  --wb-glide: calc(260ms * var(--motion));
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wb ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.wb ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--vsc-scrollbarSlider-background) padding-box;
+}
+.wb ::-webkit-scrollbar-track,
+.wb ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.wb :focus-visible {
+  outline: 1px solid var(--wb-accent);
+  outline-offset: -1px;
+}
+
+/* O veio: um traço de 2px com brilho, posicionado por JS e deslizando por transição. */
+.wb-vein {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 2px;
+  background: var(--wb-accent);
+  box-shadow: var(--wb-vein-glow);
+  transition:
+    transform var(--wb-glide) var(--wb-ease),
+    width var(--wb-glide) var(--wb-ease),
+    height var(--wb-glide) var(--wb-ease),
+    opacity var(--wb-fast) ease;
+}
+
+/* Botões só de ícone, em toda a área. */
+.wb-icon-btn {
+  display: inline-flex;
+  height: 24px;
+  width: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: inherit;
+  opacity: 0.72;
+  transition:
+    background-color var(--wb-fast) ease,
+    opacity var(--wb-fast) ease;
+}
+.wb-icon-btn:hover {
+  background: var(--wb-hover);
+  opacity: 1;
+}
+.wb-icon-btn:active {
+  background: var(--wb-press);
+}
+
+/* Barra de atividades */
+.wb-activity {
+  position: relative;
+  display: flex;
+  width: 48px;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-block: 6px;
+  border-right: 1px solid var(--vsc-activityBar-border);
+  background: var(--vsc-activityBar-background);
+}
+.wb-activity-btn {
+  position: relative;
+  display: flex;
+  height: 40px;
+  width: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--vsc-activityBar-inactiveForeground);
+  transition:
+    color var(--wb-fast) ease,
+    background-color var(--wb-fast) ease;
+}
+.wb-activity-btn:hover {
+  color: var(--vsc-activityBar-foreground);
+  background: color-mix(in srgb, var(--vsc-activityBar-foreground) 8%, transparent);
+}
+.wb-activity-btn[data-on='true'] {
+  color: var(--vsc-activityBar-foreground);
+}
+.wb-activity-btn .wb-vein {
+  left: -4px;
+  top: 10px;
+  width: 2px;
+  height: 20px;
+  transform-origin: center;
+}
+.wb-activity-btn[data-on='false'] .wb-vein {
+  opacity: 0;
+  transform: scaleY(0.2);
+}
+
+/* Barra lateral */
+.wb-side {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  border-right: 1px solid var(--vsc-sideBar-border);
+  background: var(--vsc-sideBar-background);
+  color: var(--vsc-sideBar-foreground);
+}
+.wb-side-title {
+  display: flex;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px 0 16px;
+  color: var(--vsc-sideBarTitle-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Explorador */
+.wb-root-head {
+  display: flex;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 0 10px;
+  background: var(--vsc-sideBarSectionHeader-background);
+  color: var(--vsc-sideBarSectionHeader-foreground);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.wb-tree {
+  position: relative;
+  padding-inline: 6px;
+}
+.wb-row {
+  position: relative;
+  display: flex;
+  height: 24px;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  border-radius: 6px;
+  padding-right: 8px;
+  transition: background-color var(--wb-fast) ease;
+}
+.wb-row:hover {
+  background: var(--wb-hover);
+}
+.wb-row[data-selected='true'] {
+  background: var(--vsc-list-inactiveSelectionBackground);
+}
+.wb-row[data-active='true'] {
+  color: var(--vsc-list-activeSelectionForeground, inherit);
+  background: color-mix(in srgb, var(--vsc-list-activeSelectionBackground) 70%, transparent);
+}
+.wb-chevron {
+  display: inline-flex;
+  width: 12px;
+  flex-shrink: 0;
+  justify-content: center;
+  opacity: 0.65;
+  transition: transform var(--wb-fast) var(--wb-ease);
+}
+.wb-chevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+/* Guias de recuo: uma linha fina por nível, mais visíveis com o mouse na árvore. */
+.wb-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--wb-guide);
+  opacity: 0.55;
+  transition: opacity var(--wb-fast) ease;
+}
+.wb-tree:hover .wb-guide {
+  opacity: 1;
+}
+.wb-tree > .wb-vein {
+  left: 0;
+  top: 0;
+  width: 2px;
+}
+
+/* Guias do editor */
+.wb-tabs {
+  position: relative;
+  display: flex;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: flex-end;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 6px;
+  background: var(--vsc-editorGroupHeader-tabsBackground);
+  scrollbar-width: none;
+}
+.wb-tabs::-webkit-scrollbar {
+  display: none;
+}
+.wb-tab {
+  position: relative;
+  display: flex;
+  height: 32px;
+  min-width: 0;
+  max-width: 220px;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  gap: 7px;
+  border-radius: 8px 8px 0 0;
+  padding: 0 6px 0 12px;
+  color: var(--vsc-tab-inactiveForeground);
+  transition:
+    background-color var(--wb-fast) ease,
+    color var(--wb-fast) ease;
+}
+.wb-tab:hover {
+  background: var(--wb-hover);
+  color: var(--vsc-tab-activeForeground);
+}
+.wb-tab[data-active='true'] {
+  background: var(--vsc-tab-activeBackground);
+  color: var(--vsc-tab-activeForeground);
+}
+.wb-tab[data-preview='true'] .wb-tab-name {
+  font-style: italic;
+}
+.wb-tab-close {
+  display: inline-flex;
+  height: 20px;
+  width: 20px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  opacity: 0;
+  transition:
+    opacity var(--wb-fast) ease,
+    background-color var(--wb-fast) ease;
+}
+.wb-tab:hover .wb-tab-close,
+.wb-tab[data-active='true'] .wb-tab-close,
+.wb-tab[data-dirty='true'] .wb-tab-close {
+  opacity: 0.8;
+}
+.wb-tab-close:hover {
+  background: var(--wb-press);
+  opacity: 1;
+}
+.wb-tab-close .wb-dot {
+  height: 8px;
+  width: 8px;
+  border-radius: 999px;
+  background: var(--wb-accent);
+}
+.wb-tab[data-dirty='true']:hover .wb-tab-close .wb-dot,
+.wb-tab:not([data-dirty='true']) .wb-tab-close .wb-dot {
+  display: none;
+}
+.wb-tab[data-dirty='true']:not(:hover) .wb-tab-close .wb-x {
+  display: none;
+}
+.wb-tabs > .wb-vein {
+  top: 6px;
+  left: 0;
+  height: 2px;
+}
+
+/* Trilha do arquivo (breadcrumbs) */
+.wb-crumbs {
+  display: flex;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  padding: 0 16px;
+  background: var(--vsc-editor-background);
+  color: var(--wb-quiet);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.wb-crumbs .wb-crumb-last {
+  color: var(--vsc-editor-foreground);
+}
+.wb-crumbs .wb-crumb-sep {
+  opacity: 0.45;
+}
+
+/* Divisórias arrastáveis: invisíveis até o mouse chegar, então o veio acende. */
+.wb-sash {
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+}
+.wb-sash::after {
+  content: '';
+  position: absolute;
+  background: var(--wb-accent);
+  opacity: 0;
+  transition: opacity var(--wb-fast) ease;
+}
+.wb-sash:hover::after,
+.wb-sash:active::after {
+  opacity: 0.9;
+  transition-delay: calc(120ms * var(--motion));
+}
+.wb-sash-x {
+  margin-left: -3px;
+  width: 5px;
+  cursor: col-resize;
+}
+.wb-sash-x::after {
+  inset: 0 2px;
+}
+.wb-sash-y {
+  margin-top: -3px;
+  height: 5px;
+  cursor: row-resize;
+}
+.wb-sash-y::after {
+  inset: 2px 0;
+}
+
+/* Barra de status */
+.wb-status {
+  display: flex;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: stretch;
+  gap: 2px;
+  padding-inline: 6px;
+  border-top: 1px solid var(--vsc-statusBar-border);
+  font-size: 11.5px;
+}
+.wb-status-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 5px;
+  margin-block: 2px;
+  padding: 0 7px;
+  white-space: nowrap;
+  transition: background-color var(--wb-fast) ease;
+}
+button.wb-status-item:hover {
+  background: var(--vsc-statusBarItem-hoverBackground);
+}
+.wb-status-mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.wb-led {
+  height: 6px;
+  width: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.wb-led[data-state='ready'] {
+  background: var(--wb-accent);
+  box-shadow: var(--wb-vein-glow);
+}
+.wb-led[data-state='starting'] {
+  animation: wb-pulse calc(1.2s * var(--motion) + 1ms) ease-in-out infinite;
+}
+.wb-led[data-state='error'] {
+  background: var(--vsc-editorError-foreground);
+}
+@keyframes wb-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Quick Input: surge do alto, curto e firme. */
+.wb-quick-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--vsc-editor-background) 35%, transparent);
+  animation: wb-fade var(--wb-fast) ease both;
+}
+.wb-quick {
+  margin: 10px auto 0;
+  width: min(620px, calc(100% - 32px));
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--vsc-editorWidget-border);
+  background: var(--vsc-quickInput-background);
+  color: var(--vsc-quickInput-foreground);
+  box-shadow:
+    0 18px 50px -12px var(--vsc-widget-shadow),
+    0 2px 6px var(--vsc-widget-shadow);
+  animation: wb-drop calc(180ms * var(--motion)) var(--wb-ease) both;
+}
+.wb-quick-input {
+  width: 100%;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  outline: none;
+  background: var(--vsc-input-background);
+  color: var(--vsc-input-foreground);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wb-accent) 60%, transparent);
+}
+.wb-quick-input::placeholder {
+  color: var(--vsc-input-placeholderForeground);
+}
+.wb-quick-row {
+  position: relative;
+  display: flex;
+  height: 28px;
+  cursor: pointer;
+  align-items: center;
+  gap: 8px;
+  margin-inline: 6px;
+  border-radius: 7px;
+  padding: 0 10px;
+}
+.wb-quick-row[aria-selected='true'] {
+  background: var(--vsc-quickInputList-focusBackground);
+  color: var(--vsc-quickInputList-focusForeground);
+}
+.wb-quick-row[aria-selected='true']::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--wb-accent);
+  box-shadow: var(--wb-vein-glow);
+}
+.wb-kbd {
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--wb-quiet);
+  background: var(--wb-hover);
+  box-shadow: inset 0 0 0 1px var(--wb-guide);
+}
+@keyframes wb-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes wb-drop {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-8px * var(--motion))) scale(calc(1 - 0.015 * var(--motion)));
+  }
+}
+
+/* Painel do terminal */
+.wb-panel-head {
+  display: flex;
+  height: 36px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 0 14px;
+  font-size: 11px;
+}
+.wb-panel-title {
+  position: relative;
+  padding-block: 4px;
+  color: var(--vsc-panelTitle-activeForeground);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.wb-panel-title::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 -2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--vsc-panelTitle-activeBorder);
+}
+.wb-chip {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  color: var(--vsc-panelTitle-inactiveForeground);
+  transition:
+    background-color var(--wb-fast) ease,
+    color var(--wb-fast) ease;
+}
+.wb-chip:hover {
+  background: var(--wb-hover);
+}
+.wb-chip[data-on='true'] {
+  color: var(--vsc-panelTitle-activeForeground);
+  background: var(--wb-press);
+}
+.wb-panel-enter {
+  animation: wb-rise calc(220ms * var(--motion)) var(--wb-ease) both;
+}
+@keyframes wb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(calc(10px * var(--motion)));
+  }
+}
+
+/* Tela inicial */
+.wb-welcome {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  background: var(--vsc-editor-background);
+}
+.wb-welcome-inner {
+  margin: 0 auto;
+  max-width: 880px;
+  padding: clamp(32px, 9vh, 96px) clamp(20px, 6vw, 64px) 48px;
+}
+.wb-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--wb-quiet);
+}
+.wb-welcome h1 {
+  margin-top: 10px;
+  font-family: var(--font-display);
+  font-size: clamp(34px, 5vw, 48px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--vsc-editor-foreground);
+}
+/* O veio se desenha uma vez, na abertura. */
+.wb-welcome-vein {
+  margin-top: 18px;
+  height: 2px;
+  width: 120px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--wb-accent), transparent);
+  box-shadow: var(--wb-vein-glow);
+  transform-origin: left;
+  animation: wb-draw calc(900ms * var(--motion)) var(--wb-ease) both;
+}
+@keyframes wb-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+.wb-welcome-lede {
+  margin-top: 16px;
+  max-width: 52ch;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--wb-quiet);
+}
+.wb-welcome-grid {
+  margin-top: 40px;
+  display: grid;
+  gap: 36px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.wb-welcome h2 {
+  margin-bottom: 8px;
+  padding-left: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wb-quiet);
+}
+.wb-action {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 7px 10px;
+  text-align: left;
+  color: var(--vsc-editor-foreground);
+  transition:
+    background-color var(--wb-fast) ease,
+    transform var(--wb-fast) var(--wb-ease);
+}
+.wb-action:hover {
+  background: var(--wb-hover);
+}
+.wb-action:hover .wb-action-icon {
+  color: var(--wb-accent);
+}
+.wb-action-icon {
+  display: inline-flex;
+  width: 18px;
+  justify-content: center;
+  color: var(--wb-quiet);
+  transition: color var(--wb-fast) ease;
+}
+.wb-action-detail {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--wb-quiet);
+  text-align: right;
+}
+
 /* Trilho de ícones: pedido pelo botão da barra (data-rail) ou forçado pela janela estreita. */
 .sidebar[data-rail='true'] {
   width: 52px;

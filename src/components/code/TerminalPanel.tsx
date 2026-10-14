@@ -136,42 +136,33 @@ export function TerminalPanel({ colors, command, maximized, onClose, onToggleMax
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [command]);
 
-  const iconButton = 'flex h-[22px] w-[22px] items-center justify-center rounded hover:bg-[var(--vsc-list-hoverBackground)]';
-
   return (
-    <div className="flex h-full min-h-0 flex-col" style={{ background: 'var(--vsc-panel-background)' }}>
-      <div className="flex h-[35px] shrink-0 items-center gap-3 px-3 text-[11px] uppercase">
-        <span className="border-b pb-1 pt-1.5" style={{ color: 'var(--vsc-panelTitle-activeForeground)', borderColor: 'var(--vsc-panelTitle-activeBorder)' }}>
-          {t('code.terminal')}
-        </span>
-        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto normal-case">
+    <div className="wb-panel-enter flex h-full min-h-0 flex-col" style={{ background: 'var(--vsc-panel-background)' }}>
+      <div className="wb-panel-head">
+        <span className="wb-panel-title">{t('code.terminal')}</span>
+        <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
           {terminals.map((info, index) => (
-            <button
-              key={info.id}
-              className="shrink-0 rounded px-2 py-0.5 text-[12px]"
-              style={{ color: info.id === active ? 'var(--vsc-panelTitle-activeForeground)' : 'var(--vsc-panelTitle-inactiveForeground)', background: info.id === active ? 'var(--vsc-list-inactiveSelectionBackground)' : undefined }}
-              onClick={() => setActive(info.id)}
-            >
-              {index + 1}: {info.title}
+            <button key={info.id} className="wb-chip" data-on={info.id === active} onClick={() => setActive(info.id)}>
+              <span className="font-mono text-[10.5px] opacity-60">{index + 1}</span> {info.title}
             </button>
           ))}
         </div>
-        <span className="flex items-center gap-0.5 normal-case" style={{ color: 'var(--vsc-panelTitle-activeForeground)' }}>
-          <button className={iconButton} title={t('code.cmd.newTerminal')} onClick={() => void create()}>
-            +
+        <span className="flex items-center gap-0.5" style={{ color: 'var(--vsc-panelTitle-activeForeground)' }}>
+          <button className="wb-icon-btn" title={t('code.cmd.newTerminal')} onClick={() => void create()}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M8 3v10M3 8h10" /></svg>
           </button>
-          <button className={iconButton} title={t('code.cmd.killTerminal')} onClick={() => kill(active)}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M10 3h3v1h-1v9l-1 1H4l-1-1V4H2V3h3V2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1ZM9 2H6v1h3V2ZM4 13h7V4H4v9Zm2-8H5v7h1V5Zm1 0h1v7H7V5Zm2 0h1v7H9V5Z" /></svg>
+          <button className="wb-icon-btn" title={t('code.cmd.killTerminal')} onClick={() => kill(active)}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 8.5h6.6l.7-8.5" /></svg>
           </button>
-          <button className={iconButton} title={t('code.cmd.maximizePanel')} onClick={onToggleMaximize}>
-            {maximized ? '⌄' : '⌃'}
+          <button className="wb-icon-btn" title={t('code.cmd.maximizePanel')} onClick={onToggleMaximize}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: maximized ? 'rotate(180deg)' : undefined, transition: 'transform var(--wb-glide) var(--wb-ease)' }}><path d="m4 10 4-4 4 4" /></svg>
           </button>
-          <button className={iconButton} title={t('code.cmd.togglePanel')} onClick={onClose}>
-            ×
+          <button className="wb-icon-btn" title={t('code.cmd.togglePanel')} onClick={onClose}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="m4 4 8 8M12 4l-8 8" /></svg>
           </button>
         </span>
       </div>
-      <div ref={area} className="relative min-h-0 flex-1" style={{ background: 'var(--vsc-terminal-background)' }} />
+      <div ref={area} className="relative min-h-0 flex-1 pl-1.5" style={{ background: 'var(--vsc-terminal-background)' }} />
     </div>
   );
 }

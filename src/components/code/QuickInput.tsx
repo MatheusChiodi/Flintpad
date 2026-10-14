@@ -75,17 +75,12 @@ export function QuickInput({ value, placeholder, items, message, activeId, onVal
   };
 
   return (
-    <div className="absolute inset-0 z-40" onMouseDown={onClose}>
-      <div
-        className="mx-auto mt-2 w-[min(600px,calc(100%-32px))] overflow-hidden rounded-md text-[13px] shadow-[0_0_8px_2px_var(--vsc-widget-shadow)]"
-        style={{ background: 'var(--vsc-quickInput-background)', color: 'var(--vsc-quickInput-foreground)' }}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="p-1.5">
+    <div className="wb-quick-scrim" onMouseDown={onClose}>
+      <div className="wb-quick text-[13px]" role="dialog" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="p-2">
           <input
             ref={input}
-            className="w-full rounded-sm px-2 py-1 outline-none ring-1 ring-[var(--vsc-focusBorder)]"
-            style={{ background: 'var(--vsc-input-background)', color: 'var(--vsc-input-foreground)' }}
+            className="wb-quick-input"
             value={value}
             placeholder={placeholder}
             spellCheck={false}
@@ -103,20 +98,19 @@ export function QuickInput({ value, placeholder, items, message, activeId, onVal
             }}
           />
         </div>
-        {message && <div className="px-3 pb-2 text-[12px] text-[var(--vsc-descriptionForeground)]">{message}</div>}
+        {message && <div className="px-4 pb-2.5 text-[12px] text-[var(--vsc-descriptionForeground)]">{message}</div>}
         {items.length > 0 && (
-          <div ref={list} className="max-h-[min(440px,60vh)] overflow-y-auto pb-1" role="listbox">
+          <div ref={list} className="max-h-[min(440px,60vh)] overflow-y-auto pb-1.5" role="listbox">
             {items.map((item, index) => {
               const separator = item.group && item.group !== items[index - 1]?.group;
               const selected = index === active;
               return (
                 <div key={item.id} data-index={index}>
-                  {separator && index > 0 && <div className="mx-2 border-t border-[var(--vsc-pickerGroup-border)]" />}
+                  {separator && index > 0 && <div className="mx-4 my-1 border-t border-[var(--vsc-pickerGroup-border)]" />}
                   <div
                     role="option"
                     aria-selected={selected}
-                    className="flex cursor-pointer items-center gap-2 px-3 py-[3px]"
-                    style={selected ? { background: 'var(--vsc-quickInputList-focusBackground)', color: 'var(--vsc-quickInputList-focusForeground)' } : undefined}
+                    className="wb-quick-row"
                     onMouseMove={() => index !== active && setActive(index)}
                     onClick={() => onPick(item, value)}
                   >
@@ -124,10 +118,10 @@ export function QuickInput({ value, placeholder, items, message, activeId, onVal
                     <span className="min-w-0 truncate">
                       <Highlighted text={item.label} positions={item.positions} />
                     </span>
-                    {item.description && <span className="min-w-0 flex-1 truncate text-[12px] opacity-70">{item.description}</span>}
+                    {item.description && <span className="min-w-0 flex-1 truncate text-[11.5px] opacity-60">{item.description}</span>}
                     {!item.description && <span className="flex-1" />}
-                    {separator && item.group && <span className="shrink-0 text-[11.5px] text-[var(--vsc-pickerGroup-foreground)]">{item.group}</span>}
-                    {item.keybinding && <kbd className="shrink-0 rounded px-1 font-mono text-[11px] opacity-80 ring-1 ring-[var(--vsc-pickerGroup-border)]">{item.keybinding}</kbd>}
+                    {separator && item.group && <span className="shrink-0 text-[11px] font-medium text-[var(--vsc-pickerGroup-foreground)]">{item.group}</span>}
+                    {item.keybinding && <kbd className="wb-kbd shrink-0">{item.keybinding}</kbd>}
                   </div>
                 </div>
               );

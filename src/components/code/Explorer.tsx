@@ -6,6 +6,7 @@ import { baseName, dirName, isInside, samePath } from '../../lib/paths';
 import { languageForFile } from '../../lib/textmate';
 import type { DirEntry } from '../../types';
 import { FileIconView } from './FileIconView';
+import { Vein } from './Vein';
 
 export type ExplorerActions = {
   open(path: string, pinned: boolean): void;
@@ -28,6 +29,19 @@ const memoryFor = (root: string) => {
   }
   return memory;
 };
+
+const INDENT_BASE = 8;
+const INDENT_STEP = 12;
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <span className="wb-chevron" data-open={open} aria-hidden>
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m3.5 2 3 3-3 3" />
+      </svg>
+    </span>
+  );
+}
 
 type Menu = { x: number; y: number; entry: DirEntry | null };
 
@@ -146,19 +160,19 @@ export function Explorer({ root, iconTheme, activePath, actions, collapseSignal,
   };
 
   const targetDir = (entry: DirEntry | null) => (!entry ? root : entry.dir ? entry.path : dirName(entry.path));
-  const iconButton = 'flex h-[22px] w-[22px] items-center justify-center rounded hover:bg-[var(--vsc-list-hoverBackground)]';
+  const iconButton = 'wb-icon-btn !h-[22px] !w-[22px]';
   const focusedEntry = rows.find((row) => focused && samePath(row.entry.path, focused))?.entry ?? null;
 
   return (
     <div className={`flex flex-col ${fill ? 'min-h-0 flex-1' : 'shrink-0'}`} onClick={() => setMenu(null)}>
-      <div className="group flex h-[22px] shrink-0 items-center gap-1 px-1 text-[11px] font-bold uppercase" style={{ background: 'var(--vsc-sideBarSectionHeader-background)', color: 'var(--vsc-sideBarSectionHeader-foreground)' }}>
-        <button className="flex min-w-0 flex-1 items-center gap-1 text-left" onClick={() => toggle(root)}>
-          <span className="w-3 text-center">{memory.expanded.has(root) ? '⌄' : '›'}</span>
+      <div className="wb-root-head group">
+        <button className="flex min-w-0 flex-1 items-center gap-1.5 text-left" onClick={() => toggle(root)}>
+          <Chevron open={memory.expanded.has(root)} />
           <span className="truncate" title={root}>
             {baseName(root)}
           </span>
         </button>
-        <span className="flex opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+        <span className="flex opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100">
           <button className={iconButton} title={t('code.explorer.newFile')} onClick={() => actions.newFile(targetDir(focusedEntry))}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M9.5 1.1 13 4.6V9h-1V6H9V2H4v12h5v1H3V1h6.5ZM10 2.4V5h2.6L10 2.4ZM13 11h2v1h-2v2h-1v-2h-2v-1h2V9h1v2Z" /></svg>
           </button>
@@ -177,7 +191,7 @@ export function Explorer({ root, iconTheme, activePath, actions, collapseSignal,
       <div
         ref={tree}
         tabIndex={0}
-        className={`outline-none ${fill ? 'min-h-0 flex-1 overflow-y-auto pb-6' : 'pb-1'}`}
+        className={`wb-tree outline-none ${fill ? 'min-h-0 flex-1 overflow-y-auto pb-6 pt-1' : 'pb-1 pt-1'}`}
         onKeyDown={onKeyDown}
         onContextMenu={(event) => openMenu(event, null)}
       >
@@ -190,11 +204,9 @@ export function Explorer({ root, iconTheme, activePath, actions, collapseSignal,
             <div
               key={entry.path}
               data-active={isActive}
-              className="flex h-[22px] cursor-pointer items-center gap-1.5 pr-2 hover:bg-[var(--vsc-list-hoverBackground)]"
-              style={{
-                paddingLeft: 8 + depth * 8,
-                ...(isActive || isFocused ? { background: 'var(--vsc-list-inactiveSelectionBackground)' } : {}),
-              }}
+              data-selected={isFocused && !isActive}
+              className="wb-row"
+              style={{ paddingLeft: INDENT_BASE + depth * INDENT_STEP }}
               title={entry.path}
               onClick={() => {
                 setFocused(entry.path);
@@ -204,18 +216,22 @@ export function Explorer({ root, iconTheme, activePath, actions, collapseSignal,
               onDoubleClick={() => !entry.dir && actions.open(entry.path, true)}
               onContextMenu={(event) => openMenu(event, entry)}
             >
-              {!iconTheme?.hidesExplorerArrows && <span className="w-3 shrink-0 text-center text-[11px] opacity-80">{entry.dir ? (expanded ? '⌄' : '›') : ''}</span>}
+              {Array.from({ length: depth }, (_, level) => (
+                <span key={level} aria-hidden className="wb-guide" style={{ left: INDENT_BASE + level * INDENT_STEP + 5 }} />
+              ))}
+              {!iconTheme?.hidesExplorerArrows && (entry.dir ? <Chevron open={Boolean(expanded)} /> : <span className="w-3 shrink-0" />)}
               <FileIconView icon={icon} dir={entry.dir} expanded={Boolean(expanded)} />
               <span className="truncate">{entry.name}</span>
             </div>
           );
         })}
         {memory.expanded.has(root) && memory.children.get(root)?.length === 0 && <p className="px-5 py-2 opacity-70">{t('code.explorer.empty')}</p>}
+        <Vein axis="y" inset={5} />
       </div>
 
       {menu && (
         <div
-          className="fixed z-50 min-w-48 rounded-md py-1 text-[13px] shadow-[0_2px_8px_var(--vsc-widget-shadow)] ring-1 ring-[var(--vsc-editorWidget-border)]"
+          className="wb-quick fixed z-50 !m-0 !w-auto min-w-52 p-1 text-[13px]"
           style={{ left: menu.x, top: menu.y, background: 'var(--vsc-editorWidget-background)', color: 'var(--vsc-foreground)' }}
           onClick={(event) => event.stopPropagation()}
         >
@@ -238,7 +254,7 @@ export function Explorer({ root, iconTheme, activePath, actions, collapseSignal,
           ).map(([label, run]) => (
             <button
               key={label}
-              className="block w-full px-4 py-1 text-left hover:bg-[var(--vsc-list-activeSelectionBackground)] hover:text-[var(--vsc-list-activeSelectionForeground)]"
+              className="block w-full rounded-md px-3 py-1.5 text-left transition-colors duration-100 hover:bg-[var(--vsc-quickInputList-focusBackground)] hover:text-[var(--vsc-quickInputList-focusForeground)]"
               onClick={() => {
                 setMenu(null);
                 run();

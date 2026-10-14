@@ -20,6 +20,7 @@ import { Explorer } from './code/Explorer';
 import { FileIconView } from './code/FileIconView';
 import { QuickInput, type QuickItem } from './code/QuickInput';
 import { TerminalPanel, type TerminalCommand } from './code/TerminalPanel';
+import { Vein } from './code/Vein';
 
 self.MonacoEnvironment = {
   getWorker(_id, label) {
@@ -1080,44 +1081,38 @@ export default function Code() {
   const languageLabel = languageId ? (allLanguages().find((language) => language.id === languageId)?.label ?? languageId) : null;
   const lspKind = languageId ? serverForLanguage(languageId) : undefined;
   const style = { ...cssVariables(colors), background: 'var(--vsc-editor-background)', color: 'var(--vsc-foreground)', colorScheme: kind.includes('light') ? 'light' : 'dark' } as CSSProperties;
-  const titleButton = 'flex h-[22px] w-[22px] items-center justify-center rounded opacity-80 hover:bg-[var(--vsc-list-hoverBackground)] hover:opacity-100';
-  const statusItem = 'flex h-full items-center gap-1 px-2 hover:bg-[var(--vsc-statusBarItem-hoverBackground)]';
+  const titleButton = 'wb-icon-btn';
 
   const activityButton = (title: string, icon: ReactNode) => {
     const selected = layout.sidebar;
     return (
-      <button
-        className="relative flex h-12 w-12 items-center justify-center"
-        style={{ color: selected ? 'var(--vsc-activityBar-foreground)' : 'var(--vsc-activityBar-inactiveForeground)' }}
-        title={title}
-        onClick={() => setLayout({ sidebar: !selected })}
-      >
-        {selected && <span className="absolute inset-y-0 left-0 w-0.5" style={{ background: 'var(--vsc-activityBar-activeBorder)' }} />}
+      <button className="wb-activity-btn" data-on={selected} aria-pressed={selected} title={title} onClick={() => setLayout({ sidebar: !selected })}>
+        <span aria-hidden className="wb-vein" />
         {icon}
       </button>
     );
   };
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col text-[13px]" style={style}>
+    <div className="wb relative flex h-full min-h-0 flex-col" style={style}>
       <div className="flex min-h-0 flex-1">
         {/* Barra de atividades */}
-        <nav className="flex w-12 shrink-0 flex-col items-center border-r" style={{ background: 'var(--vsc-activityBar-background)', borderColor: 'var(--vsc-activityBar-border)' }}>
+        <nav className="wb-activity">
           {activityButton(
             t('code.cmd.showExplorer'),
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M14.5 3H7.7A1.7 1.7 0 0 0 6 4.7v12.6C6 18.2 6.8 19 7.7 19h9.6c.9 0 1.7-.8 1.7-1.7V7.5L14.5 3Z" /><path d="M14 3v5h5M3 7v13.3c0 .9.8 1.7 1.7 1.7H15" /></svg>,
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="M14.5 3H7.7A1.7 1.7 0 0 0 6 4.7v12.6C6 18.2 6.8 19 7.7 19h9.6c.9 0 1.7-.8 1.7-1.7V7.5L14.5 3Z" /><path d="M14 3v5h5M3 7v13.3c0 .9.8 1.7 1.7 1.7H15" /></svg>,
           )}
           <span className="flex-1" />
-          <button className="flex h-12 w-12 items-center justify-center" style={{ color: 'var(--vsc-activityBar-inactiveForeground)' }} title={t('code.cmd.showCommands')} onClick={() => setQuick({ kind: 'main', value: '>' })}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>
+          <button className="wb-activity-btn" title={`${t('code.cmd.showCommands')} (Ctrl+Shift+P)`} onClick={() => setQuick({ kind: 'main', value: '>' })}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>
           </button>
         </nav>
 
         {/* Barra lateral */}
         {layout.sidebar && (
           <>
-            <aside className="flex shrink-0 flex-col border-r" style={{ width: layout.sidebarWidth, background: 'var(--vsc-sideBar-background)', color: 'var(--vsc-sideBar-foreground)', borderColor: 'var(--vsc-sideBar-border)' }}>
-              <div className="group flex h-[35px] shrink-0 items-center pl-5 pr-2 text-[11px] uppercase tracking-wide" style={{ color: 'var(--vsc-sideBarTitle-foreground)' }}>
+            <aside className="wb-side" style={{ width: layout.sidebarWidth }}>
+              <div className="wb-side-title">
                 <span className="flex-1 truncate">{t('code.explorer.title')}</span>
                 <button className={titleButton} title={t('code.cmd.openFolder')} onClick={() => void openFolder()}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"><path d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" /></svg>
@@ -1144,17 +1139,16 @@ export default function Code() {
                   ))}
                 </div>
               ) : (
-                <div className="px-5 py-2">
+                <div className="px-4 py-3">
                   <p className="opacity-80">{t('code.explorer.noFolder')}</p>
-                  <button className="mt-3 w-full rounded-sm py-1" style={{ background: 'var(--vsc-button-background)', color: 'var(--vsc-button-foreground)' }} onClick={() => void openFolder()}>
+                  <button className="mt-3 w-full rounded-lg py-1.5 font-medium transition-[filter] duration-150 hover:brightness-110" style={{ background: 'var(--vsc-button-background)', color: 'var(--vsc-button-foreground)' }} onClick={() => void openFolder()}>
                     {t('code.cmd.openFolder')}
                   </button>
                 </div>
               )}
             </aside>
             <div
-              className="-ml-[3px] w-[5px] shrink-0 cursor-col-resize hover:bg-[var(--vsc-focusBorder)]"
-              style={{ zIndex: 5 }}
+              className="wb-sash wb-sash-x"
               onPointerDown={(event) => {
                 const width = layout.sidebarWidth;
                 startDrag('x', event, (delta) => setLayout({ sidebarWidth: Math.max(170, Math.min(640, width + delta)) }));
@@ -1167,53 +1161,52 @@ export default function Code() {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className={`flex min-h-0 flex-col ${layout.panel && layout.panelMax ? 'hidden' : 'flex-1'}`}>
             {tabs.length > 0 && (
-              <div className="flex h-[35px] shrink-0 overflow-x-auto overflow-y-hidden" style={{ background: 'var(--vsc-editorGroupHeader-tabsBackground)' }}>
+              <div className="wb-tabs" role="tablist">
                 {tabs.map((tab) => {
                   const isActive = active !== null && samePath(tab.path, active);
                   const dirty = isDirty(tab.path);
                   return (
                     <div
                       key={tab.path}
-                      className="group relative flex h-full min-w-0 max-w-[220px] shrink-0 cursor-pointer items-center gap-1.5 border-r pl-3 pr-1.5"
-                      style={{
-                        background: isActive ? 'var(--vsc-tab-activeBackground)' : 'var(--vsc-tab-inactiveBackground)',
-                        color: isActive ? 'var(--vsc-tab-activeForeground)' : 'var(--vsc-tab-inactiveForeground)',
-                        borderColor: 'var(--vsc-tab-border)',
-                      }}
+                      role="tab"
+                      aria-selected={isActive}
+                      className="wb-tab"
+                      data-active={isActive}
+                      data-dirty={dirty}
+                      data-preview={tab.preview}
                       title={tab.path}
                       onClick={() => activate(tab.path)}
                       onDoubleClick={() => setTabs(session.tabs.map((item) => (item === tab ? { ...item, preview: false } : item)))}
                       onAuxClick={(event) => event.button === 1 && closeTab(tab.path)}
                     >
-                      {isActive && <span className="absolute inset-x-0 top-0 h-px" style={{ background: 'var(--vsc-tab-activeBorderTop)' }} />}
-                      {isActive && <span className="absolute inset-x-0 bottom-0 h-px" style={{ background: 'var(--vsc-tab-activeBorder)' }} />}
                       <FileIconView icon={iconTheme?.forFile(tab.path, modelFor(tab.path)?.getLanguageId()) ?? null} />
-                      <span className={`truncate ${tab.preview ? 'italic' : ''}`}>{baseName(tab.path)}</span>
+                      <span className="wb-tab-name truncate">{baseName(tab.path)}</span>
                       <button
-                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-[var(--vsc-list-hoverBackground)] ${dirty || isActive ? '' : 'opacity-0 group-hover:opacity-100'}`}
+                        className="wb-tab-close"
                         title={t('code.cmd.closeEditor')}
+                        aria-label={`${t('code.cmd.closeEditor')}: ${baseName(tab.path)}`}
                         onClick={(event) => {
                           event.stopPropagation();
                           closeTab(tab.path);
                         }}
                       >
-                        <span className={dirty ? 'group-hover:hidden' : 'hidden'}>●</span>
-                        <span className={dirty ? 'hidden group-hover:inline' : ''}>×</span>
+                        <span className="wb-dot" />
+                        <svg className="wb-x" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7" /></svg>
                       </button>
                     </div>
                   );
                 })}
-                <div className="flex-1" />
+                <Vein axis="x" inset={12} />
               </div>
             )}
             {model && root && (
-              <div className="flex h-[22px] shrink-0 items-center gap-1 overflow-hidden px-3 text-[12px] opacity-80" style={{ background: 'var(--vsc-editor-background)' }}>
+              <div className="wb-crumbs">
                 {relativePath(rootOf(active!), active!)
                   .split(/[\\/]/)
                   .map((part, index, parts) => (
-                    <span key={index} className="flex shrink-0 items-center gap-1">
-                      {part}
-                      {index < parts.length - 1 && <span className="opacity-60">›</span>}
+                    <span key={index} className="flex shrink-0 items-center gap-1.5">
+                      <span className={index === parts.length - 1 ? 'wb-crumb-last' : undefined}>{part}</span>
+                      {index < parts.length - 1 && <span className="wb-crumb-sep">/</span>}
                     </span>
                   ))}
               </div>
@@ -1223,6 +1216,7 @@ export default function Code() {
               {!model && (
                 <Welcome
                   t={t}
+                  root={root}
                   recent={workspace?.recent ?? []}
                   onCommand={runCommand}
                   onOpenRecent={(dir) => void window.api.ws.setRoot(dir).then(changeRoot, (error) => flash(String(error.message ?? error), true))}
@@ -1235,8 +1229,7 @@ export default function Code() {
             <>
               {!layout.panelMax && (
                 <div
-                  className="-mt-[3px] h-[5px] shrink-0 cursor-row-resize hover:bg-[var(--vsc-focusBorder)]"
-                  style={{ zIndex: 5 }}
+                  className="wb-sash wb-sash-y"
                   onPointerDown={(event) => {
                     const height = layout.panelHeight;
                     startDrag('y', event, (delta) => setLayout({ panelHeight: Math.max(100, Math.min(window.innerHeight - 200, height - delta)) }));
@@ -1259,45 +1252,51 @@ export default function Code() {
       </div>
 
       {/* Barra de status */}
-      <footer
-        className="flex h-[22px] shrink-0 items-stretch border-t text-[12px]"
-        style={{ background: root ? 'var(--vsc-statusBar-background)' : 'var(--vsc-statusBar-noFolderBackground)', color: 'var(--vsc-statusBar-foreground)', borderColor: 'var(--vsc-statusBar-border)' }}
-      >
-        <button className={statusItem} title={root ?? ''} onClick={pickRecent}>
+      <footer className="wb-status" style={{ background: root ? 'var(--vsc-statusBar-background)' : 'var(--vsc-statusBar-noFolderBackground)', color: 'var(--vsc-statusBar-foreground)' }}>
+        <button className="wb-status-item" title={root ?? ''} onClick={pickRecent}>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><path d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" /></svg>
           {root ? baseName(root) + (roots.length > 1 ? ` +${roots.length - 1}` : '') : t('code.explorer.noFolder')}
         </button>
-        <button className={statusItem} title={t('code.status.problems')} onClick={toggleTerminal}>
-          ⊗ {markers.errors} ⚠ {markers.warnings}
+        <button className="wb-status-item" title={t('code.status.problems')} onClick={toggleTerminal}>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="8" cy="8" r="6" /><path d="m5.8 5.8 4.4 4.4M10.2 5.8l-4.4 4.4" /></svg>
+          {markers.errors}
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="ml-1"><path d="M8 2 14.5 13.5h-13z" /><path d="M8 6.5v3M8 11.6v.1" strokeLinecap="round" /></svg>
+          {markers.warnings}
         </button>
         {(Object.keys(SERVER_LANGUAGES) as ServerKind[])
           .filter((serverKind) => serverStatus(serverKind) !== 'off')
           .map((serverKind) => (
-            <span key={serverKind} className={statusItem} title={t(`code.lsp.${serverStatus(serverKind)}` as Key)}>
-              {serverStatus(serverKind) === 'starting' ? '◌' : serverStatus(serverKind) === 'error' ? '⚠' : '✓'} {SERVER_LABELS[serverKind]}
+            <span key={serverKind} className="wb-status-item" title={t(`code.lsp.${serverStatus(serverKind)}` as Key)}>
+              <span className="wb-led" data-state={serverStatus(serverKind)} />
+              {SERVER_LABELS[serverKind]}
             </span>
           ))}
-        {notice && <span className={`${statusItem} truncate`} style={notice.error ? { color: 'var(--vsc-errorForeground)' } : undefined}>{notice.text}</span>}
+        {notice && (
+          <span className="wb-status-item min-w-0 truncate" role="status" style={notice.error ? { color: 'var(--vsc-errorForeground)' } : undefined}>
+            {notice.text}
+          </span>
+        )}
         <span className="flex-1" />
         {model && (
           <>
-            <button className={statusItem} onClick={() => setQuick({ kind: 'main', value: ':' })}>
+            <button className="wb-status-item wb-status-mono" onClick={() => setQuick({ kind: 'main', value: ':' })}>
               {t('code.status.position', { line: cursor.line, column: cursor.column })}
               {cursor.selected > 0 && ` ${t('code.status.selected', { count: cursor.selected })}`}
             </button>
-            <button className={statusItem} onClick={pickIndentation}>
+            <button className="wb-status-item" onClick={pickIndentation}>
               {model.getOptions().insertSpaces ? t('code.status.spaces', { size: model.getOptions().tabSize }) : t('code.status.tabSize', { size: model.getOptions().tabSize })}
             </button>
-            <span className={statusItem}>UTF-8</span>
-            <button className={statusItem} onClick={pickEol}>
+            <span className="wb-status-item">UTF-8</span>
+            <button className="wb-status-item" onClick={pickEol}>
               {model.getEOL() === '\n' ? 'LF' : 'CRLF'}
             </button>
-            <button className={statusItem} onClick={pickLanguage} title={lspKind ? t(`code.lsp.${serverStatus(lspKind)}` as Key) : undefined}>
-              {lspKind && serverStatus(lspKind) === 'ready' ? '{ } ' : ''}
+            <button className="wb-status-item" onClick={pickLanguage} title={lspKind ? t(`code.lsp.${serverStatus(lspKind)}` as Key) : undefined}>
+              {lspKind && <span className="wb-led" data-state={serverStatus(lspKind)} />}
               {languageLabel}
             </button>
           </>
         )}
-        <button className={statusItem} onClick={() => setPrefs({ autoSave: !prefs.autoSave })} title={t(prefs.autoSave ? 'code.cmd.autoSaveOff' : 'code.cmd.autoSaveOn')}>
+        <button className="wb-status-item" onClick={() => setPrefs({ autoSave: !prefs.autoSave })} title={t(prefs.autoSave ? 'code.cmd.autoSaveOff' : 'code.cmd.autoSaveOn')}>
           {prefs.autoSave ? t('code.status.autoSave') : t('code.status.manualSave')}
         </button>
       </footer>
@@ -1328,63 +1327,56 @@ function recentCommands(): string[] {
   }
 }
 
-// Tela inicial sem arquivo aberto, como o "Get Started" do VS Code.
-function Welcome({ t, recent, onCommand, onOpenRecent }: { t: ReturnType<typeof useT>; recent: string[]; onCommand(id: string): void; onOpenRecent(dir: string): void }) {
-  const link = 'block py-0.5 text-left text-[var(--vsc-list-highlightForeground)] hover:underline';
-  const shortcuts: [Key, string][] = [
-    ['code.cmd.showCommands', 'Ctrl+Shift+P'],
-    ['code.cmd.quickOpen', 'Ctrl+P'],
-    ['code.cmd.toggleTerminal', 'Ctrl+`'],
-    ['code.cmd.toggleSidebar', 'Ctrl+B'],
-    ['code.cmd.selectTheme', 'Ctrl+K Ctrl+T'],
-  ];
+// Tela inicial sem arquivo aberto: cada ação mostra o próprio atalho, para ser aprendido de passagem.
+const WELCOME_ACTIONS: [command: string, label: Key, keys: string, icon: ReactNode][] = [
+  ['workbench.action.quickOpen', 'code.cmd.quickOpen', 'Ctrl+P', <path key="i" d="M7 12.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11ZM11 11l3.5 3.5" />],
+  ['workbench.action.showCommands', 'code.cmd.showCommands', 'Ctrl+Shift+P', <path key="i" d="m3 4.5 3.5 3.5L3 11.5M8.5 12h5" />],
+  ['workbench.action.files.newUntitledFile', 'code.cmd.newFile', 'Ctrl+N', <path key="i" d="M9.5 1.5h-6v13h9v-10zM9.5 1.5v3h3M8 7.5v5M5.5 10h5" />],
+  ['workbench.action.files.openFolder', 'code.cmd.openFolder', 'Ctrl+K Ctrl+O', <path key="i" d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" />],
+  ['workbench.action.addRootFolder', 'code.cmd.addFolder', '', <path key="i" d="M1.5 3.5h4.5l1.5 1.5h7v3M8.5 12.5h-7v-9M12 9.5v5M9.5 12h5" />],
+  ['workbench.action.terminal.toggleTerminal', 'code.cmd.toggleTerminal', 'Ctrl+`', <path key="i" d="M1.5 2.5h13v11h-13zM4 6l2.5 2L4 10M8 10.5h4" />],
+  ['workbench.action.selectTheme', 'code.cmd.selectTheme', 'Ctrl+K Ctrl+T', <path key="i" d="M8 1.5a6.5 6.5 0 1 0 0 13c1 0 1.3-.8.9-1.6-.5-1 .1-2.1 1.2-2.1h1.6a2.8 2.8 0 0 0 2.8-2.8c0-3.6-2.9-6.5-6.5-6.5ZM4.5 8h.01M6 5h.01M10 5h.01" />],
+];
+
+function Welcome({ t, root, recent, onCommand, onOpenRecent }: { t: ReturnType<typeof useT>; root: string | null; recent: string[]; onCommand(id: string): void; onOpenRecent(dir: string): void }) {
+  const icon = (shape: ReactNode) => (
+    <span className="wb-action-icon">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+        {shape}
+      </svg>
+    </span>
+  );
+  const others = recent.filter((dir) => !root || !samePath(dir, root)).slice(0, 7);
   return (
-    <div className="absolute inset-0 overflow-y-auto px-10 py-12" style={{ background: 'var(--vsc-editor-background)' }}>
-      <h1 className="text-3xl font-light" style={{ color: 'var(--vsc-editor-foreground)' }}>
-        {t('code.welcome.title')}
-      </h1>
-      <p className="mt-1 opacity-70">{t('code.welcome.subtitle')}</p>
-      <div className="mt-8 grid max-w-3xl gap-10 sm:grid-cols-2">
-        <section>
-          <h2 className="mb-2 text-[15px]" style={{ color: 'var(--vsc-editor-foreground)' }}>
-            {t('code.welcome.start')}
-          </h2>
-          <button className={link} onClick={() => onCommand('workbench.action.files.newUntitledFile')}>
-            {t('code.cmd.newFile')}
-          </button>
-          <button className={link} onClick={() => onCommand('workbench.action.files.openFile')}>
-            {t('code.cmd.openFile')}
-          </button>
-          <button className={link} onClick={() => onCommand('workbench.action.files.openFolder')}>
-            {t('code.cmd.openFolder')}
-          </button>
-          <button className={link} onClick={() => onCommand('workbench.action.selectTheme')}>
-            {t('code.cmd.selectTheme')}
-          </button>
-          <h2 className="mb-2 mt-6 text-[15px]" style={{ color: 'var(--vsc-editor-foreground)' }}>
-            {t('code.welcome.recent')}
-          </h2>
-          {recent.length === 0 && <p className="opacity-70">{t('code.welcome.noRecent')}</p>}
-          {recent.slice(0, 6).map((dir) => (
-            <div key={dir} className="flex gap-3">
-              <button className={link} onClick={() => onOpenRecent(dir)}>
-                {baseName(dir)}
+    <div className="wb-welcome">
+      <div className="wb-welcome-inner">
+        <p className="wb-eyebrow truncate">{root ?? t('code.explorer.noFolder')}</p>
+        <h1>{t('code.welcome.title')}</h1>
+        <div className="wb-welcome-vein" aria-hidden />
+        <p className="wb-welcome-lede">{t('code.welcome.subtitle')}</p>
+        <div className="wb-welcome-grid">
+          <section>
+            <h2>{t('code.welcome.start')}</h2>
+            {WELCOME_ACTIONS.map(([command, label, keys, shape]) => (
+              <button key={command} className="wb-action" onClick={() => onCommand(command)}>
+                {icon(shape)}
+                <span className="flex-1 truncate">{t(label)}</span>
+                {keys && <kbd className="wb-kbd shrink-0">{keys}</kbd>}
               </button>
-              <span className="truncate py-0.5 opacity-60">{dirName(dir)}</span>
-            </div>
-          ))}
-        </section>
-        <section>
-          <h2 className="mb-2 text-[15px]" style={{ color: 'var(--vsc-editor-foreground)' }}>
-            {t('code.welcome.shortcuts')}
-          </h2>
-          {shortcuts.map(([key, keys]) => (
-            <div key={key} className="flex items-center justify-between gap-4 py-1">
-              <span className="opacity-80">{t(key)}</span>
-              <kbd className="rounded px-1.5 font-mono text-[11.5px] ring-1 ring-[var(--vsc-pickerGroup-border)]">{keys}</kbd>
-            </div>
-          ))}
-        </section>
+            ))}
+          </section>
+          <section>
+            <h2>{t('code.welcome.recent')}</h2>
+            {others.length === 0 && <p className="px-2.5 py-1.5 text-[13px] opacity-60">{t('code.welcome.noRecent')}</p>}
+            {others.map((dir) => (
+              <button key={dir} className="wb-action" title={dir} onClick={() => onOpenRecent(dir)}>
+                {icon(<path d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" />)}
+                <span className="shrink-0">{baseName(dir)}</span>
+                <span className="wb-action-detail">{dirName(dir)}</span>
+              </button>
+            ))}
+          </section>
+        </div>
       </div>
     </div>
   );
