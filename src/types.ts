@@ -4,7 +4,8 @@ import type { BruRequest, Environment, EnvVar, HistoryEntry, HttpResult, Outgoin
 
 export type Note = { path: string; name: string };
 
-export type Tab = { id: number; stack: string[]; idx: number };
+// pinned: guia fixada (fica à esquerda, não fecha com Ctrl+W e abre links em outra guia).
+export type Tab = { id: number; stack: string[]; idx: number; pinned?: boolean };
 
 // Aba Código: pasta aberta, itens do explorador e terminais.
 export type WorkspaceState = { root: string | null; roots: string[]; recent: string[]; vault: string | null };

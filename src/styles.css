@@ -931,6 +931,19 @@ button {
   background: color-mix(in srgb, var(--color-sheen-400) 26%, transparent);
 }
 
+/* Guia fixada: estreita, com o alfinete no lugar do X. Alvo de soltar ao reordenar. */
+.tab[data-pinned='true'] .tab-pin {
+  color: var(--color-sheen-400);
+}
+
+.tab[data-active='true'][data-sheet='true'] .tab-pin {
+  color: var(--color-sheen-700);
+}
+
+.tab[data-drop='true'] {
+  box-shadow: inset 2px 0 0 var(--color-sheen-400);
+}
+
 /* Boas-vindas */
 .welcome-sheet {
   background: var(--color-paper);

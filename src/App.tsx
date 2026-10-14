@@ -17,6 +17,7 @@ import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIn
 import { gotoHeading } from './lib/noteBridge';
 import { extractHeadings, folderList, linkContexts, linkMentions, parseLinkTarget, sanitizeNotePath, tagIndex, unlinkedMentions } from './lib/notes';
 import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
+import { closeOthers, closeToRight, loadSession, moveTab, restoreSession, saveSession, togglePin } from './lib/tabs';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
 
 // O editor de código é pesado (Monaco): só é baixado quando a guia abre.
@@ -63,6 +64,8 @@ export default function App() {
   const [pins, setPins] = useState<Pins>(emptyPins);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const exporting = useRef(false);
+  // Vault cuja sessão de guias já foi restaurada: antes disso, gravar apagaria a sessão salva.
+  const sessionVault = useRef<string | null>(null);
   const nextId = useRef(1);
   // Favoritos e recentes do vault aberto: a referência guarda de qual vault são, para gravar na chave certa.
   const pinStore = useRef<{ vault: string | null; pins: Pins }>({ vault: null, pins: emptyPins });
@@ -111,7 +114,8 @@ export default function App() {
   const open = (path: string, newTab = false) => {
     const { tabs, activeId } = latest.current;
     const active = tabs.find((t) => t.id === activeId);
-    if (newTab || !active) {
+    // Guia fixada não troca de página: o link abre ao lado (como no Obsidian).
+    if (newTab || !active || (active.pinned && currentPath(active) && currentPath(active) !== path)) {
       const id = nextId.current++;
       setTabs([...tabs, { id, stack: [path], idx: 0 }]);
       setActiveId(id);
@@ -124,15 +128,40 @@ export default function App() {
     }
   };
 
-  const closeTab = (id: number) => {
+  // Ctrl+W não fecha guia fixada; o X, o menu e o clique do meio (force) fecham.
+  const closeTab = (id: number, force = false) => {
     const { tabs, activeId, closed } = latest.current;
     const index = tabs.findIndex((t) => t.id === id);
-    if (index < 0) return;
+    if (index < 0 || (tabs[index].pinned && !force)) return;
     const path = currentPath(tabs[index]);
     if (path) setClosed([...closed, path]);
     const rest = tabs.filter((t) => t.id !== id);
     setTabs(rest);
     if (id === activeId) setActiveId(rest[Math.min(index, rest.length - 1)]?.id ?? 0);
+  };
+
+  // Fechar várias de uma vez (outras, à direita): as que saem entram na lista de reabrir.
+  const replaceTabs = (next: Tab[], keepId: number) => {
+    const { tabs, activeId, closed } = latest.current;
+    if (next === tabs) return;
+    const gone = tabs.filter((tab) => !next.includes(tab)).map(currentPath).filter(Boolean);
+    setClosed([...closed, ...gone]);
+    setTabs(next);
+    if (!next.some((tab) => tab.id === activeId)) setActiveId(keepId);
+  };
+  const tabCommands = {
+    pin: (id: number) => setTabs(togglePin(latest.current.tabs, id)),
+    closeOthers: (id: number) => replaceTabs(closeOthers(latest.current.tabs, id), id),
+    closeRight: (id: number) => replaceTabs(closeToRight(latest.current.tabs, id), id),
+    move: (id: number, to: number) => setTabs(moveTab(latest.current.tabs, id, to)),
+    duplicate: (id: number) => {
+      const tab = latest.current.tabs.find((item) => item.id === id);
+      if (tab && currentPath(tab)) open(currentPath(tab), true);
+    },
+    copyLink: (id: number) => {
+      const path = currentPath(latest.current.tabs.find((item) => item.id === id));
+      if (path && !isSpecialPath(path)) void navigator.clipboard.writeText(`[[${baseName(path)}]]`);
+    },
   };
 
   const reopenTab = () => {
@@ -302,13 +331,25 @@ export default function App() {
     await refresh();
   };
 
+  // As guias da última vez voltam ao abrir o vault (sem as páginas que sumiram nesse meio-tempo).
+  const restoreTabs = (path: string, list: Note[]) => {
+    const known = new Set(list.map((note) => note.path));
+    const restored = restoreSession(loadSession(path), (item) => isSpecialPath(item) || known.has(item), nextId.current);
+    nextId.current += restored.tabs.length;
+    setTabs(restored.tabs);
+    setActiveId(restored.activeId);
+    sessionVault.current = path;
+  };
+
   const chooseVault = async () => {
     const chosen = await window.api.chooseVault();
     if (!chosen || chosen === vault) return;
     setTabs([]);
     setClosed([]);
     setVault(chosen);
-    loadVaultPins(chosen, await refresh());
+    const list = await refresh();
+    loadVaultPins(chosen, list);
+    restoreTabs(chosen, list);
   };
 
   const copyActive = (format: (note: Note) => string) => {
@@ -436,6 +477,8 @@ export default function App() {
     ['new-tab', 'cmd.newTab', 'Ctrl T', menu['new-tab']],
     ['close-tab', 'cmd.closeTab', 'Ctrl W', menu['close-tab'], tabs.length > 0],
     ['reopen-tab', 'cmd.reopenTab', 'Ctrl Shift T', menu['reopen-tab'], closed.length > 0],
+    ['pin-tab', 'cmd.pinTab', undefined, () => tabCommands.pin(activeId), tabs.length > 0],
+    ['close-other-tabs', 'cmd.closeOtherTabs', undefined, () => tabCommands.closeOthers(activeId), tabs.length > 1],
     ['back', 'cmd.back', 'Ctrl [', menu.back],
     ['forward', 'cmd.forward', 'Ctrl ]', menu.forward],
     ['toggle-sidebar', 'cmd.toggleSidebar', 'Ctrl \\', menu['toggle-sidebar']],
@@ -467,6 +510,7 @@ export default function App() {
       loadVaultPins(path, list);
       const start = window.api.startNote;
       if (start) open(isSpecialPath(start) || list.some((n) => n.path === start) ? start : GRAPH);
+      else restoreTabs(path, list);
     });
     const offMenu = window.api.onMenu((action) => {
       // Na aba Código, atalhos como Ctrl+P e Ctrl+Shift+P seguem o VS Code.
@@ -521,6 +565,10 @@ export default function App() {
 
   // Sumário: os títulos da página, a partir do que está gravado (atualiza a cada gravação).
   const headings = useMemo(() => (isNote ? extractHeadings(contents[activePath] ?? '') : []), [isNote, contents, activePath]);
+
+  useEffect(() => {
+    if (vault && sessionVault.current === vault) saveSession(vault, tabs, activeId);
+  }, [vault, tabs, activeId]);
 
   // Toda nota que passa pela guia ativa entra nas recentes (guias especiais e guia vazia, não).
   useEffect(() => {
@@ -664,7 +712,20 @@ export default function App() {
       </Presence>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        <TabBar tabs={tabs} activeId={activeId} onSelect={setActiveId} onClose={closeTab} onNew={() => open('', true)} onShowSidebar={sidebar ? undefined : () => setSidebar(true)} />
+        <TabBar
+          tabs={tabs}
+          activeId={activeId}
+          onSelect={setActiveId}
+          onClose={closeTab}
+          onNew={() => open('', true)}
+          onPin={tabCommands.pin}
+          onCloseOthers={tabCommands.closeOthers}
+          onCloseRight={tabCommands.closeRight}
+          onMove={tabCommands.move}
+          onDuplicate={tabCommands.duplicate}
+          onCopyLink={tabCommands.copyLink}
+          onShowSidebar={sidebar ? undefined : () => setSidebar(true)}
+        />
         {/* Só na impressão: o título da tela é um campo de uma linha, que cortaria nomes longos no PDF. */}
         {isNote && <h1 className="print-title">{baseName(activePath)}</h1>}
         <Stage

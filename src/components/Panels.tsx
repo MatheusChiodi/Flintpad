@@ -1,11 +1,12 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 
 import { Trans, useT, type Translate } from '../lib/i18n';
 import { baseName } from '../lib/links';
 import { fuzzyFilter } from '../lib/fuzzy';
 import { parseSearchQuery, searchNotes, type Excerpt, type Heading, type Mention } from '../lib/notes';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type Note, type Tab } from '../types';
-import { BacklinkIcon, ChevronIcon, CloseIcon, GraphIcon, Kbd, SidebarIcon, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon, WhiteboardIcon } from './Icons';
+import { ContextMenu, isMenuKey, menuPosition, type MenuItem, type MenuRequest } from './ContextMenu';
+import { BacklinkIcon, ChevronIcon, CloseIcon, PinIcon, GraphIcon, Kbd, SidebarIcon, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon, WhiteboardIcon } from './Icons';
 
 const currentPath = (tab: Tab) => tab.stack[tab.idx] ?? '';
 
@@ -23,14 +24,44 @@ type TabBarProps = {
   tabs: Tab[];
   activeId: number;
   onSelect: (id: number) => void;
-  onClose: (id: number) => void;
+  /** force: fecha mesmo fixada (pedido explícito, como o X ou o menu). */
+  onClose: (id: number, force?: boolean) => void;
   onNew: () => void;
+  onPin: (id: number) => void;
+  onCloseOthers: (id: number) => void;
+  onCloseRight: (id: number) => void;
+  onMove: (id: number, to: number) => void;
+  onDuplicate: (id: number) => void;
+  onCopyLink: (id: number) => void;
   /** Só com a barra lateral oculta: o botão que a traz de volta. */
   onShowSidebar?: () => void;
 };
 
-export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onShowSidebar }: TabBarProps) {
+const TAB_DRAG_TYPE = 'application/x-obnotion-tab';
+
+export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onPin, onCloseOthers, onCloseRight, onMove, onDuplicate, onCopyLink, onShowSidebar }: TabBarProps) {
   const t = useT();
+  const [menu, setMenu] = useState<MenuRequest | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+
+  const openMenu = (tab: Tab, event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>) => {
+    event.preventDefault();
+    const path = currentPath(tab);
+    const isPage = Boolean(path) && !isSpecialPath(path);
+    const index = tabs.indexOf(tab);
+    const items: MenuItem[] = [
+      { label: t(tab.pinned ? 'tabs.unpin' : 'tabs.pin'), run: () => onPin(tab.id) },
+      { label: t('tabs.duplicate'), disabled: !path, run: () => onDuplicate(tab.id) },
+      { label: t('sidebar.menu.copyLink'), disabled: !isPage, run: () => onCopyLink(tab.id) },
+      { kind: 'separator' },
+      { label: t('tabs.close'), keys: 'Ctrl W', run: () => onClose(tab.id, true) },
+      { label: t('tabs.closeOthers'), disabled: tabs.every((other) => other.id === tab.id || other.pinned), run: () => onCloseOthers(tab.id) },
+      { label: t('tabs.closeRight'), disabled: tabs.slice(index + 1).every((other) => other.pinned), run: () => onCloseRight(tab.id) },
+    ];
+    setMenu({ ...menuPosition(event as ReactMouseEvent<HTMLElement>), items, label: tabTitle(tab, t) });
+  };
+
   return (
     <div className="flex h-11 shrink-0 items-end gap-1 pl-[18px] pr-3" role="tablist" aria-label={t('tabs.label')}>
       {onShowSidebar && (
@@ -38,55 +69,97 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onShowSidebar
           <SidebarIcon size={16} />
         </button>
       )}
-      {tabs.map((tab) => {
+      {tabs.map((tab, index) => {
         const path = currentPath(tab);
         const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path === TASKS ? TasksIcon : path === WHITEBOARDS ? WhiteboardIcon : path ? PageIcon : PlusIcon;
         return (
           <div
             key={tab.id}
-            className="tab group flex h-[34px] min-w-0 max-w-52 flex-1 cursor-pointer items-center gap-2 rounded-t-lg pl-3 pr-1.5 text-[13px]"
+            className={`tab group flex h-[34px] min-w-0 cursor-pointer items-center gap-2 rounded-t-lg pl-3 pr-1.5 text-[13px] ${tab.pinned ? 'max-w-40 shrink-0' : 'max-w-52 flex-1'}`}
             data-active={tab.id === activeId}
             data-sheet={Boolean(path) && !isSpecialPath(path)}
+            data-pinned={tab.pinned ?? false}
+            data-drop={dropAt === index}
             role="tab"
             tabIndex={tab.id === activeId ? 0 : -1}
             aria-selected={tab.id === activeId}
             title={path && !isSpecialPath(path) ? path : undefined}
+            draggable
+            onDragStart={(event) => {
+              event.dataTransfer.setData(TAB_DRAG_TYPE, String(tab.id));
+              event.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragOver={(event) => {
+              if (!event.dataTransfer.types.includes(TAB_DRAG_TYPE)) return;
+              event.preventDefault();
+              setDropAt(index);
+            }}
+            onDragLeave={() => setDropAt((current) => (current === index ? null : current))}
+            onDrop={(event) => {
+              const id = Number(event.dataTransfer.getData(TAB_DRAG_TYPE));
+              setDropAt(null);
+              if (!id) return;
+              event.preventDefault();
+              onMove(id, index);
+            }}
+            onDragEnd={() => setDropAt(null)}
             onClick={() => onSelect(tab.id)}
+            onContextMenu={(event) => openMenu(tab, event)}
             onKeyDown={(event) => {
               if (event.target !== event.currentTarget) return;
-              // Setas andam entre as guias, como num tablist; Delete fecha.
-              const index = tabs.findIndex((item) => item.id === tab.id);
+              if (isMenuKey(event)) return openMenu(tab, event);
+              // Setas andam entre as guias, como num tablist; com Shift, levam a guia junto. Delete fecha.
               const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-              if (step) {
-                const next = tabs[(index + step + tabs.length) % tabs.length];
-                onSelect(next.id);
-                (event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="tab"]')[tabs.indexOf(next)])?.focus();
-              } else if (event.key === 'Delete') onClose(tab.id);
+              const bar = event.currentTarget.parentElement;
+              const focusAt = (position: number) => requestAnimationFrame(() => bar?.querySelectorAll<HTMLElement>('[role="tab"]')[position]?.focus());
+              if (step && event.shiftKey) {
+                onMove(tab.id, index + step);
+                focusAt(Math.max(0, Math.min(tabs.length - 1, index + step)));
+              } else if (step) {
+                const next = (index + step + tabs.length) % tabs.length;
+                onSelect(tabs[next].id);
+                bar?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus();
+              } else if (event.key === 'Delete') onClose(tab.id, true);
               else if (event.key === 'Enter' || event.key === ' ') onSelect(tab.id);
               else return;
               event.preventDefault();
             }}
-            onAuxClick={(event) => event.button === 1 && onClose(tab.id)}
+            onAuxClick={(event) => event.button === 1 && onClose(tab.id, true)}
           >
             <TabIcon size={14} className="row-icon" />
             <span className="flex-1 truncate">{tabTitle(tab, t)}</span>
-            <button
-              className="icon-button reveal"
-              title={t('tabs.close')}
-              aria-label={t('tabs.closeNamed', { name: tabTitle(tab, t) })}
-              onClick={(event) => {
-                event.stopPropagation();
-                onClose(tab.id);
-              }}
-            >
-              <CloseIcon size={13} />
-            </button>
+            {tab.pinned ? (
+              <button
+                className="icon-button tab-pin"
+                title={t('tabs.unpin')}
+                aria-label={t('tabs.unpinNamed', { name: tabTitle(tab, t) })}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPin(tab.id);
+                }}
+              >
+                <PinIcon size={13} />
+              </button>
+            ) : (
+              <button
+                className="icon-button reveal"
+                title={t('tabs.close')}
+                aria-label={t('tabs.closeNamed', { name: tabTitle(tab, t) })}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onClose(tab.id, true);
+                }}
+              >
+                <CloseIcon size={13} />
+              </button>
+            )}
           </div>
         );
       })}
       <button className="icon-button mb-1.5 ml-1 h-6 w-6" title={t('tabs.new')} aria-label={t('tabs.new')} onClick={onNew}>
         <PlusIcon size={15} />
       </button>
+      {menu && <ContextMenu request={menu} onClose={closeMenu} />}
     </div>
   );
 }

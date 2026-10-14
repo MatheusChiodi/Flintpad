@@ -423,6 +423,14 @@ const ptBR = {
   'sidebar.clearFilter': 'Limpar filtro',
   'sidebar.noFilterMatch': 'Nenhuma página com esse nome.',
   'sidebar.renameLabel': 'Novo nome para {name}',
+  'tabs.pin': 'Fixar guia',
+  'tabs.unpin': 'Soltar guia',
+  'tabs.unpinNamed': 'Soltar a guia {name}',
+  'tabs.duplicate': 'Duplicar guia',
+  'tabs.closeOthers': 'Fechar as outras guias',
+  'tabs.closeRight': 'Fechar as guias à direita',
+  'cmd.pinTab': 'Fixar/soltar a guia',
+  'cmd.closeOtherTabs': 'Fechar as outras guias',
 } satisfies Record<string, Entry>;
 
 export type Key = keyof typeof ptBR;
@@ -838,6 +846,14 @@ const en: Record<Key, Entry> = {
   'sidebar.clearFilter': 'Clear filter',
   'sidebar.noFilterMatch': 'No page with that name.',
   'sidebar.renameLabel': 'New name for {name}',
+  'tabs.pin': 'Pin tab',
+  'tabs.unpin': 'Unpin tab',
+  'tabs.unpinNamed': 'Unpin tab {name}',
+  'tabs.duplicate': 'Duplicate tab',
+  'tabs.closeOthers': 'Close other tabs',
+  'tabs.closeRight': 'Close tabs to the right',
+  'cmd.pinTab': 'Pin/unpin tab',
+  'cmd.closeOtherTabs': 'Close other tabs',
 };
 
 const dictionaries: Record<Language, Record<Key, Entry>> = { 'pt-BR': ptBR, en };
