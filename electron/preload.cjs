@@ -20,6 +20,10 @@ contextBridge.exposeInMainWorld('api', {
   envWrite: (rel, variables) => ipcRenderer.invoke('env:write', rel, variables),
   httpSend: (request) => ipcRenderer.invoke('http:send', request),
   httpCancel: (id) => ipcRenderer.invoke('http:cancel', id),
+  filesList: () => ipcRenderer.invoke('files:list'),
+  extList: () => ipcRenderer.invoke('ext:list'),
+  extTheme: (file) => ipcRenderer.invoke('ext:theme', file),
+  extSnippets: (file) => ipcRenderer.invoke('ext:snippets', file),
   onMenu: (callback) => {
     const listener = (_event, action) => callback(action);
     ipcRenderer.on('menu', listener);

@@ -77,6 +77,12 @@ export const GraphIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const CodeIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m5.5 4.5-3.25 3.5 3.25 3.5m5-7 3.25 3.5-3.25 3.5M9.1 3.25l-2.2 9.5" />
+  </Icon>
+);
+
 export const RequestIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M2.5 5.25h9.5m-2.5-2.5 2.5 2.5-2.5 2.5M13.5 10.75H4m2.5-2.5-2.5 2.5 2.5 2.5" />

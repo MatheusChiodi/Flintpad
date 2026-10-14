@@ -4,11 +4,18 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron')
 const path = require('node:path');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
+const os = require('node:os');
+const { parse: parseJsonc } = require('jsonc-parser');
 const { bruToJsonV2, jsonToBruV2, bruToEnvJsonV2, envJsonToBruV2 } = require('@usebruno/lang');
 
 const MAX_INDEXED_BYTES = 1024 * 1024;
 const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const ENV_DIR = 'environments';
+const MAX_LISTED_FILES = 5000;
+// Arquivos que o editor de código não abre: binários, mídia e pacotes.
+const BINARY_EXTENSIONS = new Set(
+  'png jpg jpeg gif webp bmp ico icns avif mp3 wav ogg flac mp4 mkv mov avi webm pdf zip rar 7z gz tar exe dll so dylib bin node wasm woff woff2 ttf otf eot psd ai sketch fig db sqlite lock'.split(' '),
+);
 const inFlight = new Map();
 const configFile = () => path.join(app.getPath('userData'), 'config.json');
 
@@ -99,6 +106,98 @@ function registerIpc() {
   ipcMain.handle('note:delete', (_e, rel) => shell.trashItem(resolveInVault(rel)));
 
   registerRequestIpc();
+  registerCodeIpc();
+}
+
+// Onde o VS Code guarda extensões: as do usuário e as que vêm com o programa.
+function extensionRoots() {
+  const roots = [path.join(os.homedir(), '.vscode', 'extensions')];
+  const install = path.join(process.env.LOCALAPPDATA ?? '', 'Programs', 'Microsoft VS Code');
+  try {
+    for (const entry of fs.readdirSync(install, { withFileTypes: true })) {
+      const builtin = path.join(install, entry.name, 'resources', 'app', 'extensions');
+      if (entry.isDirectory() && fs.existsSync(builtin)) roots.push(builtin);
+    }
+    const legacy = path.join(install, 'resources', 'app', 'extensions');
+    if (fs.existsSync(legacy)) roots.push(legacy);
+  } catch {
+    // VS Code não instalado no local padrão
+  }
+  return roots.filter((dir) => fs.existsSync(dir));
+}
+
+const readJsonc = async (file) => parseJsonc(await fsp.readFile(file, 'utf8'), [], { allowTrailingComma: true });
+
+function resolveInExtensions(file) {
+  const full = path.resolve(file);
+  if (!extensionRoots().some((dir) => full.startsWith(dir + path.sep))) throw new Error('Caminho fora das extensões do VS Code');
+  return full;
+}
+
+// Temas podem herdar de outro arquivo com "include".
+async function readTheme(file, depth = 0) {
+  const theme = (await readJsonc(file)) ?? {};
+  if (!theme.include || depth > 4) return theme;
+  const base = await readTheme(resolveInExtensions(path.resolve(path.dirname(file), theme.include)), depth + 1);
+  return { ...base, ...theme, colors: { ...base.colors, ...theme.colors }, tokenColors: [...(base.tokenColors ?? []), ...(theme.tokenColors ?? [])] };
+}
+
+function registerCodeIpc() {
+  ipcMain.handle('files:list', async () => {
+    const out = [];
+    const visit = async (dir, rel) => {
+      for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
+        if (out.length >= MAX_LISTED_FILES) return;
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+        const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) await visit(path.join(dir, entry.name), childRel);
+        else if (!BINARY_EXTENSIONS.has(path.extname(entry.name).slice(1).toLowerCase())) out.push(childRel);
+      }
+    };
+    await visit(vault, '');
+    return out.sort((a, b) => a.localeCompare(b));
+  });
+
+  ipcMain.handle('ext:list', async () => {
+    const extensions = [];
+    for (const dir of extensionRoots()) {
+      const builtin = !dir.startsWith(os.homedir() + path.sep + '.vscode');
+      for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const folder = path.join(dir, entry.name);
+        try {
+          const pkg = JSON.parse(await fsp.readFile(path.join(folder, 'package.json'), 'utf8'));
+          let nls = {};
+          try {
+            nls = JSON.parse(await fsp.readFile(path.join(folder, 'package.nls.json'), 'utf8'));
+          } catch {
+            // extensão sem arquivo de textos
+          }
+          const text = (value) => (typeof value === 'string' ? value.replace(/^%(.+)%$/, (all, key) => nls[key]?.message ?? nls[key] ?? all) : '');
+          const contributes = pkg.contributes ?? {};
+          const themes = (contributes.themes ?? []).map((theme) => ({ label: text(theme.label) || theme.id || path.basename(theme.path), uiTheme: theme.uiTheme ?? 'vs-dark', path: path.join(folder, theme.path) }));
+          const snippets = (contributes.snippets ?? []).map((snippet) => ({ language: snippet.language, path: path.join(folder, snippet.path) }));
+          extensions.push({
+            id: `${pkg.publisher ?? 'vscode'}.${pkg.name}`,
+            name: text(pkg.displayName) || pkg.name,
+            version: pkg.version ?? '',
+            builtin,
+            hasCode: Boolean(pkg.main || pkg.browser),
+            grammars: (contributes.grammars ?? []).length,
+            themes,
+            snippets,
+          });
+        } catch {
+          // pasta que não é uma extensão válida
+        }
+      }
+    }
+    return extensions.sort((a, b) => a.name.localeCompare(b.name));
+  });
+
+  ipcMain.handle('ext:theme', (_e, file) => readTheme(resolveInExtensions(file)));
+
+  ipcMain.handle('ext:snippets', async (_e, file) => (await readJsonc(resolveInExtensions(file))) ?? {});
 }
 
 const isEnvFile = (rel) => rel.split('/').slice(-2, -1)[0] === ENV_DIR;
@@ -230,6 +329,7 @@ function buildMenu() {
         item('Busca rápida', 'CmdOrCtrl+P', 'quick-switcher'),
         item('Visualização em grafo', 'CmdOrCtrl+G', 'graph'),
         item('Requests', 'CmdOrCtrl+Shift+E', 'requests'),
+        item('Código', 'CmdOrCtrl+Shift+K', 'code'),
         item('Mostrar/ocultar barra lateral', 'CmdOrCtrl+\\', 'toggle-sidebar'),
         { type: 'separator' },
         { role: 'reload', label: 'Recarregar' },

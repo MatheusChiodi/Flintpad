@@ -1,3 +1,4 @@
+import type { VsExtension, VsSnippet, VsTheme } from './lib/vscode';
 import type { BruRequest, Environment, EnvVar, HttpResult, OutgoingRequest, RequestSummary } from './lib/request';
 
 export type Note = { path: string; name: string };
@@ -6,9 +7,10 @@ export type Tab = { id: number; stack: string[]; idx: number };
 
 export const GRAPH = '::graph';
 export const REQUESTS = '::requests';
+export const CODE = '::code';
 
 // Guias que não são notas.
-export const isSpecialPath = (path: string) => path === GRAPH || path === REQUESTS;
+export const isSpecialPath = (path: string) => path === GRAPH || path === REQUESTS || path === CODE;
 
 export type MenuAction =
   | 'new-note'
@@ -21,6 +23,7 @@ export type MenuAction =
   | 'quick-switcher'
   | 'graph'
   | 'requests'
+  | 'code'
   | 'toggle-sidebar'
   | 'back'
   | 'forward'
@@ -47,6 +50,10 @@ declare global {
       envWrite(rel: string, variables: EnvVar[]): Promise<void>;
       httpSend(request: OutgoingRequest): Promise<HttpResult>;
       httpCancel(id: string): Promise<void>;
+      filesList(): Promise<string[]>;
+      extList(): Promise<VsExtension[]>;
+      extTheme(file: string): Promise<VsTheme>;
+      extSnippets(file: string): Promise<Record<string, VsSnippet>>;
       onMenu(callback: (action: MenuAction) => void): () => void;
     };
   }

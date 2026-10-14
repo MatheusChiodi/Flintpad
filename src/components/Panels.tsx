@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { baseName } from '../lib/links';
-import { GRAPH, isSpecialPath, REQUESTS, type Note, type Tab } from '../types';
-import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon } from './Icons';
+import { CODE, GRAPH, isSpecialPath, REQUESTS, type Note, type Tab } from '../types';
+import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon } from './Icons';
 
 const currentPath = (tab: Tab) => tab.stack[tab.idx] ?? '';
 
@@ -10,6 +10,7 @@ export function tabTitle(tab: Tab) {
   const path = currentPath(tab);
   if (path === GRAPH) return 'Grafo';
   if (path === REQUESTS) return 'Requests';
+  if (path === CODE) return 'Código';
   return path ? baseName(path) : 'Nova guia';
 }
 
@@ -26,7 +27,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew }: TabBarProps
     <div className="flex h-11 shrink-0 items-end gap-1 pl-[18px] pr-3">
       {tabs.map((tab) => {
         const path = currentPath(tab);
-        const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path ? PageIcon : PlusIcon;
+        const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path ? PageIcon : PlusIcon;
         return (
           <div
             key={tab.id}

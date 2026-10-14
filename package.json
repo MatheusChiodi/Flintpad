@@ -34,6 +34,8 @@
     "@mantine/hooks": "^9.7.2",
     "@usebruno/lang": "^0.40.0",
     "d3-force": "^3.0.0",
+    "jsonc-parser": "^3.3.1",
+    "monaco-editor": "^0.57.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

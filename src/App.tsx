@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Editor, openLinkEvent } from './components/Editor';
 import { Graph } from './components/Graph';
@@ -8,7 +8,10 @@ import { LinksPanel, QuickSwitcher, TabBar } from './components/Panels';
 import { Requests } from './components/Requests';
 import { Sidebar } from './components/Sidebar';
 import { baseName, dirName, outgoingTargets, resolveLink, retargetLinks } from './lib/links';
-import { GRAPH, isSpecialPath, REQUESTS, type MenuAction, type Note, type Tab } from './types';
+import { CODE, GRAPH, isSpecialPath, REQUESTS, type MenuAction, type Note, type Tab } from './types';
+
+// O editor de código é pesado (Monaco): só é baixado quando a guia abre.
+const Code = lazy(() => import('./components/Code'));
 
 const UNTITLED = 'Sem título';
 const currentPath = (tab?: Tab) => tab?.stack[tab.idx] ?? '';
@@ -144,12 +147,14 @@ export default function App() {
     if (note) void navigator.clipboard.writeText(format(note));
   };
 
-  // Requests é uma guia única: se já existe, só recebe o foco.
-  const openRequests = () => {
-    const existing = latest.current.tabs.find((t) => currentPath(t) === REQUESTS);
+  // Requests e Código são guias únicas: se já existem, só recebem o foco.
+  const openSingleton = (path: string) => {
+    const existing = latest.current.tabs.find((t) => currentPath(t) === path);
     if (existing) setActiveId(existing.id);
-    else open(REQUESTS, true);
+    else open(path, true);
   };
+  const openRequests = () => openSingleton(REQUESTS);
+  const openCode = () => openSingleton(CODE);
 
   const menu: Record<MenuAction, () => void> = {
     'new-note': async () => open(await createNote()),
@@ -162,6 +167,7 @@ export default function App() {
     'quick-switcher': () => setSwitcher(true),
     graph: () => open(GRAPH, true),
     requests: () => openRequests(),
+    code: () => openCode(),
     'toggle-sidebar': () => setSidebar((visible) => !visible),
     back: () => navigate(-1),
     forward: () => navigate(1),
@@ -179,7 +185,7 @@ export default function App() {
       if (!path) return;
       const list = await refresh();
       const start = window.api.startNote;
-      if (start) open(start === REQUESTS || list.some((n) => n.path === start) ? start : GRAPH);
+      if (start) open(isSpecialPath(start) || list.some((n) => n.path === start) ? start : GRAPH);
     });
     const offMenu = window.api.onMenu((action) => menuRef.current[action]?.());
     const onLink = (event: Event) => void openTargetRef.current((event as CustomEvent<string>).detail);
@@ -309,6 +315,7 @@ export default function App() {
           onDelete={deleteNote}
           onGraph={() => open(GRAPH, true)}
           onRequests={openRequests}
+          onCode={openCode}
           onSearch={() => setSwitcher(true)}
         />
       </Presence>
@@ -322,6 +329,10 @@ export default function App() {
         >
           {activePath === REQUESTS ? (
             <Requests />
+          ) : activePath === CODE ? (
+            <Suspense fallback={<p className="p-5 text-frost-500">Abrindo o editor…</p>}>
+              <Code />
+            </Suspense>
           ) : activePath === GRAPH ? (
             <Graph notes={notes} edges={edges} onOpen={(path) => open(path)} />
           ) : isNote ? (

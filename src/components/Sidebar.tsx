@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import type { Note } from '../types';
-import { ChevronIcon, FolderIcon, GraphIcon, Kbd, RequestIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, TrashIcon } from './Icons';
+import { ChevronIcon, FolderIcon, GraphIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, TrashIcon } from './Icons';
 
 type Folder = { name: string; path: string; folders: Folder[]; notes: Note[] };
 
@@ -32,10 +32,11 @@ type Props = {
   onDelete: (path: string) => void;
   onGraph: () => void;
   onRequests: () => void;
+  onCode: () => void;
   onSearch: () => void;
 };
 
-export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onGraph, onRequests, onSearch }: Props) {
+export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onGraph, onRequests, onCode, onSearch }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tree = useMemo(() => buildTree(notes), [notes]);
 
@@ -133,6 +134,11 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
           <RequestIcon className="row-icon" />
           <span className="flex-1 text-left">Requests</span>
           <Kbd>Ctrl Shift E</Kbd>
+        </button>
+        <button className="row w-full px-2 text-[13px]" onClick={onCode}>
+          <CodeIcon className="row-icon" />
+          <span className="flex-1 text-left">Código</span>
+          <Kbd>Ctrl Shift K</Kbd>
         </button>
       </nav>
       <div className="section-label flex items-center justify-between border-t border-(--hairline) px-4 pb-2 pt-3.5">
