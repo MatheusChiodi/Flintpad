@@ -66,6 +66,9 @@ function linkify(blocks: any[]): any[] {
 // Gravações em andamento por nota, para a próxima abertura esperar por elas.
 const pendingWrites = new Map<string, Promise<void>>();
 
+// Quem lê a nota do disco fora do editor (guia Tarefas) espera a gravação em andamento.
+export const pendingWrite = (path: string) => pendingWrites.get(path)?.catch(() => undefined);
+
 type Props = {
   path: string;
   notes: Note[];

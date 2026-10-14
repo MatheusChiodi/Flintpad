@@ -95,7 +95,14 @@ export const RequestIcon = (props: IconProps) => (
   </Icon>
 );
 
-export const TrashIcon = (props: IconProps) => (
+export const TasksIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="2.75" y="2.75" width="10.5" height="10.5" rx="2.25" />
+    <path d="m5.4 8.2 1.9 1.9 3.4-4.1" />
+  </Icon>
+);
+
+export const TrashIcon =(props: IconProps) => (
   <Icon {...props}>
     <path d="M3 4.5h10M6.25 4.5V2.75h3.5V4.5M4.5 4.5l.6 8.75h5.8l.6-8.75M6.9 7v3.75M9.1 7v3.75" />
   </Icon>

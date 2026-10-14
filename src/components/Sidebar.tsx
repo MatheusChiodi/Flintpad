@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 
 import { Trans, useT } from '../lib/i18n';
 import type { Note } from '../types';
-import { ChevronIcon, FolderIcon, GraphIcon, CalendarIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, TrashIcon } from './Icons';
+import { ChevronIcon, FolderIcon, GraphIcon, CalendarIcon, Kbd, RequestIcon, CodeIcon, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon, SettingsIcon, TasksIcon, TrashIcon } from './Icons';
 
 type Folder = { name: string; path: string; folders: Folder[]; notes: Note[] };
 
@@ -33,13 +33,14 @@ type Props = {
   onDelete: (path: string) => void;
   onGraph: () => void;
   onDaily: () => void;
+  onTasks: () => void;
   onRequests: () => void;
   onCode: () => void;
   onSearch: () => void;
   onSettings: () => void;
 };
 
-export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onGraph, onDaily, onRequests, onCode, onSearch, onSettings }: Props) {
+export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onGraph, onDaily, onTasks, onRequests, onCode, onSearch, onSettings }: Props) {
   const t = useT();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const tree = useMemo(() => buildTree(notes), [notes]);
@@ -133,6 +134,11 @@ export function Sidebar({ vault, notes, activePath, onOpen, onNew, onDelete, onG
           <CalendarIcon className="row-icon" />
           <span className="rail-hide flex-1 text-left">{t('nav.daily')}</span>
           <Kbd>Ctrl D</Kbd>
+        </button>
+        <button className="row w-full px-2 text-[13px]" title={t('nav.tasks')} onClick={onTasks}>
+          <TasksIcon className="row-icon" />
+          <span className="rail-hide flex-1 text-left">{t('nav.tasks')}</span>
+          <Kbd>Ctrl Shift J</Kbd>
         </button>
         <button className="row w-full px-2 text-[13px]" title={t('nav.graph')} onClick={onGraph}>
           <GraphIcon className="row-icon" />

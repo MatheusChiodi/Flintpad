@@ -12,9 +12,10 @@ export type Settings = { language: Language };
 export const GRAPH = '::graph';
 export const REQUESTS = '::requests';
 export const CODE = '::code';
+export const TASKS = '::tasks';
 
 // Guias que não são notas.
-export const isSpecialPath = (path: string) => path === GRAPH || path === REQUESTS || path === CODE;
+export const isSpecialPath = (path: string) => path === GRAPH || path === REQUESTS || path === CODE || path === TASKS;
 
 export type MenuAction =
   | 'new-note'
@@ -30,6 +31,7 @@ export type MenuAction =
   | 'daily-note'
   | 'requests'
   | 'code'
+  | 'tasks'
   | 'toggle-sidebar'
   | 'back'
   | 'forward'

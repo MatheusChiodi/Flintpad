@@ -8,9 +8,10 @@ import { LinksPanel, QuickSwitcher, TabBar } from './components/Panels';
 import { Requests } from './components/Requests';
 import { Settings } from './components/Settings';
 import { Sidebar } from './components/Sidebar';
+import { Tasks } from './components/Tasks';
 import { translate, Trans, useLanguage, useT } from './lib/i18n';
 import { baseName, dirName, outgoingTargets, resolveLink, retargetLinks } from './lib/links';
-import { CODE, GRAPH, isSpecialPath, REQUESTS, type MenuAction, type Note, type Tab } from './types';
+import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, type MenuAction, type Note, type Tab } from './types';
 
 // O editor de código é pesado (Monaco): só é baixado quando a guia abre.
 const Code = lazy(() => import('./components/Code'));
@@ -151,7 +152,7 @@ export default function App() {
     if (note) void navigator.clipboard.writeText(format(note));
   };
 
-  // Requests e Código são guias únicas: se já existem, só recebem o foco.
+  // Requests, Código e Tarefas são guias únicas: se já existem, só recebem o foco.
   const openSingleton = (path: string) => {
     const existing = latest.current.tabs.find((t) => currentPath(t) === path);
     if (existing) setActiveId(existing.id);
@@ -159,6 +160,8 @@ export default function App() {
   };
   const openRequests = () => openSingleton(REQUESTS);
   const openCode = () => openSingleton(CODE);
+  const openTasks = () => openSingleton(TASKS);
+  const saved = (path: string, content: string) => setContents((prev) => ({ ...prev, [path]: content }));
 
   // Nota de hoje: uma página por dia numa pasta própria, criada na primeira vez que é aberta.
   const openDaily = async () => {
@@ -192,6 +195,7 @@ export default function App() {
     'daily-note': () => void openDaily(),
     requests: () => openRequests(),
     code: () => openCode(),
+    tasks: () => openTasks(),
     'toggle-sidebar': () => setSidebar((visible) => !visible),
     back: () => navigate(-1),
     forward: () => navigate(1),
@@ -352,6 +356,7 @@ export default function App() {
           onDelete={deleteNote}
           onGraph={() => open(GRAPH, true)}
           onDaily={() => void openDaily()}
+          onTasks={openTasks}
           onRequests={openRequests}
           onCode={openCode}
           onSearch={() => setSwitcher(true)}
@@ -372,6 +377,8 @@ export default function App() {
             <Suspense fallback={<p className="p-5 text-frost-500">{t('code.loading')}</p>}>
               <Code />
             </Suspense>
+          ) : activePath === TASKS ? (
+            <Tasks notes={notes} contents={contents} onOpen={open} onSaved={saved} />
           ) : activePath === GRAPH ? (
             <Graph notes={notes} edges={edges} onOpen={(path) => open(path)} />
           ) : isNote ? (
@@ -380,7 +387,7 @@ export default function App() {
               key={`${activeId}:${activePath}:${language}`}
               path={activePath}
               notes={notes}
-              onSaved={(path, content) => setContents((prev) => ({ ...prev, [path]: content }))}
+              onSaved={saved}
               onRename={renameNote}
             />
           ) : (

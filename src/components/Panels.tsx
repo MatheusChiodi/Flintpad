@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Trans, useT, type Translate } from '../lib/i18n';
 import { baseName } from '../lib/links';
-import { CODE, GRAPH, isSpecialPath, REQUESTS, type Note, type Tab } from '../types';
-import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon } from './Icons';
+import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, type Note, type Tab } from '../types';
+import { BacklinkIcon, CloseIcon, GraphIcon, Kbd, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, TasksIcon } from './Icons';
 
 const currentPath = (tab: Tab) => tab.stack[tab.idx] ?? '';
 
@@ -12,6 +12,7 @@ export function tabTitle(tab: Tab, t: Translate) {
   if (path === GRAPH) return t('nav.graph');
   if (path === REQUESTS) return t('nav.requests');
   if (path === CODE) return t('nav.code');
+  if (path === TASKS) return t('nav.tasks');
   return path ? baseName(path) : t('tabs.new');
 }
 
@@ -29,7 +30,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew }: TabBarProps
     <div className="flex h-11 shrink-0 items-end gap-1 pl-[18px] pr-3">
       {tabs.map((tab) => {
         const path = currentPath(tab);
-        const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path ? PageIcon : PlusIcon;
+        const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path === TASKS ? TasksIcon : path ? PageIcon : PlusIcon;
         return (
           <div
             key={tab.id}

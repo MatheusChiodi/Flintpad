@@ -31,6 +31,12 @@ Each note is a light page set into the dark frame. Type `/` to insert headings, 
 
 Link pages with `[[Page]]`, `[[Page|alias]]` or `[[Page#section]]`; type `[` to get page suggestions. The side panel lists the pages that point to the current one and the links it contains. Clicking a link to a page that does not exist creates it, and renaming a page updates every link that points to it.
 
+### Tasks
+
+<img src="docs/tasks.svg" alt="Tasks tab listing to-do items grouped by page, with filters and search" width="640">
+
+`Ctrl+Shift+J` opens the Tasks tab, which gathers the to-do items (`- [ ]` and `- [x]`) from every note in the vault, grouped by page. Filter by open, done or all, search by text, and click a page name to jump to it. Ticking a box rewrites only that line in the note's file.
+
 ### Graph
 
 <img src="docs/graph.svg" alt="Graph view with a highlighted node and its neighbours" width="640">
@@ -54,6 +60,7 @@ Pages open in tabs with their own back/forward history, next to a collapsible pa
 | Copy page link / page name | `Ctrl+L` / `Ctrl+Alt+L` |
 | Paste without formatting | `Ctrl+Shift+V` |
 | Quick search (creates the page if missing) | `Ctrl+P` |
+| Tasks | `Ctrl+Shift+J` |
 | Graph / Requests / Code | `Ctrl+G` / `Ctrl+Shift+E` / `Ctrl+Shift+K` |
 | Open another vault | `Ctrl+O` |
 | Quit | `Ctrl+Shift+Q` |
@@ -105,8 +112,8 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - `electron/main.cjs`: window, menu, disk access restricted to the vault, HTTP requests, VS Code extension reader.
 - `electron/preload.cjs`: the `window.api` bridge.
 - `src/App.tsx`: state (tabs, link index).
-- `src/components/`: `Editor` (BlockNote + wikilinks), `Sidebar`, `Panels` (tabs, links, search), `Graph`, `Requests`, `Code`.
-- `src/lib/`: link parsing, `.bru` request model, VS Code theme and snippet conversion.
+- `src/components/`: `Editor` (BlockNote + wikilinks), `Sidebar`, `Panels` (tabs, links, search), `Graph`, `Tasks`, `Requests`, `Code`.
+- `src/lib/`: link parsing, task extraction, `.bru` request model, VS Code theme and snippet conversion.
 - `docs/`: illustrations used in this file.
 
 ## Credits
