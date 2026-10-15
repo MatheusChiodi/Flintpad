@@ -274,22 +274,39 @@ export const RepeatIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Logo do Flintpad: uma ponta de pederneira lascada; as faces do golpe brilham na cor de destaque.
+// Abaixo de 24 px usa o desenho simplificado (menos facetas), que continua legível.
+const MARK_STONE = ['#262e3d', '#323c50', '#424f68', '#5b6984'];
+const MARK_FACETS: Array<[string, string | number]> = [
+  ['M128 20 188 96 136 86Z', 'var(--color-sheen-300)'],
+  ['M128 20 136 86 68 96Z', 3],
+  ['M68 96 136 86 120 146Z', 2],
+  ['M188 96 136 86 120 146Z', 'var(--color-sheen-400)'],
+  ['M188 96 176 192 120 146Z', 1],
+  ['M68 96 80 192 120 146Z', 1],
+  ['M80 192 120 146 134 196Z', 2],
+  ['M176 192 120 146 134 196Z', 0],
+  ['M80 192 128 236 134 196Z', 0],
+  ['M176 192 128 236 134 196Z', 1],
+];
+const MARK_FACETS_SMALL: Array<[string, string | number]> = [
+  ['M128 20 188 96 128 128Z', 'var(--color-sheen-300)'],
+  ['M128 20 128 128 68 96Z', 3],
+  ['M68 96 128 128 80 192Z', 2],
+  ['M188 96 176 192 128 128Z', 'var(--color-sheen-400)'],
+  ['M80 192 128 236 128 128Z', 1],
+  ['M176 192 128 236 128 128Z', 0],
+];
+
 export function Mark({ size = 20, className }: { size?: number; className?: string }) {
+  const facets = size < 24 ? MARK_FACETS_SMALL : MARK_FACETS;
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
-      <path d="M12 1.5 21 8l-3.4 12.5H6.4L3 8z" fill="var(--color-obsidian-600)" />
-      <path d="M12 1.5 21 8l-9 3.2z" fill="var(--color-sheen-400)" />
-      <path d="M12 1.5 3 8l9 3.2z" fill="var(--color-obsidian-500)" />
-      <path d="m12 11.2 5.6 9.3H6.4z" fill="var(--color-obsidian-700)" />
-      <path d="m21 8-3.4 12.5L12 11.2z" fill="var(--color-sheen-700)" />
-      <path
-        d="M12 1.5 21 8l-3.4 12.5H6.4L3 8z"
-        fill="none"
-        stroke="var(--color-sheen-300)"
-        strokeOpacity="0.35"
-        strokeWidth="0.75"
-        strokeLinejoin="round"
-      />
+    <svg width={size} height={size} viewBox="0 0 256 256" className={className} aria-hidden="true" focusable="false">
+      {facets.map(([d, tone]) => {
+        const fill = typeof tone === 'number' ? MARK_STONE[tone] : tone;
+        // O traço da mesma cor fecha as frestas de antialias entre as facetas.
+        return <path key={d} d={d} fill={fill} stroke={fill} strokeWidth={0.8} strokeLinejoin="round" />;
+      })}
     </svg>
   );
 }

@@ -1,5 +1,5 @@
 // Teste de ponta a ponta do quadro branco no app real (Electron, build de produção em dist/).
-// Usa os ganchos de teste que o app já tem (OBNOTION_SHOT/OBNOTION_EVAL: janela fora da tela, um script
+// Usa os ganchos de teste que o app já tem (FLINTPAD_SHOT/FLINTPAD_EVAL: janela fora da tela, um script
 // no renderer, captura e saída), sem dependências novas. Rodar com `npm run test:e2e` (faz o build antes).
 //
 // 1ª execução: cria um quadro, desenha duas formas, move uma, liga as duas com uma seta e exporta SVG e PNG.
@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const electron = createRequire(import.meta.url)('electron');
-const work = mkdtempSync(path.join(tmpdir(), 'obnotion-wb-e2e-'));
+const work = mkdtempSync(path.join(tmpdir(), 'flintpad-wb-e2e-'));
 const vault = path.join(work, 'vault');
 const downloads = path.join(work, 'downloads');
 after(() => rmSync(work, { recursive: true, force: true }));
@@ -89,14 +89,14 @@ function runApp(script, shot) {
   return new Promise((resolve, reject) => {
     const env = {
       ...process.env,
-      OBNOTION_SHOT: path.join(work, shot),
-      OBNOTION_SHOT_DELAY: '2500',
-      OBNOTION_EVAL: script,
-      OBNOTION_VAULT: vault,
-      OBNOTION_OPEN: '::whiteboards',
-      OBNOTION_LANG: 'en',
-      OBNOTION_USER_DATA: path.join(work, 'userdata'),
-      OBNOTION_DOWNLOAD_DIR: downloads,
+      FLINTPAD_SHOT: path.join(work, shot),
+      FLINTPAD_SHOT_DELAY: '2500',
+      FLINTPAD_EVAL: script,
+      FLINTPAD_VAULT: vault,
+      FLINTPAD_OPEN: '::whiteboards',
+      FLINTPAD_LANG: 'en',
+      FLINTPAD_USER_DATA: path.join(work, 'userdata'),
+      FLINTPAD_DOWNLOAD_DIR: downloads,
     };
     delete env.ELECTRON_RUN_AS_NODE;
     delete env.VITE_DEV_SERVER_URL;

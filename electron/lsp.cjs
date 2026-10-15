@@ -86,7 +86,7 @@ function registerLspIpc({ getWin }) {
       }
     });
     proc.stderr.on('data', (chunk) => {
-      if (process.env.OBNOTION_LSP_LOG) console.log(`[lsp:${kind}]`, chunk.toString());
+      if (process.env.FLINTPAD_LSP_LOG) console.log(`[lsp:${kind}]`, chunk.toString());
     });
     proc.on('error', (error) => {
       if (running.get(kind) === server) {

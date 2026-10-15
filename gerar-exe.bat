@@ -15,8 +15,8 @@ if not exist "node_modules\electron\dist\electron.exe" (
   node node_modules\electron\install.js || (echo Falha ao baixar o Electron. & pause & exit /b 1)
 )
 
-echo Fechando o ObNotion, se estiver aberto...
-taskkill /im ObNotion.exe /f >nul 2>nul
+echo Fechando o Flintpad, se estiver aberto...
+taskkill /im Flintpad.exe /f >nul 2>nul
 
 if exist "release" rmdir /s /q "release"
 if exist "dist" rmdir /s /q "dist"

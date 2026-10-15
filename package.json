@@ -1,8 +1,8 @@
 {
-  "name": "obnotion",
-  "productName": "ObNotion",
+  "name": "flintpad",
+  "productName": "Flintpad",
   "version": "0.1.0",
-  "description": "Notas locais em Markdown com editor de blocos: fusão de Obsidian e Notion.",
+  "description": "Espaço de trabalho local: notas em Markdown, grafo, tarefas, cliente de API, código e quadros.",
   "author": "MCHIODI",
   "private": true,
   "main": "electron/main.cjs",
@@ -15,7 +15,7 @@
     "dist": "npm run build && electron-builder --win portable"
   },
   "build": {
-    "appId": "com.mchiodi.obnotion",
+    "appId": "com.mchiodi.flintpad",
     "files": [
       "dist/**",
       "electron/**",
@@ -26,6 +26,9 @@
       "node_modules/@lydell/**",
       "node_modules/vscode-langservers-extracted/**"
     ],
+    "win": {
+      "icon": "build/icon.ico"
+    },
     "directories": {
       "output": "release"
     }

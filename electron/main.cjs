@@ -16,7 +16,7 @@ const { pushRecentVault, forgetRecentVault, sanitizeStoredPrefs } = require('./v
 // Os ganchos de teste só existem em desenvolvimento: no app empacotado as variáveis são descartadas
 // (o preload herda o ambiente já limpo).
 if (app.isPackaged) {
-  for (const hook of ['OBNOTION_SHOT', 'OBNOTION_EVAL', 'OBNOTION_TYPE', 'OBNOTION_EXPORT_TO', 'OBNOTION_DOWNLOAD_DIR']) delete process.env[hook];
+  for (const hook of ['FLINTPAD_SHOT', 'FLINTPAD_EVAL', 'FLINTPAD_TYPE', 'FLINTPAD_EXPORT_TO', 'FLINTPAD_DOWNLOAD_DIR']) delete process.env[hook];
 }
 
 const MAX_INDEXED_BYTES = 1024 * 1024;
@@ -40,7 +40,7 @@ let win = null;
 let workspace = null;
 let terminals = null;
 let languageServers = null;
-let vault = process.env.OBNOTION_VAULT || null;
+let vault = process.env.FLINTPAD_VAULT || null;
 let language = 'pt-BR';
 let t = translator(language);
 // Vault salvo que não foi encontrado ao abrir (pendrive fora, pasta apagada): a tela de boas-vindas avisa.
@@ -78,8 +78,8 @@ function loadConfig() {
     else missingVault = saved.vault;
   }
   prefs = sanitizeStoredPrefs(saved.prefs);
-  // OBNOTION_LANG é a língua inicial (testes); sem nada salvo, vale a língua do sistema.
-  const wanted = [process.env.OBNOTION_LANG, saved.language].find((candidate) => LANGUAGES.includes(candidate));
+  // FLINTPAD_LANG é a língua inicial (testes); sem nada salvo, vale a língua do sistema.
+  const wanted = [process.env.FLINTPAD_LANG, saved.language].find((candidate) => LANGUAGES.includes(candidate));
   setLanguage(wanted ?? (app.getLocale().toLowerCase().startsWith('pt') ? 'pt-BR' : 'en'));
 }
 
@@ -242,11 +242,11 @@ function registerIpc() {
   // Exporta a página aberta: o PDF sai do que está na janela, com o estilo de impressão (@media print).
   // Devolve { path } ao gravar, { error } se falhar e null se o diálogo for cancelado.
   ipcMain.handle('page:exportPdf', async (_e, name) => {
-    // OBNOTION_EXPORT_TO=<arquivo.pdf> (testes): grava direto, sem diálogo e sem abrir a pasta.
-    let target = process.env.OBNOTION_EXPORT_TO;
+    // FLINTPAD_EXPORT_TO=<arquivo.pdf> (testes): grava direto, sem diálogo e sem abrir a pasta.
+    let target = process.env.FLINTPAD_EXPORT_TO;
     try {
       if (!target) {
-        const safeName = String(name ?? '').replace(/[\\/:*?"<>|]/g, '').trim() || 'ObNotion';
+        const safeName = String(name ?? '').replace(/[\\/:*?"<>|]/g, '').trim() || 'Flintpad';
         const result = await dialog.showSaveDialog(win, {
           title: t('dialog.exportPdf'),
           defaultPath: path.join(app.getPath('documents'), `${safeName}.pdf`),
@@ -261,7 +261,7 @@ function registerIpc() {
         .printToPDF({ printBackground: true, pageSize: 'A4', margins: PDF_MARGINS_IN })
         .finally(() => win.setBackgroundColor(WINDOW_BACKGROUND));
       await fsp.writeFile(target, pdf);
-      if (!process.env.OBNOTION_EXPORT_TO) shell.showItemInFolder(target);
+      if (!process.env.FLINTPAD_EXPORT_TO) shell.showItemInFolder(target);
       return { path: target };
     } catch (error) {
       return { error: error.message };
@@ -622,20 +622,22 @@ function buildMenu(lang) {
 
 function createWindow() {
   win = new BrowserWindow({
-    // OBNOTION_SIZE=LARGURAxALTURA ajusta a janela nas capturas de teste.
-    width: Number(process.env.OBNOTION_SIZE?.split('x')[0]) || 1280,
-    height: Number(process.env.OBNOTION_SIZE?.split('x')[1]) || 820,
+    // FLINTPAD_SIZE=LARGURAxALTURA ajusta a janela nas capturas de teste.
+    width: Number(process.env.FLINTPAD_SIZE?.split('x')[0]) || 1280,
+    height: Number(process.env.FLINTPAD_SIZE?.split('x')[1]) || 820,
     minWidth: 720,
     minHeight: 480,
     backgroundColor: WINDOW_BACKGROUND,
     autoHideMenuBar: true,
-    title: 'ObNotion',
+    title: 'Flintpad',
+    // Ícone da janela e da barra de tarefas (no executável, o electron-builder usa build/icon.ico).
+    icon: path.join(__dirname, 'icon.png'),
     // Em modo de captura a janela não aparece: renderiza fora da tela, sem depender do foco.
-    show: !process.env.OBNOTION_SHOT,
+    show: !process.env.FLINTPAD_SHOT,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
-      offscreen: Boolean(process.env.OBNOTION_SHOT),
+      offscreen: Boolean(process.env.FLINTPAD_SHOT),
       nodeIntegration: false,
     },
   });
@@ -650,43 +652,55 @@ function createWindow() {
     if (url !== win.webContents.getURL()) event.preventDefault();
   });
 
-  // OBNOTION_DOWNLOAD_DIR=<pasta> (testes): downloads (exportações do quadro) vão direto para lá, sem diálogo.
+  // FLINTPAD_DOWNLOAD_DIR=<pasta> (testes): downloads (exportações do quadro) vão direto para lá, sem diálogo.
   // Sem a variável, o Electron pergunta onde salvar.
-  if (process.env.OBNOTION_DOWNLOAD_DIR) {
-    win.webContents.session.on('will-download', (_event, item) => item.setSavePath(path.join(process.env.OBNOTION_DOWNLOAD_DIR, path.basename(item.getFilename()))));
+  if (process.env.FLINTPAD_DOWNLOAD_DIR) {
+    win.webContents.session.on('will-download', (_event, item) => item.setSavePath(path.join(process.env.FLINTPAD_DOWNLOAD_DIR, path.basename(item.getFilename()))));
   }
 
   if (process.env.VITE_DEV_SERVER_URL) win.loadURL(process.env.VITE_DEV_SERVER_URL);
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
 
-  // Auxílio de teste: OBNOTION_SHOT=<arquivo.png> captura a janela e encerra.
-  if (process.env.OBNOTION_SHOT) {
+  // Auxílio de teste: FLINTPAD_SHOT=<arquivo.png> captura a janela e encerra.
+  if (process.env.FLINTPAD_SHOT) {
     win.webContents.on('console-message', (event) => console.log('[renderer]', event.message));
     win.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
-        if (process.env.OBNOTION_TYPE) {
+        if (process.env.FLINTPAD_TYPE) {
           await win.webContents.executeJavaScript("document.querySelector('.bn-editor')?.focus()");
-          await win.webContents.insertText(process.env.OBNOTION_TYPE);
+          await win.webContents.insertText(process.env.FLINTPAD_TYPE);
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
-        if (process.env.OBNOTION_EVAL) {
-          await win.webContents.executeJavaScript(process.env.OBNOTION_EVAL).catch((error) => console.log('[eval]', error.message));
+        if (process.env.FLINTPAD_EVAL) {
+          await win.webContents.executeJavaScript(process.env.FLINTPAD_EVAL).catch((error) => console.log('[eval]', error.message));
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
         const image = await win.webContents.capturePage();
-        await fsp.writeFile(process.env.OBNOTION_SHOT, image.toPNG());
+        await fsp.writeFile(process.env.FLINTPAD_SHOT, image.toPNG());
         app.quit();
-      }, Number(process.env.OBNOTION_SHOT_DELAY) || 5000);
+      }, Number(process.env.FLINTPAD_SHOT_DELAY) || 5000);
     });
   }
 }
 
 // Em modo de captura o app usa uma pasta de dados própria: nenhum teste lê nem grava o config.json
-// e o localStorage reais. OBNOTION_USER_DATA=<pasta> escolhe outra; --user-data-dir tem precedência.
-if (process.env.OBNOTION_SHOT && !app.commandLine.hasSwitch('user-data-dir')) {
-  const testData = process.env.OBNOTION_USER_DATA || path.join(os.tmpdir(), 'obnotion-test-userdata');
+// e o localStorage reais. FLINTPAD_USER_DATA=<pasta> escolhe outra; --user-data-dir tem precedência.
+if (process.env.FLINTPAD_SHOT && !app.commandLine.hasSwitch('user-data-dir')) {
+  const testData = process.env.FLINTPAD_USER_DATA || path.join(os.tmpdir(), 'flintpad-test-userdata');
   fs.mkdirSync(testData, { recursive: true });
   app.setPath('userData', testData);
+} else if (!app.commandLine.hasSwitch('user-data-dir')) {
+  // O app se chamava ObNotion: na primeira abertura como Flintpad, traz configurações, vaults
+  // recentes e o localStorage da pasta antiga (a antiga fica intacta, como cópia de segurança).
+  const current = app.getPath('userData');
+  const legacy = path.join(path.dirname(current), 'ObNotion');
+  if (!fs.existsSync(current) && fs.existsSync(legacy)) {
+    try {
+      fs.cpSync(legacy, current, { recursive: true, filter: (source) => !/[\\/](Singleton\w*|lockfile)$/.test(source) });
+    } catch (error) {
+      console.error('userData:migrate', error instanceof Error ? error.message : error);
+    }
+  }
 }
 
 app.whenReady().then(() => {

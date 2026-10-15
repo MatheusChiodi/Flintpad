@@ -107,7 +107,7 @@ export function Welcome({ onChoose, onOpen, onError, onSettings }: Props) {
       <div className="stagger w-full max-w-[440px]">
         <div className="flex items-center gap-2.5">
           <Mark size={26} />
-          <span className="font-display text-lg font-semibold tracking-tight text-frost-100">ObNotion</span>
+          <span className="font-display text-lg font-semibold tracking-tight text-frost-100">Flintpad</span>
         </div>
         <h1 className="welcome-title mt-9 text-balance font-display text-[44px] font-semibold leading-[1.05] tracking-[-0.025em] text-frost-100 max-[560px]:text-[34px]">
           {t('welcome.title')}

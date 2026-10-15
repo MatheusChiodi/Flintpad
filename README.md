@@ -1,4 +1,6 @@
-# ObNotion
+# Flintpad
+
+<img src="build/icon.svg" alt="Flintpad" width="96" />
 
 A desktop app that merges the Obsidian model (notes as local Markdown files, `[[wikilinks]]`, backlinks, graph) with the Notion experience (block editor, `/` menu, tabs and shortcuts). It also ships an API client and a code editor, so notes, requests and code live in the same folder.
 
@@ -127,7 +129,7 @@ The rest of the app only knows the `::whiteboards` tab, the sidebar entry and th
 - Text does not wrap; shape labels are centered lines.
 - No real-time collaboration or sharing; one window edits a board at a time. A board edited elsewhere (for example in the Code tab) while it is open is overwritten by the next change.
 - Undo history is kept per open board and is lost when the board is closed or renamed.
-- Exports use system fonts when the app font is not installed, so PNG/SVG text may look slightly different outside ObNotion. It does not import or export Excalidraw files.
+- Exports use system fonts when the app font is not installed, so PNG/SVG text may look slightly different outside Flintpad. It does not import or export Excalidraw files.
 
 ### Graph
 
@@ -239,7 +241,7 @@ Not there yet, compared to Bruno: pre/post-request scripts and `tests` blocks in
 
 In the Code tab a few app shortcuts take their VS Code meaning: `Ctrl+P` (Quick Open), `Ctrl+Shift+P` (palette), `Ctrl+G` (go to line), `Ctrl+N` (new file), `Ctrl+W` (close editor), `Ctrl+Shift+F` (search instead of favorite) and `Ctrl+Shift+T` (reopen editor; with nothing to reopen it falls back to reopening an app tab). Search and replace run in the main process with the same folder checks as the rest of the workspace (files over 1 MB, binaries, `.git` and `node_modules` are skipped; at most 2,000 results). The search/replace logic is shared by both sides in `electron/searchCore.mjs`; pure rules (tab closing, navigation history, save helpers, runners, Markdown snippet, saved tabs, file patterns) are in `src/lib/codeTools.ts` and the Markdown preview parser in `src/lib/markdownPreview.ts`, covered by `tests/codeSearch.test.mjs`, `tests/codeTools.test.mjs` and `tests/markdownPreview.test.mjs`.
 
-ObNotion reads the extensions already installed in your VS Code (the built-in ones and those in `~/.vscode/extensions`):
+Flintpad reads the extensions already installed in your VS Code (the built-in ones and those in `~/.vscode/extensions`):
 
 - **Color themes** recolor the whole workbench (side bar, tabs, status bar, terminal, pickers) and the code. `Preferences: Color theme` (`Ctrl+K Ctrl+T`) previews each theme as you move through the list.
 - **TextMate grammars** do the syntax highlighting, through the same engine as VS Code (`vscode-textmate` + Oniguruma), so the colors match VS Code's.
@@ -294,7 +296,7 @@ Preferences are saved in the app's `config.json` and checked field by field when
 - `src/whiteboard/`: the whiteboard module (see Whiteboards above).
 - `src/components/`: `Welcome` (no vault), `Home` (no page open), `Settings`, `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, search, TODOs, problems, compare with saved, Markdown preview).
 - `src/lib/`: preferences (`prefs.ts`, `prefsContext.tsx`), home screen logic (`home.ts`), settings search, link parsing, graph logic (`graph.ts`), note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
-- `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `OBNOTION_SHOT`/`OBNOTION_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, adds a pencil stroke, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
+- `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `FLINTPAD_SHOT`/`FLINTPAD_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, adds a pencil stroke, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
 - `docs/`: illustrations used in this file.
 
 ## Credits

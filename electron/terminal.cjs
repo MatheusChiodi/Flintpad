@@ -32,7 +32,7 @@ function registerTerminalIpc({ getWin, getCwd }) {
     pty ??= require('@lydell/node-pty');
     const shell = defaultShell();
     const cwd = getCwd() && fs.existsSync(getCwd()) ? getCwd() : process.env.USERPROFILE || process.cwd();
-    const env = { ...process.env, TERM_PROGRAM: 'ObNotion', COLORTERM: 'truecolor' };
+    const env = { ...process.env, TERM_PROGRAM: 'Flintpad', COLORTERM: 'truecolor' };
     delete env.ELECTRON_RUN_AS_NODE;
     const proc = pty.spawn(shell, [], { name: 'xterm-256color', cols: Math.max(2, cols | 0), rows: Math.max(1, rows | 0), cwd, env, useConpty: true });
     const id = nextId++;

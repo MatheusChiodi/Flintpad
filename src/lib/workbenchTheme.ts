@@ -159,8 +159,8 @@ export function xtermTheme(colors: WorkbenchColors): ITheme {
 }
 
 // Tema da casa, no formato do VS Code: a obsidiana com o veio verde-água.
-export const OBNOTION_THEME: VsTheme = {
-  name: 'ObNotion',
+export const FLINTPAD_THEME: VsTheme = {
+  name: 'Flintpad',
   type: 'dark',
   colors: {
     foreground: '#aeb8c7',

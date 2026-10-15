@@ -3,8 +3,8 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
-  debug: Boolean(process.env.OBNOTION_SHOT),
-  startNote: process.env.OBNOTION_OPEN || null,
+  debug: Boolean(process.env.FLINTPAD_SHOT),
+  startNote: process.env.FLINTPAD_OPEN || null,
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (settings) => ipcRenderer.invoke('settings:set', settings),
   getVault: () => ipcRenderer.invoke('vault:get'),

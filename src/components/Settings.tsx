@@ -360,7 +360,7 @@ export function Settings(props: Props) {
     {
       section: 'about',
       id: 'about',
-      title: 'ObNotion',
+      title: 'Flintpad',
       desc: t('settings.about.privacy'),
       wide: true,
       control: (

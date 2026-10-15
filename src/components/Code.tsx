@@ -16,7 +16,7 @@ import { configureServers, ensureServer, onServerStatus, restartServers, SERVER_
 import { baseName, dirName, isInside, joinPath, relativePath, samePath } from '../lib/paths';
 import { allLanguages, applyTokenTheme, fileLanguage, installExtensions, languageForFile } from '../lib/textmate';
 import { toMonacoTheme, toSnippetEntries, type SnippetEntry, type VsExtension, type VsTheme } from '../lib/vscode';
-import { cssVariables, OBNOTION_THEME, themeKind, workbenchColors, type ThemeKind, type WorkbenchColors } from '../lib/workbenchTheme';
+import { cssVariables, FLINTPAD_THEME, themeKind, workbenchColors, type ThemeKind, type WorkbenchColors } from '../lib/workbenchTheme';
 import type { DirEntry, FileSearchOptions, MenuAction, WorkspaceState } from '../types';
 import { Explorer } from './code/Explorer';
 import { FileIconView } from './code/FileIconView';
@@ -150,7 +150,7 @@ async function loadExtensions() {
 type ThemeChoice = { path: string; label: string; uiTheme: string; extension: string };
 
 async function readTheme(choice: ThemeChoice | null): Promise<{ theme: VsTheme; uiTheme: string }> {
-  if (!choice) return { theme: OBNOTION_THEME, uiTheme: 'vs-dark' };
+  if (!choice) return { theme: FLINTPAD_THEME, uiTheme: 'vs-dark' };
   return { theme: await window.api.extTheme(choice.path), uiTheme: choice.uiTheme };
 }
 
@@ -197,7 +197,7 @@ export default function Code() {
   });
   const [themePath, setThemePath] = useState(() => localStorage.getItem(STORAGE.colorTheme) ?? '');
   const [iconThemePath, setIconThemePath] = useState<string | null>(() => localStorage.getItem(STORAGE.iconTheme));
-  const [colors, setColors] = useState<WorkbenchColors>(() => workbenchColors(OBNOTION_THEME, 'dark'));
+  const [colors, setColors] = useState<WorkbenchColors>(() => workbenchColors(FLINTPAD_THEME, 'dark'));
   const [kind, setKind] = useState<ThemeKind>('dark');
   const [iconTheme, setIconTheme] = useState<IconTheme | null>(null);
   const [quick, setQuick] = useState<Quick | null>(null);
@@ -266,8 +266,8 @@ export default function Code() {
         setKind(nextKind);
         setColors(workbenchColors(theme, nextKind));
       } catch {
-        applyEditorTheme(OBNOTION_THEME, 'vs-dark');
-        setColors(workbenchColors(OBNOTION_THEME, 'dark'));
+        applyEditorTheme(FLINTPAD_THEME, 'vs-dark');
+        setColors(workbenchColors(FLINTPAD_THEME, 'dark'));
       }
     },
     [themes],
@@ -924,13 +924,13 @@ export default function Code() {
     // Parte dos comandos do Monaco (ir para definição, referências...) não é "action": vai por trigger.
     const action = editor.getAction(id);
     if (action) void action.run();
-    else editor.trigger('obnotion', id, null);
+    else editor.trigger('flintpad', id, null);
   };
 
   const pickTheme = () => {
     const original = themePath;
     const items: QuickItem[] = [
-      { id: '', label: t('code.defaultTheme'), description: 'ObNotion', group: t('code.theme.house') },
+      { id: '', label: t('code.defaultTheme'), description: 'Flintpad', group: t('code.theme.house') },
       ...themes.map((theme) => ({ id: theme.path, label: theme.label, description: theme.extension, group: themeKind(theme.uiTheme) === 'light' || themeKind(theme.uiTheme) === 'hc-light' ? t('code.theme.light') : t('code.theme.dark') })),
     ].sort((a, b) => (a.group === b.group ? 0 : a.group === t('code.theme.house') ? -1 : b.group === t('code.theme.house') ? 1 : a.group!.localeCompare(b.group!)));
     setQuick({

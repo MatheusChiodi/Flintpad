@@ -189,7 +189,7 @@ class IpcTransport implements Transport {
         params: {
           ...params,
           processId: null,
-          clientInfo: { name: 'ObNotion' },
+          clientInfo: { name: 'Flintpad' },
           rootUri: this.rootUri,
           rootPath: this.root,
           workspaceFolders: this.root ? [{ uri: this.rootUri, name: this.root.split(/[\\/]/).pop() }] : null,
