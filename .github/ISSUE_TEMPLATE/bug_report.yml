@@ -1,0 +1,44 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the report! Security problems go to a private report instead (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a vault with …
+        2. Press …
+        3. See …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Notes, Tabs / search, Graph, Tasks, Whiteboards, Requests, Code, Welcome / settings, Other]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Flintpad version and OS
+      description: Settings → About has a copy button.
+      placeholder: 0.1.0, Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or logs
+      description: Please remove any private content from notes or requests before sharing.

@@ -2,8 +2,30 @@
   "name": "flintpad",
   "productName": "Flintpad",
   "version": "0.1.0",
-  "description": "Espaço de trabalho local: notas em Markdown, grafo, tarefas, cliente de API, código e quadros.",
-  "author": "MCHIODI",
+  "description": "Local-first workspace: Markdown notes, graph, tasks, whiteboards, an API client and a code editor, all as plain files on your machine.",
+  "author": "Matheus Chiodi",
+  "license": "MIT",
+  "homepage": "https://github.com/MatheusChiodi/Flintpad#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MatheusChiodi/Flintpad.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MatheusChiodi/Flintpad/issues"
+  },
+  "keywords": [
+    "notes",
+    "markdown",
+    "local-first",
+    "obsidian",
+    "wikilinks",
+    "knowledge-base",
+    "whiteboard",
+    "api-client",
+    "bruno",
+    "electron",
+    "desktop-app"
+  ],
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {

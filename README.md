@@ -1,14 +1,43 @@
+<div align="center">
+
+<img src="build/icon.svg" alt="Flintpad logo" width="112" />
+
 # Flintpad
 
-<img src="build/icon.svg" alt="Flintpad" width="96" />
+**Your whole workspace. Your files. Your machine.**
 
-A desktop app that merges the Obsidian model (notes as local Markdown files, `[[wikilinks]]`, backlinks, graph) with the Notion experience (block editor, `/` menu, tabs and shortcuts). It also ships an API client and a code editor, so notes, requests and code live in the same folder.
+Notes, graph, tasks, whiteboards, an API client and a code editor in one local-first desktop app.<br>
+Everything is a plain file in a folder you own. No account, no cloud, no telemetry.
 
-Everything is original code. Nothing was copied from Obsidian, Notion, Bruno or VS Code; their behavior was studied and reimplemented with open-source libraries.
+[![CI](https://github.com/MatheusChiodi/Flintpad/actions/workflows/ci.yml/badge.svg)](https://github.com/MatheusChiodi/Flintpad/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/MatheusChiodi/Flintpad?label=release)](https://github.com/MatheusChiodi/Flintpad/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4fbfb4.svg)](LICENSE)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows-2d3648.svg)
+
+[Download](https://github.com/MatheusChiodi/Flintpad/releases/latest) · [Features](#features) · [Contributing](CONTRIBUTING.md) · [Usage policy](USAGE_POLICY.md)
+
+<img src="docs/screenshot.png" alt="Flintpad with a note open: page tree on the left, block editor in the middle, outline and backlinks on the right" width="900" />
+
+</div>
+
+## Why Flintpad
+
+- **Notes like Obsidian, editing like Notion.** Markdown files with `[[wikilinks]]`, backlinks, tags and a graph, edited as blocks with a `/` menu. Open an existing Obsidian vault and it just works.
+- **One folder, every tool.** Tasks gathered from all your notes, Excalidraw-style whiteboards, a Bruno-compatible API client and a VS Code-style code workbench, side by side in tabs.
+- **Yours, offline.** Plain `.md`, `.bru` and `.whiteboard.json` files you can sync, version or edit anywhere. Nothing leaves your computer unless you send it.
+- **Keyboard first.** Quick search, command palette and shortcuts for everything, in English and Brazilian Portuguese.
+
+Everything is original code. Nothing was copied from Obsidian, Notion, Bruno, Excalidraw or VS Code; their behavior was studied and reimplemented with open-source libraries.
 
 ## Getting started
 
+**Download:** grab the portable `Flintpad <version>.exe` from the [latest release](https://github.com/MatheusChiodi/Flintpad/releases/latest) and run it; no installation needed. The build is not code-signed yet, so Windows SmartScreen may ask you to confirm (*More info → Run anyway*).
+
+**Build from source** (Node.js 22 or newer):
+
 ```bash
+git clone https://github.com/MatheusChiodi/Flintpad.git
+cd Flintpad
 npm install
 npm run dev     # app with hot reload
 npm start       # production build + app
@@ -17,7 +46,7 @@ npm run dist    # portable Windows executable in release/
 
 On Windows you can also double-click `gerar-exe.bat` to build the executable.
 
-On first launch, pick the vault folder (or drag a folder onto the window). It can be an existing Obsidian vault: files stay plain `.md` and YAML frontmatter is preserved. An empty vault offers a few example pages to start from.
+On first launch, pick the vault folder (or drag a folder onto the window). It can be an existing Obsidian vault: files stay plain `.md` and YAML frontmatter is preserved. An empty vault offers a few example pages to start from. Coming from ObNotion (the project's former name)? Your settings and recent vaults are carried over on first launch.
 
 ## Features
 
@@ -298,6 +327,16 @@ Preferences are saved in the app's `config.json` and checked field by field when
 - `src/lib/`: preferences (`prefs.ts`, `prefsContext.tsx`), home screen logic (`home.ts`), settings search, link parsing, graph logic (`graph.ts`), note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
 - `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `FLINTPAD_SHOT`/`FLINTPAD_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, adds a pencil stroke, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
 - `docs/`: illustrations used in this file.
+
+## Contributing
+
+Bug reports, ideas and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the setup and guidelines, and follow the [Code of Conduct](CODE_OF_CONDUCT.md). Report security problems privately as described in [SECURITY.md](SECURITY.md). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+
+## License and usage
+
+Flintpad is free software under the [MIT License](LICENSE). The [usage policy](USAGE_POLICY.md) explains in plain words what you can do with it, how forks should be named, and what the app does with your data (in short: nothing leaves your computer).
+
+Obsidian, Notion, Bruno, Visual Studio Code, Cursor and Excalidraw are trademarks of their respective owners; Flintpad is not affiliated with or endorsed by them.
 
 ## Credits
 
