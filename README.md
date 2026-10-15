@@ -44,7 +44,7 @@ npm start       # production build + app
 npm run dist    # portable Windows executable in release/
 ```
 
-On Windows you can also double-click `gerar-exe.bat`: option 1 builds `releasewin-unpackedFlintpad.exe` in about a minute, option 2 the single portable `.exe` for distribution (several minutes, most of it compressing the Electron runtime). `npm run dist:dir` is the fast build from the command line.
+On Windows you can also double-click `gerar-exe.bat`: option 1 builds `release/win-unpacked/Flintpad.exe` in about a minute, option 2 the single portable `.exe` for distribution (several minutes, most of it compressing the Electron runtime). `npm run dist:dir` is the fast build from the command line.
 
 On first launch, pick the vault folder (or drag a folder onto the window). It can be an existing Obsidian vault: files stay plain `.md` and YAML frontmatter is preserved. An empty vault offers a few example pages to start from. Coming from ObNotion (the project's former name)? Your settings and recent vaults are carried over on first launch.
 
