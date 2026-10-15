@@ -358,15 +358,21 @@ export default function App() {
     sessionVault.current = path;
   };
 
+  // Troca de vault: as guias, recentes e favoritos passam a ser os do novo vault.
+  // Uma falha (pasta sumiu, sem permissão) vira aviso em vez de exceção solta.
   const chooseVault = async () => {
-    const chosen = await window.api.chooseVault();
-    if (!chosen || chosen === vault) return;
-    setTabs([]);
-    setClosed([]);
-    setVault(chosen);
-    const list = await refresh();
-    loadVaultPins(chosen, list);
-    restoreTabs(chosen, list);
+    try {
+      const chosen = await window.api.chooseVault();
+      if (!chosen || chosen === vault) return;
+      setTabs([]);
+      setClosed([]);
+      setVault(chosen);
+      const list = await refresh();
+      loadVaultPins(chosen, list);
+      restoreTabs(chosen, list);
+    } catch (error) {
+      notify('error', translate('notes.error.load'), reason(error));
+    }
   };
 
   const copyActive = (format: (note: Note) => string) => {
@@ -691,6 +697,12 @@ export default function App() {
     </Presence>
   );
 
+  const toastLayer = (
+    <Presence when={Boolean(toast)} name="toast">
+      <Toast message={toast} onClose={() => setToast(null)} />
+    </Presence>
+  );
+
   if (vault === null) {
     return (
       <div className="frame flex h-full items-center justify-center gap-20 overflow-y-auto px-10 py-8">
@@ -775,6 +787,7 @@ export default function App() {
           </div>
         </div>
         {settingsModal}
+        {toastLayer}
       </div>
     );
   }
@@ -968,10 +981,7 @@ export default function App() {
       </Presence>
 
       {settingsModal}
-
-      <Presence when={Boolean(toast)} name="toast">
-        <Toast message={toast} onClose={() => setToast(null)} />
-      </Presence>
+      {toastLayer}
     </div>
   );
 }

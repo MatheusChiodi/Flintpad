@@ -39,6 +39,22 @@ export function Settings({ vault, onChooseVault, onClose }: Props) {
     event.currentTarget.querySelector<HTMLElement>(`[lang="${next}"]`)?.focus();
   };
 
+  // Diálogo modal: Tab e Shift+Tab circulam só pelos controles dele.
+  const trapFocus = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab') return;
+    const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>('button, input, select, [tabindex="0"]')].filter((el) => !el.hasAttribute('disabled'));
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
     <div className="scrim fixed inset-0 z-50 flex items-start justify-center pt-24" onMouseDown={onClose}>
       <div
@@ -49,6 +65,7 @@ export function Settings({ vault, onChooseVault, onClose }: Props) {
         aria-label={t('settings.title')}
         tabIndex={-1}
         onMouseDown={(event) => event.stopPropagation()}
+        onKeyDown={trapFocus}
       >
         <div className="flex items-center gap-3 border-b border-(--hairline) px-4 py-3.5">
           <SettingsIcon size={18} className="shrink-0 text-frost-500" />
