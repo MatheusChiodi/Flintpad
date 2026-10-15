@@ -36,6 +36,7 @@ const ptBR = {
   'tasks.emptyAll': 'Nenhuma tarefa no vault. Use {key} numa nota e escolha Lista de verificação.',
   'tasks.noMatch': 'Nenhuma tarefa com esse texto.',
   'tasks.error': 'Não foi possível atualizar {path}.',
+  'tasks.stale': '{path} mudou desde a listagem; a lista foi atualizada. Tente de novo.',
 
   'note.untitled': 'Sem título',
   'editor.titleLabel': 'Título da página',
@@ -746,6 +747,7 @@ const en: Record<Key, Entry> = {
   'tasks.emptyAll': 'No tasks in this vault. Type {key} in a note and pick Check List.',
   'tasks.noMatch': 'No tasks match this text.',
   'tasks.error': 'Couldn’t update {path}.',
+  'tasks.stale': '{path} changed since it was listed; the list is now up to date. Try again.',
 
   'note.untitled': 'Untitled',
   'editor.titleLabel': 'Page title',

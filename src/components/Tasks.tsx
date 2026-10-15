@@ -32,7 +32,7 @@ export function Tasks({ notes, contents, onOpen, onSaved }: Props) {
 
   const groups = useMemo(() => {
     const wanted = query.trim().toLowerCase();
-    const shown = (task: Task) => (filter === 'all' || task.done === (filter === 'done')) && task.text.toLowerCase().includes(wanted);
+    const shown = (task: Task) => (filter === 'all' || task.done === (filter === 'done')) && (task.text.toLowerCase().includes(wanted) || task.path.toLowerCase().includes(wanted));
     return all.map((group) => ({ ...group, tasks: group.tasks.filter(shown) })).filter((group) => group.tasks.length);
   }, [all, filter, query]);
 
@@ -46,7 +46,8 @@ export function Tasks({ notes, contents, onOpen, onSaved }: Props) {
         const next = same ? toggleTaskLine(disk, task.line) : disk;
         if (same) await trackWrite(task.path, window.api.write(task.path, next));
         onSaved(task.path, next);
-        setProblem('');
+        // A linha mudou fora daqui: a lista foi atualizada e o clique não valeu; avisa em vez de calar.
+        setProblem(same ? '' : t('tasks.stale', { path: task.path }));
       } catch {
         setProblem(t('tasks.error', { path: task.path }));
       }
