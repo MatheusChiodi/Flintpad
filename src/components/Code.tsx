@@ -1642,7 +1642,7 @@ export default function Code() {
         {/* Barra lateral */}
         {layout.sidebar && !layout.zen && (
           <>
-            <aside className="wb-side" style={{ width: layout.sidebarWidth }} aria-label={sideTitle[layout.view]}>
+            <aside className="wb-side" style={{ width: `min(${layout.sidebarWidth}px, max(170px, 34%))` }} aria-label={sideTitle[layout.view]}>
               <div className="wb-side-title">
                 <h2 className="flex-1 truncate">{sideTitle[layout.view]}</h2>
                 {layout.view === 'explorer' && (
@@ -1684,7 +1684,8 @@ export default function Code() {
             <div
               className="wb-sash wb-sash-x"
               onPointerDown={(event) => {
-                const width = layout.sidebarWidth;
+                // Parte da largura que está na tela (pode estar limitada pela janela estreita).
+                const width = (event.currentTarget.previousElementSibling as HTMLElement | null)?.offsetWidth ?? layout.sidebarWidth;
                 startDrag('x', event, (delta) => setLayout({ sidebarWidth: Math.max(170, Math.min(640, width + delta)) }));
               }}
             />
@@ -1692,7 +1693,7 @@ export default function Code() {
         )}
 
         {/* Editor + painel */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="wb-main flex min-w-0 flex-1 flex-col">
           <div className={`flex min-h-0 flex-col ${layout.panel && layout.panelMax ? 'hidden' : 'flex-1'}`}>
             {tabs.length > 0 && (
               <div
@@ -1830,11 +1831,11 @@ export default function Code() {
                   <div
                     className="wb-sash wb-sash-x"
                     onPointerDown={(event) => {
-                      const width = layout.previewWidth;
+                      const width = (event.currentTarget.nextElementSibling as HTMLElement | null)?.offsetWidth ?? layout.previewWidth;
                       startDrag('x', event, (delta) => setLayout({ previewWidth: Math.max(240, Math.min(window.innerWidth * 0.7, width - delta)) }));
                     }}
                   />
-                  <div className="wb-md-pane shrink-0" style={{ width: `min(${layout.previewWidth}px, 60%)` }}>
+                  <div className="wb-md-pane shrink-0" style={{ width: `min(${layout.previewWidth}px, 50%)` }}>
                     <MarkdownPreview
                       model={model}
                       cursorLine={cursor.line}
@@ -1860,12 +1861,12 @@ export default function Code() {
                 <div
                   className="wb-sash wb-sash-y"
                   onPointerDown={(event) => {
-                    const height = layout.panelHeight;
+                    const height = (event.currentTarget.nextElementSibling as HTMLElement | null)?.offsetHeight ?? layout.panelHeight;
                     startDrag('y', event, (delta) => setLayout({ panelHeight: Math.max(100, Math.min(window.innerHeight - 200, height - delta)) }));
                   }}
                 />
               )}
-              <div className={`shrink-0 border-t ${layout.panelMax ? 'flex-1' : ''}`} style={{ height: layout.panelMax ? undefined : layout.panelHeight, borderColor: 'var(--vsc-panel-border)' }}>
+              <div className={`shrink-0 border-t ${layout.panelMax ? 'flex-1' : ''}`} style={{ height: layout.panelMax ? undefined : `min(${layout.panelHeight}px, max(100px, 100% - 150px))`, borderColor: 'var(--vsc-panel-border)' }}>
                 {layout.panelView === 'problems' ? (
                   <ProblemsPanel
                     tabs={panelTabs}
@@ -1895,9 +1896,9 @@ export default function Code() {
       {/* Barra de status */}
       {!layout.zen && (
       <footer className="wb-status" style={{ background: root ? 'var(--vsc-statusBar-background)' : 'var(--vsc-statusBar-noFolderBackground)', color: 'var(--vsc-statusBar-foreground)' }}>
-        <button className="wb-status-item" title={root ?? ''} onClick={pickRecent}>
+        <button className="wb-status-item wb-status-root" title={root ?? ''} onClick={pickRecent}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><path d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" /></svg>
-          {root ? baseName(root) + (roots.length > 1 ? ` +${roots.length - 1}` : '') : t('code.explorer.noFolder')}
+          <span className="truncate">{root ? baseName(root) + (roots.length > 1 ? ` +${roots.length - 1}` : '') : t('code.explorer.noFolder')}</span>
         </button>
         <button className="wb-status-item" title={t('code.status.problems')} aria-label={`${t('code.status.problems')}: ${markers.errors} / ${markers.warnings}`} onClick={() => togglePanelView('problems')}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="8" cy="8" r="6" /><path d="m5.8 5.8 4.4 4.4M10.2 5.8l-4.4 4.4" /></svg>
@@ -1906,9 +1907,9 @@ export default function Code() {
           {markers.warnings}
         </button>
         {(Object.keys(SERVER_LANGUAGES) as ServerKind[])
-          .filter((serverKind) => serverStatus(serverKind) !== 'off')
+          .filter((serverKind) => serverStatus(serverKind) !== 'off' && !(model && serverKind === lspKind))
           .map((serverKind) => (
-            <span key={serverKind} className="wb-status-item" title={t(`code.lsp.${serverStatus(serverKind)}` as Key)}>
+            <span key={serverKind} className="wb-status-item" data-prio="3" title={t(`code.lsp.${serverStatus(serverKind)}` as Key)}>
               <span className="wb-led" data-state={serverStatus(serverKind)} />
               {SERVER_LABELS[serverKind]}
             </span>
@@ -1925,11 +1926,11 @@ export default function Code() {
               {t('code.status.position', { line: cursor.line, column: cursor.column })}
               {cursor.selected > 0 && ` ${t('code.status.selected', { count: cursor.selected })}`}
             </button>
-            <button className="wb-status-item" onClick={pickIndentation}>
+            <button className="wb-status-item" data-prio="2" onClick={pickIndentation}>
               {model.getOptions().insertSpaces ? t('code.status.spaces', { size: model.getOptions().tabSize }) : t('code.status.tabSize', { size: model.getOptions().tabSize })}
             </button>
-            <span className="wb-status-item">UTF-8</span>
-            <button className="wb-status-item" onClick={pickEol}>
+            <span className="wb-status-item" data-prio="3">UTF-8</span>
+            <button className="wb-status-item" data-prio="2" onClick={pickEol}>
               {model.getEOL() === '\n' ? 'LF' : 'CRLF'}
             </button>
             <button className="wb-status-item" onClick={pickLanguage} title={lspKind ? t(`code.lsp.${serverStatus(lspKind)}` as Key) : undefined}>
@@ -1938,7 +1939,7 @@ export default function Code() {
             </button>
           </>
         )}
-        <button className="wb-status-item" onClick={() => setPrefs({ autoSave: !prefs.autoSave })} title={t(prefs.autoSave ? 'code.cmd.autoSaveOff' : 'code.cmd.autoSaveOn')}>
+        <button className="wb-status-item" data-prio="1" onClick={() => setPrefs({ autoSave: !prefs.autoSave })} title={t(prefs.autoSave ? 'code.cmd.autoSaveOff' : 'code.cmd.autoSaveOn')}>
           {prefs.autoSave ? t('code.status.autoSave') : t('code.status.manualSave')}
         </button>
       </footer>
@@ -2002,7 +2003,10 @@ function Welcome({ t, root, recent, onCommand, onOpenRecent }: { t: ReturnType<t
   return (
     <div className="wb-welcome">
       <div className="wb-welcome-inner">
-        <p className="wb-eyebrow truncate">{root ?? t('code.explorer.noFolder')}</p>
+        {/* Caminho longo: corta o começo, para a pasta aberta continuar à vista. */}
+        <p className="wb-eyebrow" title={root ?? undefined}>
+          <bdi>{root ?? t('code.explorer.noFolder')}</bdi>
+        </p>
         <h1>{t('code.welcome.title')}</h1>
         <div className="wb-welcome-vein" aria-hidden />
         <p className="wb-welcome-lede">{t('code.welcome.subtitle')}</p>

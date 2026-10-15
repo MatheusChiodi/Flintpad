@@ -2504,6 +2504,16 @@ li:focus-within > .welcome-forget {
 .wb-search-msg[data-error] {
   color: var(--vsc-errorForeground, var(--vsc-editorError-foreground));
 }
+/* Painel sem problemas: a marca de ok na cor de destaque diz "tudo certo" antes do texto. */
+.wb-panel-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wb-panel-empty-ok {
+  flex-shrink: 0;
+  color: var(--wb-accent);
+}
 .wb-spinner {
   height: 12px;
   width: 12px;
@@ -2839,8 +2849,20 @@ li:focus-within > .welcome-forget {
 .wb-md-body > * + * {
   margin-top: 0.85em;
 }
+/* Bloco onde está o cursor do editor: um traço do veio na margem, afastado do texto. */
 .wb-md-body [data-current='true'] {
-  box-shadow: -14px 0 0 -12px var(--wb-accent);
+  position: relative;
+}
+.wb-md-body [data-current='true']::before {
+  content: '';
+  position: absolute;
+  top: 0.15em;
+  bottom: 0.15em;
+  left: -12px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--wb-accent);
+  box-shadow: var(--wb-vein-glow);
 }
 .wb-md-body h1,
 .wb-md-body h2,
@@ -3032,11 +3054,13 @@ li:focus-within > .welcome-forget {
 
 /* Barra de status */
 .wb-status {
+  container: wb-status / inline-size;
   display: flex;
   height: 24px;
   flex-shrink: 0;
   align-items: stretch;
   gap: 2px;
+  overflow: hidden;
   padding-inline: 6px;
   border-top: 1px solid var(--vsc-statusBar-border);
   font-size: 11.5px;
@@ -3053,6 +3077,30 @@ li:focus-within > .welcome-forget {
 }
 button.wb-status-item:hover {
   background: var(--vsc-statusBarItem-hoverBackground);
+}
+button.wb-status-item:active {
+  background: color-mix(in srgb, var(--vsc-statusBarItem-hoverBackground) 100%, var(--vsc-statusBar-foreground) 10%);
+}
+.wb-status-root {
+  min-width: 0;
+  max-width: 180px;
+}
+/* Status estreito: some primeiro o que já está em outro lugar (servidores, codificação),
+   depois o que tem atalho na paleta (recuo, fim de linha); posição e linguagem ficam. */
+@container wb-status (max-width: 760px) {
+  .wb-status-item[data-prio='3'] {
+    display: none;
+  }
+}
+@container wb-status (max-width: 560px) {
+  .wb-status-item[data-prio='2'] {
+    display: none;
+  }
+}
+@container wb-status (max-width: 420px) {
+  .wb-status-item[data-prio='1'] {
+    display: none;
+  }
 }
 .wb-status-mono {
   font-family: var(--font-mono);
@@ -3247,6 +3295,7 @@ button.wb-status-item:hover {
 
 /* Tela inicial */
 .wb-welcome {
+  container: wb-welcome / inline-size;
   position: absolute;
   inset: 0;
   overflow-y: auto;
@@ -3258,6 +3307,12 @@ button.wb-status-item:hover {
   padding: clamp(32px, 9vh, 96px) clamp(20px, 6vw, 64px) 48px;
 }
 .wb-eyebrow {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /* rtl só para a reticência ir para o começo; o caminho fica isolado em ltr (bdi). */
+  direction: rtl;
+  text-align: left;
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--wb-quiet);
@@ -3345,6 +3400,46 @@ button.wb-status-item:hover {
   font-size: 11px;
   color: var(--wb-quiet);
   text-align: right;
+}
+
+/* Tela inicial estreita: os atalhos saem da linha para o nome do comando caber inteiro. */
+@container wb-welcome (max-width: 480px) {
+  .wb-welcome-inner {
+    padding-inline: 20px;
+  }
+  .wb-action .wb-kbd {
+    display: none;
+  }
+  .wb-welcome-grid {
+    margin-top: 28px;
+    gap: 24px;
+  }
+}
+@media (max-height: 560px) {
+  .wb-welcome-inner {
+    padding-top: 24px;
+  }
+  .wb-welcome-vein {
+    margin-top: 12px;
+  }
+}
+
+/* Coluna do editor estreita: guias mais curtas, trilha e cabeçalho do painel mais justos. */
+.wb-main {
+  container: wb-main / inline-size;
+}
+@container wb-main (max-width: 520px) {
+  .wb-tab {
+    max-width: 150px;
+    padding-left: 10px;
+  }
+  .wb-crumbs {
+    padding-inline: 10px;
+  }
+  .wb-panel-head {
+    gap: 6px;
+    padding-left: 10px;
+  }
 }
 
 /* Linhas da moldura: o anel de foco acompanha o canto e fica por dentro (listas roláveis cortariam o de fora). */
