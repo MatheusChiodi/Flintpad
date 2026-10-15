@@ -31,6 +31,7 @@ test('buildGraph cria nós de tag e de link sem página quando pedido', () => {
   const ghost = data.items.find((item) => item.kind === 'unresolved');
   assert.equal(ghost.id, '?fantasma');
   assert.equal(ghost.label, 'Fantasma');
+  assert.equal(ghost.target, 'Fantasma');
   assert.ok(data.edges.some(([a, b]) => a === 'Projetos/A.md' && b === '?fantasma'));
   assert.ok(data.items.some((item) => item.id === '#hub' && item.label === '#hub'));
   assert.ok(data.edges.some(([a, b]) => a === 'Projetos/A.md' && b === '#projeto/web'));

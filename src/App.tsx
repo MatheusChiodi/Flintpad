@@ -842,7 +842,7 @@ export default function App() {
           ) : activePath === TASKS ? (
             <Tasks notes={notes} contents={contents} onOpen={open} onSaved={saved} />
           ) : activePath === GRAPH ? (
-            <Graph notes={notes} contents={contents} onOpen={(path, newTab) => open(path, newTab)} />
+            <Graph notes={notes} contents={contents} onOpen={(path, newTab) => open(path, newTab)} onCreate={(name) => void createAndOpen(name)} />
           ) : isNote ? (
             <Editor
               // A língua entra na chave: o dicionário do editor de blocos é fixado na criação.

@@ -844,11 +844,13 @@ type Props = {
   notes: Note[];
   contents: Record<string, string>;
   onOpen: (path: string, newTab?: boolean) => void;
+  /** Cria a página de um link que ainda não tem página (clique no nó tracejado). */
+  onCreate?: (name: string) => void;
 };
 
 const JUMP_LIMIT = 8;
 
-export function Graph({ notes, contents, onOpen }: Props) {
+export function Graph({ notes, contents, onOpen, onCreate }: Props) {
   const t = useT();
   const uid = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -894,17 +896,18 @@ export function Graph({ notes, contents, onOpen }: Props) {
   }, [filtered, options.groups, options.colorByFolder]);
 
   // O motor guarda o que recebeu; as funções de abrir mudam a cada render do App.
-  const latest = useRef({ items, onOpen, t });
-  latest.current = { items, onOpen, t };
+  const latest = useRef({ items, onOpen, onCreate, t });
+  latest.current = { items, onOpen, onCreate, t };
   const degreeRef = useRef(degree);
   degreeRef.current = degree;
 
   const openNode = useCallback((id: string, newTab = false) => {
     const item = latest.current.items.get(id);
     if (!item) return;
-    // Tag: o clique vira filtro por ela. Link sem página: não há o que abrir.
+    // Tag: o clique vira filtro por ela. Link sem página: cria a página, como no Obsidian.
     if (item.kind === 'tag') setOptions((current) => ({ ...current, search: `tag:${item.tags[0]}` }));
     else if (item.kind === 'note') latest.current.onOpen(id, newTab);
+    else if (item.target) latest.current.onCreate?.(item.target);
   }, []);
 
   const openMenuRef = useRef<(id: string, x: number, y: number) => void>(() => {});
@@ -983,6 +986,9 @@ export function Graph({ notes, contents, onOpen }: Props) {
       entries.push({ kind: 'separator' });
     } else if (item.kind === 'tag') {
       entries.push({ label: t('graph.menu.filterTag'), keys: 'Enter', run: () => openNode(id) });
+      entries.push({ kind: 'separator' });
+    } else if (onCreate) {
+      entries.push({ label: t('graph.menu.create'), keys: 'Enter', run: () => openNode(id) });
       entries.push({ kind: 'separator' });
     }
     entries.push({ label: localId === id ? t('graph.exitLocal') : t('graph.menu.local'), keys: 'L', run: () => toggleLocal(id) });
@@ -1114,6 +1120,20 @@ export function Graph({ notes, contents, onOpen }: Props) {
         <div className="section-label">
           {t('graph.pages', { count: count.nodes })} · {t('graph.links', { count: count.links })}
         </div>
+        {options.search.trim() && (
+          <div className="pointer-events-auto flex max-w-full items-center gap-1.5 rounded-md bg-obsidian-800/85 py-1 pl-2.5 pr-1 text-[12.5px] text-frost-300 ring-1 ring-[var(--hairline-strong)] backdrop-blur">
+            <span className="shrink-0">{t('graph.activeFilter')}</span>
+            <code className="truncate font-mono text-[12px] text-frost-100">{options.search}</code>
+            <button
+              className="grid size-6 shrink-0 place-items-center rounded text-frost-500 hover:bg-[var(--hover)] hover:text-frost-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sheen-400"
+              aria-label={t('graph.clearFilter')}
+              title={t('graph.clearFilter')}
+              onClick={() => change({ search: '' })}
+            >
+              <CloseIcon size={12} />
+            </button>
+          </div>
+        )}
         {localItem && (
           <div className="pointer-events-auto flex flex-wrap items-center gap-2 rounded-md bg-obsidian-800/85 px-2.5 py-1.5 text-[12.5px] text-frost-300 ring-1 ring-[var(--hairline-strong)] backdrop-blur">
             <span>

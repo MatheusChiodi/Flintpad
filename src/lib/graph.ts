@@ -19,6 +19,8 @@ export type GraphItem = {
   tags: string[];
   /** Texto da nota em minúsculas, para `content:`. */
   text: string;
+  /** Alvo do link como foi escrito (só links sem página): vira o nome da página criada. */
+  target?: string;
 };
 
 export type GraphData = { items: GraphItem[]; edges: [from: string, to: string][] };
@@ -53,7 +55,7 @@ export function buildGraph(notes: Note[], contents: Record<string, string>, opti
       if (to) add(note.path, to);
       else if (options.unresolved) {
         const id = unresolvedId(target);
-        if (!items.has(id)) items.set(id, { id, kind: 'unresolved', label: baseName(target.trim()), folder: '', tags: [], text: '' });
+        if (!items.has(id)) items.set(id, { id, kind: 'unresolved', label: baseName(target.trim()), folder: '', tags: [], text: '', target: target.trim() });
         add(note.path, id);
       }
     }
