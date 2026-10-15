@@ -297,3 +297,29 @@ export function Mark({ size = 20, className }: { size?: number; className?: stri
 export function Kbd({ children }: { children: ReactNode }) {
   return <kbd className="kbd">{children}</kbd>;
 }
+
+// Paleta de pintor: aparência (cor de destaque, animações).
+export const PaletteIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M8 2.25a5.75 5.75 0 0 0 0 11.5c.9 0 1.25-.55 1.05-1.25-.25-.85.3-1.6 1.2-1.6h1.3a2.2 2.2 0 0 0 2.2-2.2c0-3.6-2.55-6.45-5.75-6.45Z" />
+    <circle cx="5.25" cy="7" r=".55" fill="currentColor" />
+    <circle cx="7.6" cy="4.9" r=".55" fill="currentColor" />
+    <circle cx="10.4" cy="6" r=".55" fill="currentColor" />
+  </Icon>
+);
+
+// Teclado: lista de atalhos.
+export const KeyboardIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="1.75" y="4" width="12.5" height="8" rx="1.5" />
+    <path d="M4.5 6.5h.01M7 6.5h.01M9.5 6.5h.01M12 6.5h.01M5.25 9.5h5.5" />
+  </Icon>
+);
+
+// Informação: "Sobre".
+export const InfoIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="8" cy="8" r="5.75" />
+    <path d="M8 7.25V11M8 5h.01" />
+  </Icon>
+);

@@ -1483,6 +1483,66 @@ button {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 28%, transparent);
 }
 
+/* Caminho longo: corta o começo e mantém o fim, onde está o nome que importa ("…\Projetos\Notas"). */
+.path-tail {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+
+.path-tail > bdi {
+  direction: ltr;
+}
+
+.welcome-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0;
+  color: var(--color-frost-300);
+  background: var(--hover-strong);
+}
+
+.welcome-recent .row-icon {
+  transition:
+    color 140ms var(--ease-out-quart),
+    translate 200ms var(--ease-out-expo);
+}
+
+.welcome-recent:hover .row-icon,
+.welcome-recent:focus-visible .row-icon {
+  color: var(--color-sheen-400);
+  translate: calc(1px * var(--motion)) 0;
+}
+
+/* Janela baixa: o título encolhe e os respiros diminuem para o botão de escolher a pasta caber sem rolar. */
+@media (max-height: 640px) {
+  .welcome {
+    padding-block: 32px;
+  }
+
+  .welcome-title {
+    margin-top: 22px;
+    font-size: 34px;
+  }
+
+  .welcome-lede {
+    margin-top: 12px;
+    font-size: 14px;
+  }
+
+  .welcome-cta,
+  .welcome-notice {
+    margin-top: 18px;
+  }
+}
+
 .welcome-forget {
   opacity: 0;
 }
@@ -1558,7 +1618,8 @@ li:focus-within > .welcome-forget {
   transition:
     background-color 140ms var(--ease-out-quart),
     color 140ms var(--ease-out-quart),
-    box-shadow 160ms var(--ease-out-quart);
+    box-shadow 160ms var(--ease-out-quart),
+    scale 120ms var(--ease-out-quart);
 }
 
 .home-tile:hover {
@@ -1574,8 +1635,49 @@ li:focus-within > .welcome-forget {
   transition: color 140ms var(--ease-out-quart);
 }
 
-.home-tile:hover .home-tile-icon {
+.home-tile:hover .home-tile-icon,
+.home-tile:focus-visible .home-tile-icon {
   color: var(--color-sheen-400);
+}
+
+.home-tile:focus-visible {
+  outline-offset: 2px;
+  border-radius: 8px;
+  color: var(--color-frost-100);
+}
+
+.home-tile:active {
+  scale: calc(1 - 0.015 * var(--motion));
+  transition-duration: 60ms;
+}
+
+/* Favoritos e recentes ainda vazios: uma vaga tracejada no lugar da lista, que mostra onde ela vai aparecer. */
+.home-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--color-frost-500);
+  border: 1px dashed var(--hairline-strong);
+}
+
+.home-empty svg {
+  margin-top: 2px;
+}
+
+/* Janela baixa: menos respiro em cima para os atalhos de partida aparecerem logo. */
+@media (max-height: 600px) {
+  .home {
+    padding-top: 24px;
+  }
+
+  .home-mark {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 .home-item-remove {
@@ -1659,12 +1761,22 @@ li:focus-within > .welcome-forget {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 12px 0;
+  margin-inline: -10px;
+  padding: 12px 10px;
   border-bottom: 1px solid var(--hairline);
+  transition:
+    background-color 160ms var(--ease-out-quart),
+    box-shadow 200ms var(--ease-out-quart);
+}
+
+/* A linha do ajuste em foco ganha o veio na borda, como a linha ativa do VS Code. */
+.settings-row:focus-within:has(:focus-visible) {
+  background: rgb(170 200 230 / 0.03);
+  box-shadow: inset 2px 0 0 var(--color-sheen-400);
 }
 
 .settings-row[data-compact] {
-  padding: 7px 0;
+  padding: 7px 10px;
 }
 
 .settings-row[data-wide] {
@@ -1685,13 +1797,91 @@ li:focus-within > .welcome-forget {
 .settings-select {
   height: 28px;
   max-width: 240px;
-  padding: 0 8px;
+  padding: 0 26px 0 9px;
   border-radius: 6px;
   font-size: 12.5px;
+  text-overflow: ellipsis;
   color: var(--color-frost-100);
   background: var(--color-obsidian-800);
   box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  appearance: none;
   cursor: pointer;
+  transition: box-shadow 120ms var(--ease-out-quart);
+}
+
+.settings-select:hover {
+  box-shadow: inset 0 0 0 1px var(--color-obsidian-500);
+}
+
+.settings-select:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--color-sheen-400),
+    0 0 0 3px color-mix(in srgb, var(--color-sheen-400) 14%, transparent);
+}
+
+.settings-select option {
+  color: var(--color-frost-100);
+  background: var(--color-obsidian-800);
+}
+
+.settings-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+}
+
+.settings-select-caret {
+  position: absolute;
+  right: 8px;
+  rotate: 90deg;
+  color: var(--color-frost-500);
+  pointer-events: none;
+}
+
+/* Ícone da seção: acende com o veio quando a seção está aberta. */
+.settings-nav-icon {
+  color: var(--color-frost-500);
+  transition: color 140ms var(--ease-out-quart);
+}
+
+.settings-nav .row:hover .settings-nav-icon,
+.settings-nav .row[data-active='true'] .settings-nav-icon {
+  color: var(--color-sheen-400);
+}
+
+/* Cabeçalho da seção aberta: o nome em tipo de título, como a página de ajustes do Notion. */
+.settings-heading {
+  padding: 18px 0 6px;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-frost-100);
+  border-bottom: 1px solid var(--hairline);
+  animation: content-in 260ms var(--ease-out-expo) backwards;
+}
+
+.settings-count {
+  padding-top: 14px;
+  font-size: 11.5px;
+  color: var(--color-frost-500);
+}
+
+/* Busca sem resultado: o selo do app, o texto buscado e a saída. */
+.settings-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 16px 24px;
+  text-align: center;
+  animation: content-in 320ms var(--ease-out-expo) backwards;
+}
+
+.settings-empty .board-seal {
+  margin-bottom: 4px;
 }
 
 .settings-segmented {

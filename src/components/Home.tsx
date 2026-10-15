@@ -82,10 +82,10 @@ export function Home(props: Props) {
     ));
 
   return (
-    <div className="home h-full overflow-y-auto px-6 py-10">
+    <div className="home h-full overflow-y-auto px-6 py-10 max-[560px]:px-4">
       <div className="stagger mx-auto flex w-full max-w-[680px] flex-col">
         <header className="flex items-center gap-4">
-          <Mark size={36} className="shrink-0 opacity-90" />
+          <Mark size={36} className="home-mark shrink-0 opacity-90" />
           <div className="min-w-0">
             <h1 className="font-display text-[26px] font-semibold leading-tight tracking-tight text-frost-100">{t(`home.greeting.${greetingFor(now.getHours())}`)}</h1>
             <p className="mt-0.5 text-[13px] text-frost-500 first-letter:uppercase">{date}</p>
@@ -146,7 +146,10 @@ export function Home(props: Props) {
                 <StarIcon size={11} filled />
                 {t('favorites.title')}
               </h2>
-              {favorites.length ? <ul className="flex flex-col gap-px">{list(favorites, false)}</ul> : <p className="px-2 py-1 text-[12.5px] text-frost-500">{t('home.favorites.empty')}</p>}
+              {favorites.length ? <ul className="flex flex-col gap-px">{list(favorites, false)}</ul> : <p className="home-empty">
+                  <StarIcon size={13} className="shrink-0 text-frost-500" />
+                  {t('home.favorites.empty')}
+                </p>}
             </section>
             <section aria-labelledby="home-recents">
               <div className="flex items-center justify-between px-2 pb-1.5">
@@ -159,7 +162,10 @@ export function Home(props: Props) {
                   </button>
                 )}
               </div>
-              {recents.length ? <ul className="flex flex-col gap-px">{list(recents, true)}</ul> : <p className="px-2 py-1 text-[12.5px] text-frost-500">{t('home.recents.empty')}</p>}
+              {recents.length ? <ul className="flex flex-col gap-px">{list(recents, true)}</ul> : <p className="home-empty">
+                  <PageIcon size={13} className="shrink-0 text-frost-500" />
+                  {t('home.recents.empty')}
+                </p>}
             </section>
           </div>
         )}

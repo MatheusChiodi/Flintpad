@@ -109,16 +109,16 @@ export function Welcome({ onChoose, onOpen, onError, onSettings }: Props) {
           <Mark size={26} />
           <span className="font-display text-lg font-semibold tracking-tight text-frost-100">ObNotion</span>
         </div>
-        <h1 className="mt-9 font-display text-[44px] font-semibold leading-[1.05] tracking-[-0.025em] text-frost-100 max-[560px]:text-[34px]">
+        <h1 className="welcome-title mt-9 text-balance font-display text-[44px] font-semibold leading-[1.05] tracking-[-0.025em] text-frost-100 max-[560px]:text-[34px]">
           {t('welcome.title')}
         </h1>
-        <p className="mt-5 text-[15px] leading-relaxed text-frost-300">{t('welcome.body')}</p>
+        <p className="welcome-lede mt-5 text-[15px] leading-relaxed text-frost-300">{t('welcome.body')}</p>
 
         {missing && (
           <div className="welcome-notice mt-6" role="alert">
             <p className="font-medium text-frost-100">{t('welcome.missing.title')}</p>
-            <p className="mt-1 truncate font-mono text-[11.5px] text-frost-500" title={missing}>
-              {missing}
+            <p className="path-tail mt-1 font-mono text-[11.5px] text-frost-500" title={missing}>
+              <bdi>{missing}</bdi>
             </p>
             <p className="mt-1.5 text-[12.5px] text-frost-300">{t('welcome.missing.body')}</p>
             <div className="mt-3 flex gap-2">
@@ -132,7 +132,7 @@ export function Welcome({ onChoose, onOpen, onError, onSettings }: Props) {
           </div>
         )}
 
-        <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="welcome-cta mt-8 flex flex-wrap items-center gap-x-4 gap-y-2">
           <button className="button-primary" onClick={onChoose}>
             <FolderIcon />
             {t('welcome.choose')}
@@ -145,13 +145,18 @@ export function Welcome({ onChoose, onOpen, onError, onSettings }: Props) {
 
         {others.length > 0 ? (
           <div className="mt-9 border-t border-(--hairline) pt-5">
-            <p className="section-label pb-2">{t('welcome.recent')}</p>
+            <p className="section-label flex items-center gap-2 pb-2">
+              {t('welcome.recent')}
+              <span className="welcome-count" aria-label={t('welcome.recent.count', { count: others.length })}>
+                {others.length}
+              </span>
+            </p>
             <ul className="flex flex-col gap-px" onKeyDown={onListKey}>
               {others.map((item) => (
                 <li key={item.path} className="group relative">
                   <button
                     data-recent
-                    className="row w-full px-2 py-1 pr-9 text-left disabled:cursor-default"
+                    className="row welcome-recent w-full px-2 py-1 pr-9 text-left disabled:cursor-default"
                     title={item.path}
                     aria-label={t('welcome.recent.open', { name: item.name })}
                     onClick={() => (item.exists ? onOpen(item.path) : onError(t('welcome.recent.missing')))}
@@ -159,8 +164,8 @@ export function Welcome({ onChoose, onOpen, onError, onSettings }: Props) {
                     <FolderIcon size={14} className="row-icon" />
                     <span className="min-w-0 flex-1">
                       <span className={`block truncate text-[13px] ${item.exists ? '' : 'text-frost-500 line-through'}`}>{item.name}</span>
-                      <span className="block truncate font-mono text-[10.5px] text-frost-500">
-                        {item.exists ? item.path : t('welcome.recent.missing')}
+                      <span className="path-tail block font-mono text-[10.5px] text-frost-500">
+                        <bdi>{item.exists ? item.path : t('welcome.recent.missing')}</bdi>
                       </span>
                     </span>
                   </button>

@@ -6,10 +6,20 @@ import { ACCENT_TONES, ACCENTS, FONT_SIZE_DEFAULT, FONT_SIZE_MAX, FONT_SIZE_MIN,
 import { usePrefs } from '../lib/prefsContext';
 import { matchesSetting } from '../lib/settingsSearch';
 import type { AppInfo, Note, RecentVault } from '../types';
-import { CloseIcon, FolderIcon, Kbd, SearchIcon, SettingsIcon } from './Icons';
+import { ChevronIcon, CloseIcon, FolderIcon, InfoIcon, Kbd, KeyboardIcon, PageIcon, PaletteIcon, SearchIcon, SettingsIcon } from './Icons';
 
 export const SETTINGS_SECTIONS = ['general', 'appearance', 'editor', 'vault', 'shortcuts', 'about'] as const;
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+// Um ícone por seção, como na barra de seções do VS Code e do Notion.
+const SECTION_ICONS: Record<SettingsSection, (props: { size?: number; className?: string }) => ReactNode> = {
+  general: SettingsIcon,
+  appearance: PaletteIcon,
+  editor: PageIcon,
+  vault: FolderIcon,
+  shortcuts: KeyboardIcon,
+  about: InfoIcon,
+};
 
 export type Shortcut = { label: string; keys: string };
 
@@ -120,15 +130,24 @@ export function Settings(props: Props) {
     </button>
   );
 
-  const select = <T extends string>(value: T, options: readonly T[], label: (value: T) => string, change: (value: T) => void, aria: string) => (
-    <select className="settings-select" value={value} aria-label={aria} onChange={(event) => change(event.target.value as T)}>
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {label(option)}
-        </option>
-      ))}
-    </select>
+  // Lista suspensa com a seta do app (a nativa destoa do vidro).
+  const selectBox = (control: ReactNode) => (
+    <span className="settings-select-wrap">
+      {control}
+      <ChevronIcon size={12} className="settings-select-caret" />
+    </span>
   );
+
+  const select = <T extends string>(value: T, options: readonly T[], label: (value: T) => string, change: (value: T) => void, aria: string) =>
+    selectBox(
+      <select className="settings-select" value={value} aria-label={aria} onChange={(event) => change(event.target.value as T)}>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {label(option)}
+          </option>
+        ))}
+      </select>,
+    );
 
   const otherVaults = recents.filter((item) => item.path !== vault);
   const infoLines = info
@@ -171,14 +190,14 @@ export function Settings(props: Props) {
             id: 'new-folder',
             title: t('settings.newFolder'),
             desc: t('settings.newFolder.desc'),
-            control: (
+            control: selectBox(
               <select className="settings-select" value={props.newNoteFolder} aria-label={t('settings.newFolder')} onChange={(event) => props.onNewNoteFolder(event.target.value)}>
                 {(props.folders.includes(props.newNoteFolder) ? props.folders : [...props.folders, props.newNoteFolder]).map((folder) => (
                   <option key={folder} value={folder}>
                     {folder ? folder.replace(/\/$/, '') : t('move.root')}
                   </option>
                 ))}
-              </select>
+              </select>,
             ),
           },
         ]
@@ -315,7 +334,9 @@ export function Settings(props: Props) {
               >
                 <FolderIcon size={13} className="row-icon" />
                 <span className={`text-[13px] ${item.exists ? '' : 'text-frost-500 line-through'}`}>{item.name}</span>
-                <span className="ml-auto truncate pl-3 font-mono text-[10.5px] text-frost-500">{item.exists ? item.path : t('welcome.recent.missing')}</span>
+                <span className="path-tail ml-auto pl-3 font-mono text-[10.5px] text-frost-500">
+                  <bdi>{item.exists ? item.path : t('welcome.recent.missing')}</bdi>
+                </span>
               </button>
             </li>
           ))}
@@ -431,16 +452,47 @@ export function Settings(props: Props) {
                   setSection(name);
                 }}
               >
+                <SectionIcon name={name} />
                 {sectionTitle(name)}
               </button>
             ))}
           </nav>
 
           <div className="settings-content min-w-0 flex-1 overflow-y-auto px-5 pb-6" role={searching ? 'region' : 'tabpanel'} aria-label={searching ? t('settings.search') : sectionTitle(section)}>
-            {groups.length === 0 && <p className="pt-6 text-[13px] text-frost-500">{t('settings.noMatch')}</p>}
+            {searching && groups.length > 0 && (
+              <p className="settings-count" aria-live="polite">
+                {t('settings.results', { count: visible.length })}
+              </p>
+            )}
+            {groups.length === 0 && (
+              <div className="settings-empty" role="status">
+                <span className="board-seal" aria-hidden="true">
+                  <SearchIcon size={22} />
+                </span>
+                <p className="text-[13px] text-frost-300">{t('settings.noMatch')}</p>
+                <p className="max-w-full truncate font-mono text-[11.5px] text-frost-500">“{query.trim()}”</p>
+                <button
+                  className="button-quiet"
+                  onClick={() => {
+                    setQuery('');
+                    search.current?.focus();
+                  }}
+                >
+                  {t('settings.clearSearch')}
+                </button>
+              </div>
+            )}
             {groups.map((group) => (
               <section key={group.name}>
-                <h3 className="section-label pb-1 pt-5">{sectionTitle(group.name)}</h3>
+                {searching ? (
+                  <h3 className="section-label flex items-center gap-1.5 pb-1 pt-5">
+                    <SectionIcon name={group.name} size={11} />
+                    {sectionTitle(group.name)}
+                  </h3>
+                ) : (
+                  // Fora da busca a seção já está marcada na barra: o título vira o cabeçalho da página.
+                  <h3 className="settings-heading">{sectionTitle(group.name)}</h3>
+                )}
                 {group.name === 'shortcuts' && <p className="pb-1 pt-1.5 text-[12px] text-frost-500">{t('settings.shortcuts.desc')}</p>}
                 {group.rows.map((row) => (
                   <div key={row.id} className="settings-row" data-wide={row.wide || undefined} data-compact={row.compact || undefined}>
@@ -458,4 +510,9 @@ export function Settings(props: Props) {
       </div>
     </div>
   );
+}
+
+function SectionIcon({ name, size = 14 }: { name: SettingsSection; size?: number }) {
+  const Glyph = SECTION_ICONS[name];
+  return <Glyph size={size} className="settings-nav-icon shrink-0" />;
 }
