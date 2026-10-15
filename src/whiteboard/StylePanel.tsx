@@ -88,11 +88,11 @@ export function StylePanel({ elements, units, canConnect, t, actions, linkEditor
       data-ui="style"
       role="region"
       aria-label={t('actions')}
-      className="absolute left-3 top-14 flex max-h-[calc(100%-4.5rem)] w-[188px] flex-col gap-2.5 overflow-y-auto rounded-lg bg-paper-raised p-2.5 text-[11.5px] text-ink-soft shadow-[0_0_0_1px_var(--color-paper-line),0_6px_18px_-8px_rgb(0_0_0_/_0.35)]"
+      className="board-pop absolute left-3 top-14 flex max-h-[calc(100%-4.5rem)] w-[188px] flex-col gap-2.5 overflow-y-auto rounded-lg bg-paper-raised p-2.5 text-[11.5px] text-ink-soft shadow-[0_0_0_1px_var(--color-paper-line),0_6px_18px_-8px_rgb(0_0_0_/_0.35)]"
       data-testid="wb-style"
     >
       {allLocked ? (
-        <p className="leading-snug text-ink-faint">{t('lockedNotice')}</p>
+        <p className="leading-snug text-ink-soft">{t('lockedNotice')}</p>
       ) : (
         <>
           {stroked.length > 0 && (
@@ -241,7 +241,7 @@ export function StylePanel({ elements, units, canConnect, t, actions, linkEditor
           </button>
         )}
         {!allLocked && (
-          <button className={`${iconButton} hover:!text-[#b91c1c]`} title={`${t('delete')} (Delete)`} aria-label={t('delete')} onClick={actions.remove}>
+          <button className={`${iconButton} hover:!text-danger-ink`} title={`${t('delete')} (Delete)`} aria-label={t('delete')} onClick={actions.remove}>
             <TrashIcon size={14} />
           </button>
         )}
@@ -253,7 +253,7 @@ export function StylePanel({ elements, units, canConnect, t, actions, linkEditor
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div role="group" aria-label={label}>
-      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-faint">{label}</p>
+      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-soft">{label}</p>
       <div className="flex flex-wrap gap-0.5">{children}</div>
     </div>
   );
@@ -264,7 +264,7 @@ type Option<T> = { value: T; title: string; content: ReactNode };
 function Segmented<T extends string | number>({ label, options, current, onPick, testId }: { label: string; options: Option<T>[]; current?: T; onPick: (value: T) => void; testId?: string }) {
   return (
     <div role="group" aria-label={label}>
-      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-faint">{label}</p>
+      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-soft">{label}</p>
       <div className="flex gap-0.5 rounded-md bg-[rgb(26_31_38_/_0.05)] p-0.5">
         {options.map((option) => (
           <button
@@ -306,7 +306,7 @@ function HeadSample({ head }: { head: 'end' | 'both' | 'none' }) {
 export function Swatches({ label, colors, current, t, onPick }: { label: string; colors: readonly string[]; current?: string; t: WbTranslate; onPick: (color: string) => void }) {
   return (
     <div role="group" aria-label={label}>
-      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-faint">{label}</p>
+      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-soft">{label}</p>
       <div className="flex flex-wrap gap-1">
         {colors.map((color) => (
           <button

@@ -1157,14 +1157,14 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
   };
 
   const statusText = status === 'saving' ? t('saving') : status === 'saved' ? t('saved') : status === 'error' ? t('saveError') : '';
-  const button = 'icon-button h-7 w-7 disabled:pointer-events-none disabled:opacity-35';
+  const button = 'icon-button h-7 w-7 disabled:pointer-events-none disabled:opacity-35 aria-expanded:bg-[var(--hover-strong)] aria-expanded:text-frost-100';
   const floating = 'bg-paper-raised shadow-[0_0_0_1px_var(--color-paper-line),0_6px_18px_-8px_rgb(0_0_0_/_0.35)]';
-  const toggle = 'sheet-button grid h-7 w-7 place-items-center rounded-md data-[on=true]:bg-[#d7f0ec] data-[on=true]:text-[#0c6c64]';
+  const toggle = 'sheet-button board-tool grid h-7 w-7 place-items-center rounded-md';
 
   const toolButton = ({ tool: id, key, digit, icon: Icon }: ToolEntry) => (
     <button
       key={id}
-      className="sheet-button relative grid h-8 w-8 shrink-0 place-items-center rounded-md data-[on=true]:bg-[#d7f0ec]"
+      className="sheet-button board-tool relative grid h-8 w-8 shrink-0 place-items-center rounded-md"
       data-on={tool === id}
       aria-pressed={tool === id}
       title={`${t(`tool.${id}` as WbKey)} (${key.toUpperCase()}${digit ? ` / ${digit}` : ''})`}
@@ -1178,7 +1178,7 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
     >
       <Icon size={16} />
       {digit && (
-        <span className="absolute bottom-0 right-0.5 font-mono text-[8.5px] text-ink-faint" aria-hidden="true">
+        <span className="absolute bottom-0 right-0.5 font-mono text-[8.5px] text-ink-soft/70" aria-hidden="true">
           {digit}
         </span>
       )}
@@ -1194,7 +1194,7 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
           saveLink(linkDraft);
         }}
       >
-        <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-faint" htmlFor="wb-link-input">
+        <label className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-soft" htmlFor="wb-link-input">
           {t('link')}
         </label>
         <input
@@ -1237,9 +1237,9 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pb-2 pt-3">
+      <header className="board-head flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pb-2 pt-3">
         <input
-          className="min-w-32 max-w-[min(560px,60%)] flex-1 truncate rounded-md bg-transparent px-1.5 py-0.5 font-display text-[19px] font-semibold tracking-tight text-frost-100 outline-none hover:bg-[var(--hover)] focus:bg-[var(--hover)] focus-visible:outline-2 focus-visible:outline-sheen-400"
+          className="board-title min-w-32 max-w-[min(560px,60%)] truncate rounded-md bg-transparent px-1.5 py-0.5 font-display text-[19px] font-semibold tracking-tight text-frost-100 outline-none transition-colors hover:bg-[var(--hover)] focus:bg-[var(--hover)] focus-visible:outline-2 focus-visible:outline-sheen-400"
           aria-label={t('nameLabel')}
           value={title}
           spellCheck={false}
@@ -1253,11 +1253,11 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
             }
           }}
         />
-        <span className={`text-[12px] ${status === 'error' ? 'text-danger' : 'text-frost-500'}`} role="status" aria-live="polite" data-testid="wb-status">
+        <span className="board-status" data-state={statusText ? status : ''} role="status" aria-live="polite" data-testid="wb-status">
           {statusText}
         </span>
         {status === 'error' && (
-          <button className="rounded-md px-2 py-0.5 text-[12px] text-frost-300 hover:bg-[var(--hover)]" onClick={() => void autosave.flush()}>
+          <button className="rounded-md px-2 py-0.5 text-[12px] text-frost-300 underline-offset-2 hover:bg-[var(--hover)] hover:text-frost-100 hover:underline" onClick={() => void autosave.flush()}>
             {t('saveRetry')}
           </button>
         )}
@@ -1308,7 +1308,7 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
 
       {banner}
       {notice && (
-        <p className={`mx-4 mb-2 text-[12.5px] ${notice.kind === 'error' ? 'text-danger' : 'text-sheen-300'}`} role={notice.kind === 'error' ? 'alert' : 'status'}>
+        <p key={notice.text} className="board-msg mx-4 mb-2 text-[12.5px]" data-kind={notice.kind} role={notice.kind === 'error' ? 'alert' : 'status'}>
           {notice.text}
         </p>
       )}
@@ -1524,7 +1524,12 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
         )}
 
         {!board.elements.length && !draft && !editing && (
-          <p className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 px-6 text-center text-[14px] text-ink-faint">{t('emptyCanvas')}</p>
+          <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 flex-col items-center gap-3 px-6 text-center">
+            <span className="grid h-12 w-12 place-items-center rounded-xl border border-dashed border-ink-faint/60 text-ink-faint" aria-hidden="true">
+              <DrawIcon size={18} />
+            </span>
+            <p className="max-w-80 text-balance text-[14px] leading-relaxed text-ink-soft">{t('emptyCanvas')}</p>
+          </div>
         )}
 
         <div
@@ -1548,7 +1553,7 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
           </button>
           <span className="mx-0.5 h-5 w-px shrink-0 bg-paper-line" aria-hidden="true" />
           <button
-            className="sheet-button grid h-8 w-8 shrink-0 place-items-center rounded-md data-[on=true]:bg-[#d7f0ec] data-[on=true]:text-[#0c6c64]"
+            className="sheet-button board-tool grid h-8 w-8 shrink-0 place-items-center rounded-md"
             data-on={toolLock}
             aria-pressed={toolLock}
             title={`${t('toolLock')} (Q)`}
@@ -1605,7 +1610,7 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
         )}
 
         {find && (
-          <div data-ui="find" role="search" aria-label={t('find')} className={`absolute right-3 top-14 z-10 flex max-w-[calc(100%-24px)] items-center gap-1 rounded-lg p-1 text-[12px] text-ink-soft ${floating}`}>
+          <div data-ui="find" role="search" aria-label={t('find')} className={`board-pop absolute right-3 top-14 z-10 flex max-w-[calc(100%-24px)] items-center gap-1 rounded-lg p-1 text-[12px] text-ink-soft ${floating}`}>
             <SearchIcon size={14} className="ml-1 text-ink-faint" />
             <input
               ref={findInput}
@@ -1635,7 +1640,7 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
                 }
               }}
             />
-            <span className="min-w-14 text-center font-mono text-[11px] tabular-nums text-ink-faint" aria-live="polite" data-testid="wb-find-count">
+            <span className="min-w-14 text-center font-mono text-[11px] tabular-nums text-ink-soft" aria-live="polite" data-testid="wb-find-count">
               {find.query.trim() ? (results.length ? t('findCount', { current: Math.min(find.index + 1, results.length), total: results.length }) : t('findNone')) : ''}
             </span>
             <button className="sheet-button grid h-6 w-6 place-items-center rounded-md disabled:opacity-35" title={t('findPrev')} aria-label={t('findPrev')} disabled={!results.length} onClick={() => goToResult(find.index - 1)}>
@@ -1691,12 +1696,12 @@ export function BoardEditor({ path, name, initial, t, saver, banner, notes = [],
             data-ui="help"
             role="dialog"
             aria-label={t('shortcuts')}
-            className="absolute bottom-3 left-3 max-h-[calc(100%-24px)] max-w-[min(480px,calc(100%-24px))] overflow-y-auto rounded-lg bg-obsidian-700 p-3.5 text-[12.5px] leading-relaxed text-frost-300 shadow-[0_0_0_1px_var(--hairline-strong),0_12px_30px_-10px_rgb(0_0_0_/_0.7)]"
+            className="board-pop absolute bottom-3 left-3 z-10 max-h-[calc(100%-24px)] max-w-[min(480px,calc(100%-24px))] overflow-y-auto rounded-lg bg-obsidian-700 p-3.5 text-[12.5px] leading-relaxed text-frost-300 shadow-[0_0_0_1px_var(--hairline-strong),0_12px_30px_-10px_rgb(0_0_0_/_0.7)]"
           >
             <div className="mb-1.5 flex items-center justify-between">
               <span className="section-label">{t('shortcuts')}</span>
-              <button className="icon-button" aria-label={t('close')} onClick={() => setHelp(false)}>
-                ×
+              <button className="icon-button" title={t('close')} aria-label={t('close')} onClick={() => setHelp(false)}>
+                <CloseIcon size={13} />
               </button>
             </div>
             <ul className="flex flex-col gap-1">

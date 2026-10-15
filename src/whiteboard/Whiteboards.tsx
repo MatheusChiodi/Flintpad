@@ -174,7 +174,13 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
     <div className="relative flex h-full min-h-0 text-[13px]">
       <aside className="flex w-60 shrink-0 flex-col border-r border-[var(--hairline)] max-[1100px]:w-52 max-[820px]:w-44">
         <div className="flex items-center gap-1 px-3 pb-2 pt-3">
-          <h1 className="flex-1 truncate font-display text-[17px] font-semibold tracking-tight text-frost-100">{t('title')}</h1>
+          <h1 className="min-w-0 truncate font-display text-[17px] font-semibold tracking-tight text-frost-100">{t('title')}</h1>
+          {boards && boards.length > 0 && (
+            <span className="board-count" aria-hidden="true">
+              {boards.length}
+            </span>
+          )}
+          <span className="flex-1" />
           <button className="icon-button h-7 w-7" title={t('importTitle')} aria-label={t('import')} onClick={() => fileInput.current?.click()}>
             <UploadIcon />
           </button>
@@ -197,13 +203,13 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
         </div>
 
         {message && (
-          <p className={`mx-3 mb-2 text-[12px] leading-snug ${message.kind === 'error' ? 'text-danger' : 'text-sheen-300'}`} role={message.kind === 'error' ? 'alert' : 'status'}>
+          <p key={message.text} className="board-msg mx-3 mb-2" data-kind={message.kind} role={message.kind === 'error' ? 'alert' : 'status'}>
             {message.text}
           </p>
         )}
 
         {boards && boards.length > 5 && (
-          <label className="mx-3 mb-2 flex items-center gap-1.5 rounded-md bg-obsidian-950/40 px-2 py-1 text-frost-500 ring-1 ring-[var(--hairline)] focus-within:ring-sheen-400">
+          <label className="mx-3 mb-2 flex items-center gap-1.5 rounded-md bg-obsidian-950/40 px-2 py-1 text-frost-500 ring-1 ring-[var(--hairline)] transition-shadow hover:ring-(--hairline-strong) focus-within:text-frost-300 focus-within:ring-sheen-400">
             <SearchIcon size={13} />
             <input
               className="min-w-0 flex-1 bg-transparent text-[12.5px] text-frost-100 outline-none placeholder:text-frost-500"
@@ -220,18 +226,21 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" data-testid="wb-list">
           {boards === null ? (
-            <p className="px-2 py-1 text-frost-500" role="status">
-              {t('loading')}
-            </p>
+            <div className="flex flex-col gap-2.5 px-2 py-2" role="status" aria-label={t('loading')}>
+              <span className="board-skeleton w-[72%]" />
+              <span className="board-skeleton w-[54%]" />
+              <span className="board-skeleton w-[63%]" />
+              <span className="sr-only">{t('loading')}</span>
+            </div>
           ) : listFailed ? (
-            <div className="px-2 py-1" role="alert">
-              <p className="text-danger">{t('listError')}</p>
-              <button className={`${sideButton} mt-2 -ml-2`} onClick={() => void refresh()}>
+            <div className="board-msg mx-1 mt-1 flex-col" data-kind="error" role="alert">
+              <p>{t('listError')}</p>
+              <button className={`${sideButton} -ml-2`} onClick={() => void refresh()}>
                 {t('retry')}
               </button>
             </div>
           ) : visible && boards.length && !visible.length ? (
-            <p className="px-2 py-1 text-frost-500" role="status">
+            <p className="px-2 py-1.5 text-[12.5px] text-frost-500" role="status">
               {t('filterNone')}
             </p>
           ) : visible && visible.length ? (
@@ -252,7 +261,7 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
                   }}
                 />
               ) : (
-                <div key={entry.path} className="row group pr-1" data-active={entry.path === selected}>
+                <div key={entry.path} className="row board-row pr-1" data-active={entry.path === selected}>
                   <button
                     className="flex min-w-0 flex-1 items-center gap-2 self-stretch pl-2 text-left"
                     title={entry.path}
@@ -269,20 +278,22 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
                     <WhiteboardGlyph />
                     <span className="truncate">{entry.name}</span>
                   </button>
-                  <button className="icon-button reveal" title={t('rename')} aria-label={t('renameNamed', { name: entry.name })} onClick={() => setRenaming(entry.path)}>
+                  <span className="board-row-actions">
+                  <button className="icon-button" title={t('rename')} aria-label={t('renameNamed', { name: entry.name })} onClick={() => setRenaming(entry.path)}>
                     <PencilIcon size={13} />
                   </button>
-                  <button className="icon-button reveal" title={t('duplicateBoard')} aria-label={t('duplicateNamed', { name: entry.name })} onClick={() => void duplicateBoard(entry)}>
+                  <button className="icon-button" title={t('duplicateBoard')} aria-label={t('duplicateNamed', { name: entry.name })} onClick={() => void duplicateBoard(entry)}>
                     <CopyIcon size={13} />
                   </button>
-                  <button className="icon-button reveal" data-danger="true" title={t('trashNamed', { name: entry.name })} aria-label={t('trashNamed', { name: entry.name })} onClick={() => void remove(entry)}>
+                  <button className="icon-button" data-danger="true" title={t('trashNamed', { name: entry.name })} aria-label={t('trashNamed', { name: entry.name })} onClick={() => void remove(entry)}>
                     <TrashIcon size={14} />
                   </button>
+                  </span>
                 </div>
               ),
             )
           ) : (
-            <div className="mx-1 mt-1 rounded-lg border border-dashed border-(--hairline-strong) px-3 py-4 leading-relaxed">
+            <div className="board-enter mx-1 mt-1 rounded-lg border border-dashed border-(--hairline-strong) px-3 py-4 leading-relaxed">
               <p className="font-medium text-frost-100">{t('emptyTitle')}</p>
               <p className="mt-1 text-[12.5px] text-frost-500">{t('emptyBody')}</p>
               <div className="mt-3 flex flex-col items-start gap-0.5">
@@ -306,24 +317,30 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
 
       <section className="flex min-w-0 flex-1 flex-col">
         {!selected ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
-            <p className="text-frost-500">{t('noneSelected')}</p>
+          <div className="board-enter flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+            <span className="board-seal" aria-hidden="true">
+              <WhiteboardGlyph size={26} className="" />
+            </span>
+            <p className="max-w-72 text-balance leading-relaxed text-frost-300">{t('noneSelected')}</p>
             <button className="button-primary" onClick={() => void create(t('untitled'), emptyBoard())}>
               <PlusIcon />
               {t('new')}
             </button>
           </div>
         ) : !loaded || loaded.path !== selected ? (
-          <p className="p-5 text-frost-500" role="status">
+          <div className="flex h-full items-center justify-center gap-2.5 text-frost-500" role="status">
+            <span className="board-spinner" aria-hidden="true" />
             {t('opening')}
-          </p>
+          </div>
         ) : !loaded.result.ok ? (
-          <div className="p-6" role="alert">
-            <p className="font-medium text-frost-100">{current?.name ?? selected}</p>
-            <p className="mt-1 text-danger">{t(`error.${loaded.result.error}` as WbKey)}</p>
-            <p className="mt-1 text-frost-500">
-              {t('error.untouched')} <span className="font-mono text-[12px]">{selected}</span>
-            </p>
+          <div className="flex h-full items-start justify-center overflow-y-auto p-6 min-[900px]:items-center">
+            <div className="board-enter board-msg max-w-md flex-col gap-1 px-4 py-3.5" data-kind="error" role="alert">
+              <p className="font-display text-[15px] font-semibold text-frost-100">{current?.name ?? selected}</p>
+              <p>{t(`error.${loaded.result.error}` as WbKey)}</p>
+              <p className="text-frost-300">
+                {t('error.untouched')} <span className="break-all font-mono text-[11.5px] text-frost-500">{selected}</span>
+              </p>
+            </div>
           </div>
         ) : (
           <BoardEditor
@@ -339,10 +356,10 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
             banner={
               <>
                 {loaded.result.board.sample && current && (
-                  <div className="mx-4 mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-[rgb(124_58_237_/_0.14)] px-3 py-1.5 text-[12.5px] text-frost-100">
-                    <span className="rounded bg-[rgb(124_58_237_/_0.35)] px-1.5 py-px font-mono text-[10.5px] uppercase tracking-wider">{t('sampleBadge')}</span>
-                    <span className="flex-1">{t('sampleBanner')}</span>
-                    <button className="rounded px-1.5 py-0.5 text-frost-300 underline-offset-2 hover:text-frost-100 hover:underline" onClick={() => void remove(current)}>
+                  <div className="mx-4 mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-sheen-400/8 px-3 py-1.5 text-[12.5px] text-frost-100 ring-1 ring-sheen-400/20">
+                    <span className="rounded bg-sheen-400/18 px-1.5 py-px font-mono text-[10.5px] uppercase tracking-wider text-sheen-300">{t('sampleBadge')}</span>
+                    <span className="min-w-0 flex-1">{t('sampleBanner')}</span>
+                    <button className="rounded px-1.5 py-0.5 text-frost-300 underline-offset-2 hover:bg-[var(--hover)] hover:text-frost-100 hover:underline" onClick={() => void remove(current)}>
                       {t('sampleDelete')}
                     </button>
                   </div>
@@ -361,9 +378,9 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
   );
 }
 
-function WhiteboardGlyph() {
+function WhiteboardGlyph({ size = 14, className = 'row-icon' }: { size?: number; className?: string }) {
   return (
-    <svg className="row-icon" width={14} height={14} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="1.75" y="2.75" width="5.5" height="4" rx="1" />
       <circle cx="11.5" cy="11.25" r="2.5" />
       <path d="M7.25 4.75h2.5a1.75 1.75 0 0 1 1.75 1.75v2.25" />

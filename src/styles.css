@@ -26,6 +26,8 @@
   --color-sheen-700: #0c6c64;
   /* Veio apagado: link para página que ainda não existe (AA sobre a folha). */
   --color-sheen-muted: #3f7470;
+  /* Veio lavado: fundo de um controle ligado sobre a folha (ferramenta do quadro). */
+  --color-sheen-wash: #d7f0ec;
 
   /* Folha e tinta. */
   --color-paper: #f6f7f5;
@@ -37,6 +39,8 @@
   --color-ink-faint: #8b939d;
 
   --color-danger: #f0908d;
+  /* Perigo sobre a folha clara (AA sobre o branco). */
+  --color-danger-ink: #b91c1c;
   /* Âmbar: aviso (redirecionamento, envio em andamento, POST). */
   --color-caution: #e6c07b;
 
@@ -1861,6 +1865,212 @@ li:focus-within > .welcome-forget {
 
 .wb-dark .wb-scene image {
   filter: invert(1) hue-rotate(180deg);
+}
+
+/* Quadros: lista na moldura. As ações da linha só ocupam lugar ao passar o mouse ou com foco
+   (Tab a partir do nome as alcança), então o nome usa a largura toda no resto do tempo. */
+.board-row-actions {
+  display: none;
+  align-items: center;
+  flex: none;
+}
+
+.board-row:hover .board-row-actions,
+.board-row:focus-within .board-row-actions {
+  display: flex;
+  animation: pop-in 140ms var(--ease-out-expo) backwards;
+}
+
+.board-count {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: var(--color-frost-500);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+/* Aviso da lista (importado, apagado, erro): uma faixa curta que entra sem empurrar o olhar. */
+.board-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-sheen-300);
+  background: color-mix(in srgb, var(--color-sheen-400) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-sheen-400) 22%, transparent);
+  animation: pop-in 170ms var(--ease-out-expo) backwards;
+}
+
+.board-msg[data-kind='error'] {
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 26%, transparent);
+}
+
+/* Carregando: linhas-fantasma que pulsam (só opacidade, vale também com movimento reduzido). */
+.board-skeleton {
+  display: block;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--hover-strong);
+  animation: board-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.board-skeleton:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.board-skeleton:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+@keyframes board-pulse {
+  to {
+    opacity: 0.35;
+  }
+}
+
+.board-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid var(--hairline-strong);
+  border-top-color: var(--color-sheen-400);
+  animation: board-spin 800ms linear infinite;
+}
+
+@keyframes board-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* Sem movimento, o anel não gira: pulsa. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion-pref='full']) .board-spinner {
+    animation: board-pulse 900ms ease-in-out infinite alternate;
+  }
+}
+
+/* Selo do quadro na área vazia: o mesmo veio do item ativo, sobre a pedra. */
+.board-seal {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  color: var(--color-sheen-400);
+  background: linear-gradient(160deg, var(--color-obsidian-600), var(--color-obsidian-800));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 0 0 1px var(--hairline-strong),
+    0 10px 30px -12px color-mix(in srgb, var(--color-sheen-400) 45%, transparent);
+}
+
+.board-enter {
+  animation: content-in 260ms var(--ease-out-expo) backwards;
+}
+
+/* Cabeçalho do quadro: o nome cresce com o texto até o limite; o estado da gravação é uma pastilha. */
+.board-title {
+  field-sizing: content;
+}
+
+.board-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: var(--color-frost-500);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  transition: color 160ms var(--ease-out-quart);
+}
+
+.board-status[data-state=''] {
+  padding: 0;
+  box-shadow: none;
+}
+
+.board-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-sheen-400);
+}
+
+.board-status[data-state='']::before {
+  display: none;
+}
+
+.board-status[data-state='saving']::before {
+  background: var(--color-caution);
+  animation: board-pulse 600ms ease-in-out infinite alternate;
+}
+
+.board-status[data-state='error'] {
+  color: var(--color-danger);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 30%, transparent);
+}
+
+.board-status[data-state='error']::before {
+  background: var(--color-danger);
+}
+
+/* Painéis que flutuam sobre a folha (busca, atalhos, estilo) entram de leve. */
+.board-pop {
+  animation: pop-in 160ms var(--ease-out-expo) backwards;
+}
+
+/* Botões da barra de ferramentas e do zoom: ligado = lavado de veio, com a tinta do veio. */
+.board-tool[data-on='true'] {
+  background: var(--color-sheen-wash);
+  color: var(--color-sheen-700);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-sheen-700) 18%, transparent);
+}
+
+.board-tool {
+  transition:
+    background-color 120ms var(--ease-out-quart),
+    color 120ms var(--ease-out-quart),
+    scale 120ms var(--ease-out-quart);
+}
+
+.board-tool:active {
+  scale: calc(1 - 0.08 * var(--motion));
+}
+
+/* Folha estreita: com a busca aberta, o painel de estilo desce para baixo dela em vez de ficar coberto. */
+.wb-canvas {
+  container-type: inline-size;
+}
+
+@container (max-width: 580px) {
+  .wb-canvas:has([data-ui='find']) [data-ui='style'] {
+    top: 6.5rem;
+    max-height: calc(100% - 7.5rem);
+  }
+}
+
+/* Janela baixa: o cabeçalho encolhe e a folha ganha a altura. */
+@media (max-height: 560px) {
+  .board-head {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .board-head .board-title {
+    font-size: 17px;
+  }
 }
 
 /* Barras de rolagem */
