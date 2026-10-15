@@ -2,31 +2,35 @@
 import { useId, useState, type ReactNode } from 'react';
 
 import { useT } from '../../lib/i18n';
+import { CloseIcon } from '../Icons';
 import { pairsToText, textToPairs } from '../../lib/requestTools';
 
+// Cores vêm dos tokens de src/styles.css (--color-method-*, --color-caution, --color-danger).
 export const METHOD_COLOR: Record<string, string> = {
-  GET: '#86d9cd',
-  POST: '#e6c07b',
-  PUT: '#8fb4ff',
-  PATCH: '#c8a6f2',
-  DELETE: '#f0908d',
+  GET: 'var(--color-method-get)',
+  POST: 'var(--color-method-post)',
+  PUT: 'var(--color-method-put)',
+  PATCH: 'var(--color-method-patch)',
+  DELETE: 'var(--color-method-delete)',
 };
 
-export const statusColor = (status: number) => (status < 300 ? '#86d9cd' : status < 400 ? '#e6c07b' : '#f0908d');
+export const statusColor = (status: number) => (status < 300 ? 'var(--color-sheen-300)' : status < 400 ? 'var(--color-caution)' : 'var(--color-danger)');
 
+// O campo mostra o próprio anel do veio no foco; o contorno global de :focus-visible sobraria.
 export const field =
-  'min-w-0 rounded-md bg-obsidian-950/60 px-2.5 py-1.5 font-mono text-[12.5px] text-frost-100 outline-none ring-1 ring-[var(--hairline-strong)] placeholder:text-frost-500 focus:ring-sheen-400';
+  'min-w-0 rounded-md bg-obsidian-950/60 px-2.5 py-1.5 font-mono text-[12.5px] text-frost-100 outline-none ring-1 ring-[var(--hairline-strong)] transition-shadow placeholder:text-frost-500 focus:ring-sheen-400 focus-visible:outline-none';
 export const ghostButton =
-  'rounded-md px-2.5 py-1.5 text-[12.5px] text-frost-300 ring-1 ring-[var(--hairline-strong)] hover:bg-[var(--hover)] hover:text-frost-100 disabled:opacity-50 disabled:hover:bg-transparent';
-export const toolButton = 'rounded-md px-2 py-1 text-[12px] text-frost-500 transition-colors hover:bg-[var(--hover)] hover:text-frost-100 disabled:opacity-50';
-export const iconButton =
-  'grid size-6 shrink-0 place-items-center rounded text-frost-500 transition-colors hover:bg-[var(--hover)] hover:text-frost-100 focus-visible:outline focus-visible:outline-1 focus-visible:outline-sheen-400';
-export const primaryButton = 'shrink-0 rounded-md bg-sheen-400 px-4 py-1.5 font-semibold text-obsidian-950 hover:bg-sheen-300 disabled:opacity-50';
+  'rq-press whitespace-nowrap rounded-md px-2.5 py-1.5 text-[12.5px] text-frost-300 ring-1 ring-[var(--hairline-strong)] transition-colors hover:bg-[var(--hover)] hover:text-frost-100 disabled:opacity-50 disabled:hover:bg-transparent';
+export const toolButton = 'whitespace-nowrap rounded-md px-2 py-1 text-[12px] text-frost-500 transition-colors hover:bg-[var(--hover)] hover:text-frost-100 disabled:opacity-50';
+export const iconButton = 'rq-press grid size-6 shrink-0 place-items-center rounded text-frost-500 transition-colors hover:bg-[var(--hover-strong)] hover:text-frost-100';
+export const primaryButton =
+  'rq-press rq-primary shrink-0 whitespace-nowrap rounded-md bg-sheen-400 px-4 py-1.5 font-semibold text-obsidian-950 transition-colors hover:bg-sheen-300 disabled:opacity-50';
+export const dangerButton = 'rq-press shrink-0 whitespace-nowrap rounded-md px-4 py-1.5 font-medium text-danger ring-1 ring-danger/50 transition-colors hover:bg-danger/10';
 
 export function Method({ value }: { value: string }) {
   const method = value.toUpperCase();
   return (
-    <span className="w-11 shrink-0 font-mono text-[10.5px] font-semibold" style={{ color: METHOD_COLOR[method] ?? '#aeb8c7' }}>
+    <span className="w-11 shrink-0 font-mono text-[10.5px] font-semibold" style={{ color: METHOD_COLOR[method] ?? 'var(--color-frost-300)' }}>
       {method === 'DELETE' ? 'DEL' : method === 'OPTIONS' ? 'OPT' : method}
     </span>
   );
@@ -37,20 +41,37 @@ export function Segmented<T extends string>({
   options,
   onChange,
   label,
+  variant = 'pills',
 }: {
   value: T;
   options: readonly (readonly [T, ReactNode])[];
   onChange: (value: T) => void;
   label?: string;
+  /**
+   * pills: botões que quebram linha (modos do corpo, da autenticação).
+   * tabs: guias sublinhadas numa linha só, que rolam de lado em janela estreita (seções da request e da resposta).
+   * fill: poucas opções dividindo a largura toda (Coleção / Histórico).
+   */
+  variant?: 'pills' | 'tabs' | 'fill';
 }) {
+  if (variant === 'tabs')
+    return (
+      <div className="rq-tabs" role="group" aria-label={label}>
+        {options.map(([key, text]) => (
+          <button key={key} type="button" aria-pressed={key === value} className="rq-tab" onClick={() => onChange(key)}>
+            {text}
+          </button>
+        ))}
+      </div>
+    );
   return (
-    <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
+    <div className={variant === 'fill' ? 'rq-fill' : 'flex flex-wrap gap-1'} role="group" aria-label={label}>
       {options.map(([key, text]) => (
         <button
           key={key}
           type="button"
           aria-pressed={key === value}
-          className={`rounded-md px-2.5 py-1 text-[12.5px] ${
+          className={`whitespace-nowrap rounded-md px-2.5 py-1 text-[12.5px] transition-colors ${
             key === value ? 'bg-[var(--hover-strong)] text-frost-100' : 'text-frost-500 hover:bg-[var(--hover)] hover:text-frost-300'
           }`}
           onClick={() => onChange(key)}
@@ -145,10 +166,10 @@ export function PairTable<T extends PairRow>({
         const lockedReason = valueDisabled?.(row);
         const values = valueSuggestions?.(row.name);
         return (
-          <div key={index} className="flex items-center gap-2">
+          <div key={index} className={`flex items-center gap-2 transition-opacity ${row.enabled ? '' : 'opacity-60'}`}>
             <input
               type="checkbox"
-              className="size-3.5 shrink-0 accent-[#4fbfb4]"
+              className="size-3.5 shrink-0 accent-sheen-400"
               checked={row.enabled}
               title={row.enabled ? t('requests.row.disable') : t('requests.row.enable')}
               aria-label={`${row.enabled ? t('requests.row.disable') : t('requests.row.enable')} ${row.name}`}
@@ -182,16 +203,16 @@ export function PairTable<T extends PairRow>({
               onChange={(event) => patch(index, { value: event.target.value } as Partial<T>)}
             />
             {lockNames ? (
-              <span className="w-[23px] shrink-0" aria-hidden="true" />
+              <span className="w-6 shrink-0" aria-hidden="true" />
             ) : (
               <button
                 type="button"
-                className="rounded px-1.5 py-1 text-frost-500 hover:bg-[var(--hover)] hover:text-danger"
+                className={`${iconButton} hover:text-danger`}
                 title={t('requests.row.remove')}
                 aria-label={`${t('requests.row.remove')} ${row.name}`}
                 onClick={() => onChange(rows.filter((_, i) => i !== index))}
               >
-                ×
+                <CloseIcon size={12} />
               </button>
             )}
           </div>

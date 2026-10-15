@@ -37,6 +37,15 @@
   --color-ink-faint: #8b939d;
 
   --color-danger: #f0908d;
+  /* Âmbar: aviso (redirecionamento, envio em andamento, POST). */
+  --color-caution: #e6c07b;
+
+  /* Métodos HTTP na tela de Requests: cada verbo com sua cor, legível sobre a obsidiana. */
+  --color-method-get: #86d9cd;
+  --color-method-post: #e6c07b;
+  --color-method-put: #8fb4ff;
+  --color-method-patch: #c8a6f2;
+  --color-method-delete: #f0908d;
 
   --font-display: 'Bricolage Grotesque Variable', 'Segoe UI Variable Display', 'Segoe UI', sans-serif;
   --font-sans: 'Instrument Sans Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
@@ -608,6 +617,218 @@ button {
 .request-link-method[data-method='DELETE'] {
   color: #8c2a26;
   background: color-mix(in srgb, #f0908d 30%, transparent);
+}
+
+/*
+  Tela de Requests (cliente de API). Moldura de obsidiana como o resto; a barra de URL é a peça
+  principal (método e endereço numa só pedra) e o veio marca o que está ativo ou em andamento.
+*/
+.rq-press:active:not(:disabled) {
+  translate: 0 calc(1px * var(--motion));
+}
+
+.rq-primary {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28);
+}
+.rq-primary:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Guias sublinhadas numa linha só: em janela estreita rolam de lado em vez de quebrar. */
+.rq-tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.rq-tabs::-webkit-scrollbar {
+  display: none;
+}
+.rq-tab {
+  position: relative;
+  flex: none;
+  padding: 6px 10px 8px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  color: var(--color-frost-500);
+  border-radius: 6px 6px 0 0;
+  transition: color 140ms var(--ease-out-quart), background-color 140ms var(--ease-out-quart);
+}
+.rq-tab:hover {
+  color: var(--color-frost-100);
+  background: var(--hover);
+}
+.rq-tab::after {
+  content: '';
+  position: absolute;
+  inset: auto 8px 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-sheen-400);
+  opacity: 0;
+  scale: calc(1 - 0.6 * var(--motion)) 1;
+  transition: opacity 160ms var(--ease-out-quart), scale 220ms var(--ease-out-expo);
+}
+.rq-tab[aria-pressed='true'] {
+  color: var(--color-frost-100);
+}
+.rq-tab[aria-pressed='true']::after {
+  opacity: 1;
+  scale: 1 1;
+}
+.rq-tab:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Opções que dividem a largura (Coleção / Histórico): uma canaleta com a escolhida em relevo. */
+.rq-fill {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgb(5 7 11 / 0.6);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.rq-fill > button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-inline: 4px;
+}
+.rq-fill > button[aria-pressed='true'] {
+  background: var(--color-obsidian-600);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+/* Barra de URL: método e endereço numa peça só, com o anel do veio quando algo dentro tem foco. */
+.rq-url {
+  display: flex;
+  flex: 1 1 18rem;
+  min-width: 0;
+  border-radius: 8px;
+  background: rgb(5 7 11 / 0.6);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  transition: box-shadow 160ms var(--ease-out-quart);
+}
+.rq-url:hover {
+  box-shadow: inset 0 0 0 1px rgb(170 200 230 / 0.22);
+}
+.rq-url:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--color-sheen-400),
+    0 0 0 3px color-mix(in srgb, var(--color-sheen-400) 14%, transparent);
+}
+.rq-url > select,
+.rq-url > input {
+  min-width: 0;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+.rq-url > select {
+  flex: none;
+  width: 6.5rem;
+  padding: 7px 8px 7px 10px;
+  font-weight: 600;
+  border-right: 1px solid var(--hairline-strong);
+  border-radius: 8px 0 0 8px;
+}
+.rq-url > select option {
+  background: var(--color-obsidian-800);
+}
+.rq-url > input {
+  flex: 1;
+  padding: 7px 10px;
+  color: var(--color-frost-100);
+}
+.rq-url > input::placeholder {
+  color: var(--color-frost-500);
+}
+
+/* Envio em andamento: o veio corre pela borda de baixo do cabeçalho. Sem movimento, fica aceso. */
+.rq-progress {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  background: var(--hairline);
+}
+.rq-progress::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  /* Sem movimento a faixa ocupa a largura toda e fica parada. */
+  width: calc(40% + 60% * (1 - var(--motion)));
+  background: linear-gradient(90deg, transparent, var(--color-sheen-400), transparent);
+  animation: rq-run 1.1s var(--ease-in-quad) infinite;
+}
+@keyframes rq-run {
+  from {
+    translate: calc(-100% * var(--motion)) 0;
+  }
+  to {
+    translate: calc(250% * var(--motion)) 0;
+  }
+}
+
+/* Estado vazio da resposta e da área principal: ícone numa pedra pequena, texto curto embaixo. */
+.rq-empty-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: var(--color-sheen-300);
+  background: linear-gradient(180deg, var(--color-obsidian-700), var(--color-obsidian-800));
+  box-shadow:
+    inset 0 0 0 1px var(--hairline-strong),
+    inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+/* Linha da coleção e do histórico: a ativa ganha o filete do veio, como na barra lateral. */
+.rq-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  border-radius: 6px;
+  color: var(--color-frost-300);
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-out-quart), color 140ms var(--ease-out-quart);
+}
+.rq-row:hover {
+  background: var(--hover);
+  color: var(--color-frost-100);
+}
+.rq-row[aria-current='true'] {
+  background: var(--hover-strong);
+  color: var(--color-frost-100);
+  box-shadow: inset 2px 0 0 var(--color-sheen-400);
+}
+.rq-row:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Painel de conteúdo que entra (troca de request, de vista): só um esmaecer com leve subida. */
+.rq-enter {
+  animation: content-in 220ms var(--ease-out-expo) backwards;
+}
+
+/* Status da resposta: pastilha tingida pela cor da faixa (2xx, 3xx, 4xx/5xx). */
+.rq-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: color-mix(in srgb, currentColor 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 28%, transparent);
 }
 
 /* Busca rápida */

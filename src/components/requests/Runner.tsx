@@ -5,7 +5,7 @@ import { useT } from '../../lib/i18n';
 import { buildRequest, type BruRequest, type HttpResult, type RequestSummary } from '../../lib/request';
 import { evaluateAssertions, type Assertion, type AssertionResult } from '../../lib/requestTools';
 import { PlayIcon } from '../Icons';
-import { ghostButton, Method, primaryButton, statusColor } from './ui';
+import { dangerButton, ghostButton, Method, primaryButton, statusColor } from './ui';
 
 type Row = {
   path: string;
@@ -89,7 +89,7 @@ export function Runner({
   const passed = done.filter(rowPassed).length;
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col overflow-y-auto p-5">
+    <section className="rq-enter flex min-w-0 flex-1 flex-col overflow-y-auto p-5 max-[820px]:p-4">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="min-w-0 flex-1 truncate font-display text-xl font-semibold text-frost-100">{t('requests.runner.title', { folder })}</h2>
         <button type="button" className={ghostButton} onClick={onClose}>
@@ -98,7 +98,7 @@ export function Runner({
         {running ? (
           <button
             type="button"
-            className="shrink-0 rounded-md px-4 py-1.5 font-medium text-danger ring-1 ring-danger/50 hover:bg-danger/10"
+            className={dangerButton}
             onClick={() => {
               stop.current.cancelled = true;
               if (stop.current.id) void window.api.httpCancel(stop.current.id);
@@ -129,10 +129,10 @@ export function Runner({
           const failedAsserts = row.assertions?.filter((a) => !a.pass) ?? [];
           return (
             <li key={row.path} className="border-b border-[var(--hairline)] last:border-0">
-              <button type="button" className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-[var(--hover)]" onClick={() => onOpen(row.path)}>
+              <button type="button" className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left transition-colors hover:bg-[var(--hover)]" onClick={() => onOpen(row.path)}>
                 <span
                   className={`size-2 shrink-0 rounded-full ${
-                    row.state === 'done' ? (ok ? 'bg-sheen-400' : 'bg-danger') : row.state === 'running' ? 'animate-pulse bg-[#e6c07b]' : 'bg-[var(--hairline-strong)]'
+                    row.state === 'done' ? (ok ? 'bg-sheen-400' : 'bg-danger') : row.state === 'running' ? 'animate-pulse bg-caution' : 'bg-[var(--hairline-strong)]'
                   }`}
                   aria-hidden="true"
                 />

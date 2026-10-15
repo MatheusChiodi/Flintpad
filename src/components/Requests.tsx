@@ -44,11 +44,11 @@ import {
   type StatusFilter,
 } from '../lib/requestTools';
 import type { Note } from '../types';
-import { ChevronIcon, CodeIcon, EyeIcon, PageIcon, PlayIcon, PlusIcon } from './Icons';
+import { ChevronIcon, CodeIcon, EyeIcon, PageIcon, PlayIcon, PlusIcon, RequestIcon, TrashIcon, VariablesIcon } from './Icons';
 import { CodeDialog } from './requests/CodeDialog';
 import { ResponsePanel } from './requests/ResponsePanel';
 import { Runner } from './requests/Runner';
-import { field, ghostButton, iconButton, Method, METHOD_COLOR, PairTable, primaryButton, Segmented, statusColor, toolButton } from './requests/ui';
+import { dangerButton, field, ghostButton, iconButton, Method, METHOD_COLOR, PairTable, primaryButton, Segmented, statusColor, toolButton } from './requests/ui';
 
 const ROOT_FOLDER = 'Requests';
 const ENV_FOLDER = `${ROOT_FOLDER}/environments`;
@@ -107,6 +107,11 @@ const drafts = new Map<string, BruRequest>();
 const requestFolder = (path: string) => dirName(path).replace(/\/$/, '') || ROOT_FOLDER;
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const shortUrl = (url: string) => url.replace(/^https?:\/\//i, '');
+// Na lista a pasta aparece sem o prefixo da raiz (Requests/Usuarios → Usuarios); o caminho inteiro fica na dica.
+const folderLabel = (folder: string) => (!folder ? '/' : folder.startsWith(`${ROOT_FOLDER}/`) ? folder.slice(ROOT_FOLDER.length + 1) : folder);
+
+// Aviso de erro: uma faixa tingida, legível e separada do resto do cabeçalho.
+const problemBox = 'rounded-md bg-danger/10 px-2.5 py-1.5 text-[12.5px] text-danger ring-1 ring-danger/25';
 const localDay = (iso: string) => {
   const date = new Date(iso);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -640,19 +645,14 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
   return (
     <div className="relative flex h-full min-h-0 text-[13px]">
       <aside className="flex w-64 shrink-0 flex-col border-r border-[var(--hairline)] max-[1100px]:w-56 max-[820px]:w-48">
-        <div className="flex items-center gap-2 px-3 pb-2 pt-3">
+        <div className="px-3 pb-2 pt-3">
           <Segmented
             label={t('requests.sidebar')}
             value={side}
             onChange={setSide}
+            variant="fill"
             options={[['collection', t('requests.collection')], ['history', counted(t('requests.history'), history.length)]] as const}
           />
-          <span className="flex-1" />
-          {side === 'collection' && (
-            <button className={`${ghostButton} shrink-0 px-2`} onClick={() => void createRequest()} title={t('requests.new')} aria-label={t('requests.new')}>
-              <PlusIcon size={14} />
-            </button>
-          )}
         </div>
 
         {side === 'collection' ? (
@@ -667,16 +667,18 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                 ))}
               </select>
               <button
-                className={`${ghostButton} shrink-0 ${view === 'environments' ? 'bg-[var(--hover-strong)] text-frost-100' : ''}`}
+                className={`${ghostButton} inline-flex shrink-0 items-center gap-1.5 max-[1100px]:px-2 ${view === 'environments' ? 'bg-[var(--hover-strong)] text-frost-100 ring-sheen-400/40' : ''}`}
                 aria-pressed={view === 'environments'}
+                title={t('requests.variables')}
                 onClick={() => setView(view === 'environments' ? 'request' : 'environments')}
               >
-                {t('requests.variables')}
+                <VariablesIcon size={13} />
+                <span className="max-[1100px]:sr-only">{t('requests.variables')}</span>
               </button>
             </div>
-            <div className="px-3 pb-2">
+            <div className="flex items-center gap-2 px-3 pb-2">
               <input
-                className={`${field} w-full font-sans`}
+                className={`${field} flex-1 font-sans`}
                 type="search"
                 value={filter}
                 placeholder={t('requests.filter')}
@@ -692,6 +694,9 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                   }
                 }}
               />
+              <button className={`${ghostButton} grid shrink-0 place-items-center self-stretch px-2`} onClick={() => void createRequest()} title={t('requests.new')} aria-label={t('requests.new')}>
+                <PlusIcon size={14} />
+              </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
               {groups.map(([folder, requests]) => {
@@ -701,16 +706,16 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                     <div className="group/folder flex items-center gap-0.5 pr-1">
                       <button
                         type="button"
-                        className="flex min-w-0 flex-1 items-center gap-1 rounded px-1.5 py-1 text-left font-mono text-[11px] text-frost-500 hover:text-frost-300"
+                        className="flex min-w-0 flex-1 items-center gap-1 rounded px-1.5 py-1 text-left font-mono text-[11px] text-frost-500 transition-colors hover:text-frost-100"
                         title={folder}
                         aria-expanded={!isCollapsed}
                         onClick={() => toggleFolder(folder)}
                       >
-                        <ChevronIcon size={11} className={`shrink-0 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
-                        <span className="truncate">{folder || '/'}</span>
-                        <span className="shrink-0 text-frost-500/70">{requests.length}</span>
+                        <ChevronIcon size={11} className={`shrink-0 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-90'}`} />
+                        <span className="truncate">{folderLabel(folder)}</span>
+                        <span className="shrink-0 rounded-full bg-[var(--hover)] px-1.5 text-[10px] leading-4 text-frost-500">{requests.length}</span>
                       </button>
-                      <span className="flex opacity-0 transition-opacity group-hover/folder:opacity-100 group-focus-within/folder:opacity-100">
+                      <span className="hidden group-focus-within/folder:flex group-hover/folder:flex">
                         <button type="button" className={iconButton} title={t('requests.runner.runFolder')} aria-label={`${t('requests.runner.runFolder')}: ${folder}`} onClick={() => { setRunnerFolder(folder); setView('runner'); }}>
                           <PlayIcon size={12} />
                         </button>
@@ -732,17 +737,17 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                           tabIndex={0}
                           data-request-row
                           aria-current={request.path === selected && view === 'request' ? 'true' : undefined}
-                          className={`row group cursor-pointer px-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-sheen-400 ${request.path === selected && view === 'request' ? 'bg-[var(--hover-strong)] text-frost-100' : 'hover:bg-[var(--hover)]'}`}
+                          className="rq-row group pl-2.5 pr-1"
                           title={request.url}
                           onClick={() => void select(request.path)}
                           onKeyDown={(event) => onRowKey(event, () => void select(request.path))}
                         >
                           <Method value={request.method} />
                           <span className="flex-1 truncate">{request.name}</span>
-                          {drafts.has(request.path) && <span className="size-1.5 shrink-0 rounded-full bg-sheen-400 group-hover:hidden" title={t('requests.unsaved')} />}
+                          {drafts.has(request.path) && <span className="mr-2 size-1.5 shrink-0 rounded-full bg-sheen-400 group-focus-within:hidden group-hover:hidden" title={t('requests.unsaved')} />}
                           <button
                             type="button"
-                            className="rounded px-1 text-frost-500 opacity-0 hover:text-danger focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+                            className={`${iconButton} hidden hover:text-danger group-focus-within:grid group-hover:grid`}
                             title={t('common.moveToTrash')}
                             aria-label={`${t('common.moveToTrash')}: ${request.name}`}
                             onClick={(event) => {
@@ -750,7 +755,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                               void deleteRequest(request.path);
                             }}
                           >
-                            ×
+                            <TrashIcon size={12} />
                           </button>
                         </div>
                       ))}
@@ -758,15 +763,15 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                 );
               })}
               {loading ? (
-                <p className="px-2 py-1 text-frost-500" role="status">
+                <p className="animate-pulse px-2 py-1 text-frost-500" role="status">
                   {t('requests.loading')}
                 </p>
               ) : loadError ? (
-                <p className="px-2 py-1 text-danger" role="alert">
+                <p className={`mx-1 ${problemBox}`} role="alert">
                   {t('requests.error.list', { reason: loadError })}
                 </p>
               ) : !listing.requests.length ? (
-                <p className="px-2 py-1 text-frost-500">{t('requests.empty')}</p>
+                <p className="px-2 py-1 text-[12.5px] leading-relaxed text-frost-500">{t('requests.empty')}</p>
               ) : (
                 !filtered.length && <p className="px-2 py-1 text-frost-500">{t('requests.filterEmpty')}</p>
               )}
@@ -795,13 +800,13 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
               {!history.length ? (
-                <p className="px-2 py-1 text-frost-500">{t('requests.history.empty')}</p>
+                <p className="px-2 py-1 text-[12.5px] leading-relaxed text-frost-500">{t('requests.history.empty')}</p>
               ) : (
                 !shownHistory.length && <p className="px-2 py-1 text-frost-500">{t('requests.filterEmpty')}</p>
               )}
               {historyGroups.map(([day, entries]) => (
                 <div key={day} className="mb-2">
-                  <div className="px-2 py-1 text-[11px] font-medium text-frost-500">{dayLabel(day)}</div>
+                  <div className="section-label px-2 pb-1 pt-1.5">{dayLabel(day)}</div>
                   {entries.map((entry) => (
                     <div
                       key={entry.id}
@@ -810,7 +815,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                       data-request-row
                       aria-current={entry.id === historyId && view === 'history' ? 'true' : undefined}
                       onKeyDown={(event) => onRowKey(event, () => openHistory(entry.id))}
-                      className={`group flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 focus-visible:outline focus-visible:outline-1 focus-visible:outline-sheen-400 ${entry.id === historyId && view === 'history' ? 'bg-[var(--hover-strong)] text-frost-100' : 'hover:bg-[var(--hover)]'}`}
+                      className="rq-row px-2.5 py-1.5"
                       title={entry.url}
                       onClick={() => openHistory(entry.id)}
                     >
@@ -828,7 +833,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                 </div>
               ))}
               {history.length > 0 && (
-                <button className={`${ghostButton} mx-2 mt-2`} onClick={() => void clearHistory()}>
+                <button className={`${toolButton} mx-1 mt-1 hover:text-danger`} onClick={() => void clearHistory()}>
                   {t('requests.history.clear')}
                 </button>
               )}
@@ -849,10 +854,11 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
           onClose={() => setView('request')}
         />
       ) : view === 'environments' ? (
-        <section className="min-w-0 flex-1 overflow-y-auto p-5">
+        <section className="rq-enter min-w-0 flex-1 overflow-y-auto p-5 max-[820px]:p-4">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <h2 className="font-display text-xl font-semibold text-frost-100">{t('requests.env.title')}</h2>
-            <button className={ghostButton} onClick={() => void createEnvironment()}>
+            <button className={`${ghostButton} inline-flex items-center gap-1.5`} onClick={() => void createEnvironment()}>
+              <PlusIcon size={13} />
               {t('requests.env.new')}
             </button>
           </div>
@@ -860,7 +866,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
             <>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <input
-                  className={`${field} w-56 font-sans`}
+                  className={`${field} w-56 font-sans text-[13px] font-medium max-[820px]:w-44`}
                   value={envName}
                   aria-label={t('requests.env.name')}
                   title={t('requests.env.renameHelp')}
@@ -879,7 +885,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                   {t('common.moveToTrash')}
                 </button>
               </div>
-              <p className="mb-3 text-frost-500">
+              <p className="mb-4 max-w-2xl text-[12.5px] leading-relaxed text-frost-500">
                 <Trans
                   k="requests.env.help"
                   values={{
@@ -897,26 +903,33 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                 onChange={(variables) => saveEnvironment(environment, variables)}
               />
               {problem && (
-                <p className="mt-3 text-[12.5px] text-danger" role="alert">
+                <p className={`mt-3 ${problemBox}`} role="alert">
                   {problem}
                 </p>
               )}
             </>
           ) : (
-            <p className="text-frost-500">{t('requests.env.choose')}</p>
+            <div className="mt-10 flex flex-col items-center gap-3 text-center">
+              <span className="rq-empty-mark">
+                <VariablesIcon size={18} />
+              </span>
+              <p className="max-w-xs text-[12.5px] text-frost-500">{t('requests.env.choose')}</p>
+            </div>
           )}
         </section>
       ) : view === 'history' && historyEntry ? (
-        <section className="flex min-w-0 flex-1 flex-col">
-          <div className="px-5 pt-4">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <h2 className="min-w-0 flex-1 truncate font-display text-xl font-semibold text-frost-100">{historyEntry.name}</h2>
+        <section className="rq-enter @container flex min-w-0 flex-1 flex-col [@media(max-height:620px)]:overflow-y-auto">
+          <div className="px-5 pt-4 max-[820px]:px-4 max-[820px]:pt-3">
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5">
+              <h2 className="min-w-0 flex-1 basis-full truncate font-display text-xl font-semibold text-frost-100 @2xl:basis-0" title={historyEntry.name}>
+                {historyEntry.name}
+              </h2>
               {historyEntry.source && listing.requests.some((r) => r.path === historyEntry.source) ? (
                 <button className={toolButton} onClick={() => void select(historyEntry.source!)}>
                   {t('requests.history.openSource')}
                 </button>
               ) : (
-                historyEntry.source && <span className="text-[12px] text-frost-500">{t('requests.history.sourceGone')}</span>
+                historyEntry.source && <span className="px-2 text-[12px] text-frost-500">{t('requests.history.sourceGone')}</span>
               )}
               <button className={toolButton} onClick={() => openSaveDialog(historyEntry.request, historyEntry.name, historyEntry.source ? requestFolder(historyEntry.source) : ROOT_FOLDER)}>
                 {t('requests.history.saveToCollection')}
@@ -925,26 +938,33 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                 {t('requests.history.remove')}
               </button>
               {sendingId ? (
-                <button className="shrink-0 rounded-md px-4 py-1.5 font-medium text-danger ring-1 ring-danger/50 hover:bg-danger/10" onClick={() => void window.api.httpCancel(sendingId)}>
+                <button className={`${dangerButton} ml-auto`} onClick={() => void window.api.httpCancel(sendingId)}>
                   {t('requests.cancel')}
                 </button>
               ) : (
-                <button className={primaryButton} onClick={() => void send(historyEntry.request, historyEntry.source)}>
+                <button className={`${primaryButton} ml-auto`} onClick={() => void send(historyEntry.request, historyEntry.source)}>
                   {t('requests.history.resend')}
                 </button>
               )}
             </div>
-            <div className="mt-3 flex items-center gap-2 rounded-md bg-obsidian-950/60 px-3 py-2 ring-1 ring-[var(--hairline-strong)]">
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-obsidian-950/60 px-3 py-2 ring-1 ring-[var(--hairline-strong)]">
               <Method value={historyEntry.method} />
-              <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-frost-100 select-text">{historyEntry.url}</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-frost-100 select-text" title={historyEntry.url}>
+                {historyEntry.url}
+              </span>
             </div>
             <p className="mt-2 text-[12px] text-frost-500">
               {t('requests.history.sentAt', { time: `${new Date(historyEntry.at).toLocaleDateString()} ${timeOf(historyEntry.at)}` })}
               {historyEntry.environment && ` · ${t('requests.history.environment', { name: historyEntry.environment })}`}
             </p>
-            {problem && <p className="mt-2 text-[12.5px] text-danger">{problem}</p>}
+            {problem && (
+              <p className={`mt-2 ${problemBox}`} role="alert">
+                {problem}
+              </p>
+            )}
           </div>
-          <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-[var(--hairline)] bg-obsidian-950/40">
+          <div className="mt-3 flex min-h-0 flex-1 flex-col border-t border-[var(--hairline)] bg-obsidian-950/40 [@media(max-height:620px)]:min-h-72">
+            {sendingId && <div className="rq-progress -mt-px" aria-hidden="true" />}
             <ResponsePanel
               key={historyEntry.id}
               result={sendingId ? null : historyEntry.result}
@@ -957,15 +977,15 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
         </section>
       ) : draft && selected ? (
         <section
-          className="flex min-w-0 flex-1 flex-col"
+          className="rq-enter @container flex min-w-0 flex-1 flex-col [@media(max-height:620px)]:overflow-y-auto"
           onKeyDown={(event) => {
             if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) void send();
           }}
         >
-          <div className="px-5 pt-4">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="px-5 pt-4 max-[820px]:px-4 max-[820px]:pt-3">
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
               <input
-                className="min-w-40 flex-1 bg-transparent font-display text-xl font-semibold text-frost-100 outline-none placeholder:text-frost-500"
+                className="-ml-1.5 min-w-0 flex-1 basis-full truncate rounded-md bg-transparent px-1.5 py-0.5 font-display text-xl font-semibold text-frost-100 outline-none transition-colors placeholder:text-frost-500 hover:bg-[var(--hover)] focus:bg-obsidian-950/50 focus:ring-1 focus:ring-[var(--hairline-strong)] @2xl:basis-0"
                 value={draft.meta.name}
                 aria-label={t('requests.namePlaceholder')}
                 placeholder={t('requests.namePlaceholder')}
@@ -973,11 +993,12 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                 onChange={(event) => update((r) => ({ ...r, meta: { ...r.meta, name: event.target.value } }))}
               />
               <button
-                className={`shrink-0 rounded-md px-3 py-1 text-[12.5px] font-medium transition-colors ${dirty ? 'bg-sheen-400/15 text-sheen-300 ring-1 ring-sheen-400/40 hover:bg-sheen-400/25' : 'text-frost-500'}`}
+                className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-1 text-[12.5px] font-medium transition-colors ${dirty ? 'rq-press bg-sheen-400/15 text-sheen-300 ring-1 ring-sheen-400/40 hover:bg-sheen-400/25' : 'text-frost-500'}`}
                 disabled={!dirty}
                 title={dirty ? t('requests.unsaved') : undefined}
                 onClick={() => void save()}
               >
+                <span className={`size-1.5 rounded-full ${dirty ? 'bg-sheen-400' : 'bg-frost-500/50'}`} aria-hidden="true" />
                 {dirty ? t('requests.save') : t('requests.saved')}
               </button>
               <button className={toolButton} onClick={() => openSaveDialog(draft, draft.meta.name, requestFolder(selected))}>
@@ -995,34 +1016,35 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
               </button>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <select
-                className={`${field} w-28 shrink-0 font-semibold`}
-                aria-label={t('requests.method')}
-                style={{ color: METHOD_COLOR[draft.http.method.toUpperCase()] }}
-                value={draft.http.method.toUpperCase()}
-                onChange={(event) => update((r) => ({ ...r, http: { ...r.http, method: event.target.value.toLowerCase() } }))}
-              >
-                {METHODS.map((method) => (
-                  <option key={method}>{method}</option>
-                ))}
-              </select>
-              <input
-                className={`${field} min-w-48 flex-1`}
-                value={draft.http.url}
-                aria-label="URL"
-                placeholder={t('requests.urlPlaceholder')}
-                spellCheck={false}
-                onPaste={onUrlPaste}
-                onChange={(event) =>
-                  update((r) => ({ ...r, http: { ...r.http, url: event.target.value }, params: syncPathParams(event.target.value, paramsFromUrl(event.target.value, r.params)) }))
-                }
-              />
+              <div className="rq-url">
+                <select
+                  aria-label={t('requests.method')}
+                  style={{ color: METHOD_COLOR[draft.http.method.toUpperCase()] }}
+                  value={draft.http.method.toUpperCase()}
+                  onChange={(event) => update((r) => ({ ...r, http: { ...r.http, method: event.target.value.toLowerCase() } }))}
+                >
+                  {METHODS.map((method) => (
+                    <option key={method}>{method}</option>
+                  ))}
+                </select>
+                <input
+                  value={draft.http.url}
+                  aria-label="URL"
+                  placeholder={t('requests.urlPlaceholder')}
+                  spellCheck={false}
+                  onPaste={onUrlPaste}
+                  onChange={(event) =>
+                    update((r) => ({ ...r, http: { ...r.http, url: event.target.value }, params: syncPathParams(event.target.value, paramsFromUrl(event.target.value, r.params)) }))
+                  }
+                />
+              </div>
               {sendingId ? (
-                <button className="shrink-0 rounded-md px-4 py-1.5 font-medium text-danger ring-1 ring-danger/50 hover:bg-danger/10" onClick={() => void window.api.httpCancel(sendingId)}>
+                <button className={dangerButton} onClick={() => void window.api.httpCancel(sendingId)}>
                   {t('requests.cancel')}
                 </button>
               ) : (
-                <button className={primaryButton} title={t('requests.sendHint')} onClick={() => void send()}>
+                <button className={`${primaryButton} inline-flex items-center gap-1.5`} title={t('requests.sendHint')} onClick={() => void send()}>
+                  <PlayIcon size={12} />
                   {t('requests.send')}
                 </button>
               )}
@@ -1035,7 +1057,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
               </p>
             )}
             {(problem || missing.length > 0) && (
-              <p className="mt-2 text-[12.5px] text-danger" role="alert">
+              <p className={`mt-2 ${problemBox}`} role="alert">
                 {problem || t('requests.missingVariables', { names: missing.join(', ') })}
               </p>
             )}
@@ -1043,18 +1065,25 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
               <span className="text-frost-500">{t('requests.mentions')}:</span>
               {mentions.length ? (
                 mentions.map((note) => (
-                  <button key={note.path} className="rounded-full px-2 py-0.5 text-sheen-300 ring-1 ring-[var(--hairline-strong)] transition-colors hover:bg-[var(--hover)]" title={note.path} onClick={() => onOpenNote(note.path)}>
-                    {note.name}
+                  <button
+                    key={note.path}
+                    className="inline-flex max-w-48 items-center gap-1 rounded-full px-2 py-0.5 text-sheen-300 ring-1 ring-[var(--hairline-strong)] transition-colors hover:bg-[var(--hover)] hover:ring-sheen-400/40"
+                    title={note.path}
+                    onClick={() => onOpenNote(note.path)}
+                  >
+                    <PageIcon size={11} className="shrink-0" />
+                    <span className="truncate">{note.name}</span>
                   </button>
                 ))
               ) : (
                 <span className="text-frost-500">{t('requests.noMentions')}</span>
               )}
             </div>
-            <div className="mt-3">
+            <div className="mt-2.5 border-b border-[var(--hairline)]">
               <Segmented
                 label={t('requests.sections')}
                 value={tab}
+                variant="tabs"
                 onChange={setTab}
                 options={
                   [
@@ -1070,7 +1099,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
             </div>
           </div>
 
-          <div className="max-h-[42%] min-h-32 shrink-0 overflow-y-auto px-5 py-3">
+          <div className="max-h-[42%] min-h-24 shrink-0 overflow-y-auto px-5 py-3 max-[820px]:px-4 [@media(max-height:620px)]:max-h-[32%]">
             {tab === 'params' && (
               <div className="flex flex-col gap-4">
                 <PairTable
@@ -1084,7 +1113,7 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
                 />
                 {pathParams.length > 0 && (
                   <div>
-                    <h3 className="mb-1.5 text-[12px] font-medium text-frost-500">{t('requests.pathParams')}</h3>
+                    <h3 className="section-label mb-2">{t('requests.pathParams')}</h3>
                     <PairTable rows={pathParams} blank={{ name: '', value: '', enabled: true, type: 'path' } as Pair} namePlaceholder={t('requests.param')} lockNames onChange={(rows) => update((r) => ({ ...r, params: [...queryParams, ...rows] }))} />
                   </div>
                 )}
@@ -1219,7 +1248,9 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
             )}
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col border-t border-[var(--hairline)] bg-obsidian-950/40">
+          {/* Em janela baixa a resposta não encolhe até sumir: a request inteira rola e ela guarda altura útil. */}
+          <div className="flex min-h-0 flex-1 flex-col border-t border-[var(--hairline)] bg-obsidian-950/40 [@media(max-height:620px)]:min-h-72">
+            {sendingId && <div className="rq-progress -mt-px" aria-hidden="true" />}
             <ResponsePanel
               key={selected}
               result={result}
@@ -1235,16 +1266,20 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
           </div>
         </section>
       ) : (
-        <section className="flex min-w-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center text-frost-500">
-          <p className="font-display text-lg text-frost-100">{loading ? t('requests.loading') : t('requests.noneSelected')}</p>
-          {!loading && <p className="max-w-sm text-[12.5px]">{t('requests.noneSelectedHelp')}</p>}
+        <section className="rq-enter flex min-w-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto px-6 py-6 text-center text-frost-500">
+          <span className={`rq-empty-mark ${loading ? 'animate-pulse' : ''}`}>
+            <RequestIcon size={18} />
+          </span>
+          <p className="font-display text-lg font-semibold text-frost-100">{loading ? t('requests.loading') : t('requests.noneSelected')}</p>
+          {!loading && <p className="max-w-sm text-[12.5px] leading-relaxed">{t('requests.noneSelectedHelp')}</p>}
           {problem && (
-            <p className="max-w-md text-[12.5px] text-danger" role="alert">
+            <p className={`max-w-md ${problemBox}`} role="alert">
               {problem}
             </p>
           )}
           {!loading && (
-            <button className={ghostButton} onClick={() => void createRequest()}>
+            <button className={`${primaryButton} mt-1 inline-flex items-center gap-1.5`} onClick={() => void createRequest()}>
+              <PlusIcon size={13} />
               {t('requests.new')}
             </button>
           )}
@@ -1252,7 +1287,8 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
       )}
 
       {notice && (
-        <div role="status" className="pointer-events-none absolute bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-lg bg-obsidian-800 px-3.5 py-2 text-[12.5px] text-frost-100 shadow-lg ring-1 ring-[var(--hairline-strong)]">
+        <div key={notice} role="status" className="toast pointer-events-none text-frost-100">
+          <span className="toast-dot" aria-hidden="true" />
           {notice}
         </div>
       )}
@@ -1260,12 +1296,12 @@ export function Requests({ notes, contents, onOpenNote, onCreateNote }: Props) {
       {codeOpen && draft && <CodeDialog request={draft} vars={vars} onClose={() => setCodeOpen(false)} onCopied={() => flash(t('requests.code.copied'))} />}
 
       {dialog && (
-        <div className="scrim absolute inset-0 z-30 flex items-start justify-center pt-24" onMouseDown={() => setDialog(null)}>
+        <div className="scrim absolute inset-0 z-30 flex items-start justify-center overflow-y-auto pt-24 max-[600px]:pt-10 [@media(max-height:560px)]:pt-8" onMouseDown={() => setDialog(null)}>
           <form
             role="dialog"
             aria-modal="true"
             aria-labelledby="request-save-title"
-            className="w-[min(420px,calc(100%-32px))] rounded-xl bg-obsidian-800 p-5 shadow-2xl ring-1 ring-[var(--hairline-strong)]"
+            className="palette w-[min(420px,calc(100%-32px))] rounded-xl p-5"
             onMouseDown={(event) => event.stopPropagation()}
             onSubmit={(event) => {
               event.preventDefault();

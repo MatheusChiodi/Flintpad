@@ -202,6 +202,13 @@ export const CopyIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Variáveis de ambiente: um par de chaves, como {{nome}}.
+export const VariablesIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M5.75 2.75h-.5A1.5 1.5 0 0 0 3.75 4.25v2.1L2.5 8l1.25 1.65v2.1a1.5 1.5 0 0 0 1.5 1.5h.5m4.5-10.5h.5a1.5 1.5 0 0 1 1.5 1.5v2.1L13.5 8l-1.25 1.65v2.1a1.5 1.5 0 0 1-1.5 1.5h-.5" />
+  </Icon>
+);
+
 export const EyeIcon = ({ off, ...props }: IconProps & { off?: boolean }) => (
   <Icon {...props}>
     <path d="M1.75 8S4 3.75 8 3.75 14.25 8 14.25 8 12 12.25 8 12.25 1.75 8 1.75 8z" />

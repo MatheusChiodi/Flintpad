@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useT } from '../../lib/i18n';
 import { formatBody, formatSize, type HttpResult } from '../../lib/request';
 import { findMatches, highlightSegments, parseSetCookies, queryJson, type AssertionResult } from '../../lib/requestTools';
-import { CopyIcon, NewPageIcon } from '../Icons';
+import { CopyIcon, NewPageIcon, RequestIcon } from '../Icons';
 import { field, iconButton, Segmented, statusColor } from './ui';
 
 const MAX_SHOWN_CHARS = 400_000;
@@ -65,13 +65,18 @@ export function ResponsePanel({
     bodyRef.current?.querySelector(`[data-match="${current}"]`)?.scrollIntoView({ block: 'center' });
   }, [current, segments]);
 
-  if (sending)
+  // Sem resposta ainda (ou a caminho): um estado vazio centrado, que não some em janela baixa.
+  if (sending || !result)
     return (
-      <p className="p-4 text-frost-500" role="status">
-        {t('requests.response.sending')}
-      </p>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 overflow-y-auto p-4 text-center">
+        <span className={`rq-empty-mark ${sending ? 'animate-pulse' : ''}`} aria-hidden="true">
+          <RequestIcon size={18} />
+        </span>
+        <p className="max-w-xs text-[12.5px] leading-relaxed text-frost-500" role={sending ? 'status' : undefined}>
+          {sending ? t('requests.response.sending') : t('requests.response.idle')}
+        </p>
+      </div>
     );
-  if (!result) return <p className="p-4 text-frost-500">{t('requests.response.idle')}</p>;
 
   // Sem asserções a aba Testes some; se era ela a aberta, volta para o corpo.
   const tab: Tab = chosenTab === 'tests' && !assertions.length ? 'body' : chosenTab;
@@ -82,20 +87,23 @@ export function ResponsePanel({
   if (!result.ok) {
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-auto p-4" role="alert">
-        <p className="font-medium text-danger">{result.cancelled ? t('requests.response.cancelled') : t('requests.response.failed')}</p>
-        {!result.cancelled && <p className="mt-1 font-mono text-[12.5px] text-frost-300 select-text">{result.error}</p>}
-        {!result.cancelled && <p className="mt-3 text-[12.5px] text-frost-500">{t('requests.response.failedHint')}</p>}
+        <div className={`max-w-2xl rounded-lg px-3.5 py-3 ring-1 ${result.cancelled ? 'bg-[var(--hover)] ring-[var(--hairline-strong)]' : 'bg-danger/10 ring-danger/25'}`}>
+          <p className={`font-medium ${result.cancelled ? 'text-frost-100' : 'text-danger'}`}>{result.cancelled ? t('requests.response.cancelled') : t('requests.response.failed')}</p>
+          {!result.cancelled && <p className="mt-1 break-words font-mono text-[12.5px] text-frost-100 select-text">{result.error}</p>}
+        </div>
+        {!result.cancelled && <p className="mt-3 max-w-2xl text-[12.5px] leading-relaxed text-frost-500">{t('requests.response.failedHint')}</p>}
       </div>
     );
   }
 
   let index = -1;
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2">
+    <div className="@container flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-wrap-reverse items-end gap-x-4 gap-y-1 border-b border-[var(--hairline)] px-4 pt-2">
         <Segmented
           label={t('requests.response.label')}
           value={tab}
+          variant="tabs"
           onChange={setTab}
           options={
             [
@@ -106,11 +114,12 @@ export function ResponsePanel({
             ] as const
           }
         />
-        <span className="ml-auto flex items-center gap-3">
+        <span className="ml-auto flex shrink-0 items-center gap-3 pb-2">
+          {/* Em painel estreito o placar já aparece na guia Testes: some daqui para caber numa linha. */}
           {assertions.length > 0 && (
-            <span className={`font-mono text-[12px] ${passed === assertions.length ? 'text-sheen-300' : 'text-danger'}`}>{testsLabel}</span>
+            <span className={`font-mono text-[12px] @max-2xl:hidden ${passed === assertions.length ? 'text-sheen-300' : 'text-danger'}`}>{testsLabel}</span>
           )}
-          <span className="font-mono text-[12.5px] font-semibold" role="status" style={{ color: statusColor(result.status) }}>
+          <span className="rq-status" role="status" style={{ color: statusColor(result.status) }}>
             {result.status} {result.statusText}
           </span>
           <span className="font-mono text-[12px] text-frost-500">{result.time} ms</span>
@@ -119,7 +128,7 @@ export function ResponsePanel({
       </div>
 
       {tab === 'body' && (
-        <div className="flex flex-wrap items-center gap-2 px-4 pb-2">
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2">
           <Segmented
             label={t('requests.response.format')}
             value={raw ? 'raw' : 'pretty'}
@@ -130,7 +139,7 @@ export function ResponsePanel({
             ]}
           />
           <input
-            className={`${field} w-44 font-sans max-[900px]:w-32`}
+            className={`${field} w-28 max-w-56 flex-1 font-sans`}
             type="search"
             value={search}
             placeholder={t('requests.response.search')}
@@ -151,7 +160,7 @@ export function ResponsePanel({
           )}
           {parsed && (
             <input
-              className={`${field} w-48 max-[900px]:w-36`}
+              className={`${field} w-28 max-w-60 flex-1`}
               value={filter}
               placeholder={t('requests.response.filter')}
               aria-label={t('requests.response.filter')}
@@ -161,17 +170,18 @@ export function ResponsePanel({
               onKeyDown={(event) => event.key === 'Escape' && setFilter('')}
             />
           )}
-          <span className="flex-1" />
-          {onCopy && (
-            <button type="button" className={iconButton} title={t('requests.response.copy')} aria-label={t('requests.response.copy')} onClick={() => onCopy(shown)}>
-              <CopyIcon size={14} />
-            </button>
-          )}
-          {onSaveAsNote && (
-            <button type="button" className={iconButton} title={t('requests.response.saveNote')} aria-label={t('requests.response.saveNote')} onClick={onSaveAsNote}>
-              <NewPageIcon size={14} />
-            </button>
-          )}
+          <span className="ml-auto flex items-center gap-0.5">
+            {onCopy && (
+              <button type="button" className={iconButton} title={t('requests.response.copy')} aria-label={t('requests.response.copy')} onClick={() => onCopy(shown)}>
+                <CopyIcon size={14} />
+              </button>
+            )}
+            {onSaveAsNote && (
+              <button type="button" className={iconButton} title={t('requests.response.saveNote')} aria-label={t('requests.response.saveNote')} onClick={onSaveAsNote}>
+                <NewPageIcon size={14} />
+              </button>
+            )}
+          </span>
         </div>
       )}
 
@@ -187,7 +197,7 @@ export function ResponsePanel({
                       if (!segment.match) return segment.text;
                       index++;
                       return (
-                        <mark key={i} data-match={index} className={`rounded-sm text-obsidian-950 ${index === current ? 'bg-sheen-300' : 'bg-[#e6c07b]/70'}`}>
+                        <mark key={i} data-match={index} className={`rounded-sm text-obsidian-950 ${index === current ? 'bg-sheen-300' : 'bg-caution/70'}`}>
                           {segment.text}
                         </mark>
                       );
@@ -201,9 +211,9 @@ export function ResponsePanel({
           <table className="w-full font-mono text-[12.5px]">
             <tbody>
               {result.headers.map(([name, value], i) => (
-                <tr key={i} className="align-top">
-                  <td className="py-0.5 pr-4 text-sheen-300">{name}</td>
-                  <td className="break-all py-0.5 text-frost-100 select-text">{value}</td>
+                <tr key={i} className="border-b border-[var(--hairline)] align-top last:border-0">
+                  <td className="whitespace-nowrap py-1 pr-4 text-sheen-300">{name}</td>
+                  <td className="break-all py-1 text-frost-100 select-text">{value}</td>
                 </tr>
               ))}
             </tbody>
