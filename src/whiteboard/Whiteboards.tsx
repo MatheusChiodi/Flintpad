@@ -4,7 +4,7 @@ import { PlusIcon, TrashIcon } from '../components/Icons';
 import { BoardEditor, type Saver } from './BoardEditor';
 import { importedName } from './files.ts';
 import { useWbT, type WbKey } from './i18n.ts';
-import { PencilIcon, UploadIcon } from './icons';
+import { CopyIcon, PencilIcon, SearchIcon, UploadIcon } from './icons';
 import { emptyBoard, MAX_BOARD_BYTES, parseBoard, resolveLink, type Board, type ParseResult } from './model.ts';
 import { sampleBoard } from './sample.ts';
 import { createBoard, deleteBoard, listBoards, readBoard, renameBoard, type BoardEntry } from './storage.ts';
@@ -30,6 +30,7 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
+  const [filter, setFilter] = useState('');
   const saver = useRef<Saver | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const latestBoards = useRef<BoardEntry[]>([]);
@@ -152,7 +153,21 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
     onOpenNote?.(target.path);
   };
 
+  /** Cópia do quadro na mesma pasta ("Nome cópia"), aberta em seguida. */
+  const duplicateBoard = async (entry: BoardEntry) => {
+    try {
+      if (entry.path === selected) await saver.current?.flush();
+      const result = await readBoard(entry.path);
+      if (!result.ok) return setMessage({ kind: 'error', text: t(`error.${result.error}` as WbKey) });
+      await create(t('copyName', { name: entry.name }), { ...result.board, sample: undefined });
+    } catch (error) {
+      fail(error);
+    }
+  };
+
   const current = boards?.find((b) => b.path === selected);
+  const folded = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const visible = boards && filter.trim() ? boards.filter((b) => folded(b.path).includes(folded(filter.trim()))) : boards;
   const sideButton = 'flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-frost-300 hover:bg-[var(--hover)] hover:text-frost-100';
 
   return (
@@ -187,6 +202,22 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
           </p>
         )}
 
+        {boards && boards.length > 5 && (
+          <label className="mx-3 mb-2 flex items-center gap-1.5 rounded-md bg-obsidian-950/40 px-2 py-1 text-frost-500 ring-1 ring-[var(--hairline)] focus-within:ring-sheen-400">
+            <SearchIcon size={13} />
+            <input
+              className="min-w-0 flex-1 bg-transparent text-[12.5px] text-frost-100 outline-none placeholder:text-frost-500"
+              value={filter}
+              placeholder={t('filter')}
+              aria-label={t('filter')}
+              spellCheck={false}
+              data-testid="wb-filter"
+              onChange={(event) => setFilter(event.target.value)}
+              onKeyDown={(event) => event.key === 'Escape' && setFilter('')}
+            />
+          </label>
+        )}
+
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" data-testid="wb-list">
           {boards === null ? (
             <p className="px-2 py-1 text-frost-500" role="status">
@@ -199,8 +230,12 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
                 {t('retry')}
               </button>
             </div>
-          ) : boards.length ? (
-            boards.map((entry) =>
+          ) : visible && boards.length && !visible.length ? (
+            <p className="px-2 py-1 text-frost-500" role="status">
+              {t('filterNone')}
+            </p>
+          ) : visible && visible.length ? (
+            visible.map((entry) =>
               renaming === entry.path ? (
                 <input
                   key={entry.path}
@@ -236,6 +271,9 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
                   </button>
                   <button className="icon-button reveal" title={t('rename')} aria-label={t('renameNamed', { name: entry.name })} onClick={() => setRenaming(entry.path)}>
                     <PencilIcon size={13} />
+                  </button>
+                  <button className="icon-button reveal" title={t('duplicateBoard')} aria-label={t('duplicateNamed', { name: entry.name })} onClick={() => void duplicateBoard(entry)}>
+                    <CopyIcon size={13} />
                   </button>
                   <button className="icon-button reveal" data-danger="true" title={t('trashNamed', { name: entry.name })} aria-label={t('trashNamed', { name: entry.name })} onClick={() => void remove(entry)}>
                     <TrashIcon size={14} />
