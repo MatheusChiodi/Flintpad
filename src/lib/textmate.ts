@@ -4,6 +4,7 @@ import * as monaco from 'monaco-editor';
 import { createOnigScanner, createOnigString, loadWASM } from 'vscode-oniguruma';
 import { INITIAL, parseRawGrammar, Registry, type IGrammar, type IOnigLib, type IRawTheme, type StateStack } from 'vscode-textmate';
 
+import { filePattern, matchesFilePattern, type FilePattern } from './codeTools';
 import { baseName, extName } from './paths';
 import type { TokenColor, VsExtension, VsGrammarRef, VsLanguageRef, VsTheme } from './vscode';
 
@@ -30,27 +31,13 @@ function onigLib() {
 
 type LanguageIndex = {
   byFilename: Map<string, string>;
-  byPattern: [RegExp, string][];
+  byPattern: [FilePattern, string][];
   byExtension: Map<string, string>;
   byFirstLine: [RegExp, string][];
 };
 
 let index: LanguageIndex = { byFilename: new Map(), byPattern: [], byExtension: new Map(), byFirstLine: [] };
 const builtinLanguages = new Set(monaco.languages.getLanguages().map((language) => language.id));
-
-const globToRegExp = (glob: string) =>
-  new RegExp(
-    '^' +
-      glob
-        .split('/')
-        .pop()!
-        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-        .replace(/\*\*/g, '.*')
-        .replace(/\*/g, '[^/]*')
-        .replace(/\?/g, '.') +
-      '$',
-    'i',
-  );
 
 const toRegExp = (source: string | { pattern: string; flags?: string } | undefined) => {
   if (!source) return undefined;
@@ -66,7 +53,7 @@ export function languageForFile(path: string, firstLine?: string): string | unde
   const name = baseName(path).toLowerCase();
   const byName = index.byFilename.get(name);
   if (byName) return byName;
-  for (const [pattern, id] of index.byPattern) if (pattern.test(name)) return id;
+  for (const [pattern, id] of index.byPattern) if (matchesFilePattern(pattern, path)) return id;
   // "a.d.ts" tenta ".d.ts" antes de ".ts".
   for (let dot = name.indexOf('.'); dot >= 0; dot = name.indexOf('.', dot + 1)) {
     const id = index.byExtension.get(name.slice(dot));
@@ -247,7 +234,7 @@ export async function installExtensions(extensions: VsExtension[]) {
     for (const language of extension.languages) {
       languages.set(language.id, [...(languages.get(language.id) ?? []), language]);
       for (const name of language.filenames) nextIndex.byFilename.set(name.toLowerCase(), language.id);
-      for (const pattern of language.filenamePatterns) nextIndex.byPattern.push([globToRegExp(pattern), language.id]);
+      for (const pattern of language.filenamePatterns) nextIndex.byPattern.push([filePattern(pattern), language.id]);
       for (const ext of language.extensions) nextIndex.byExtension.set(ext.toLowerCase(), language.id);
       const firstLine = toRegExp(language.firstLine);
       if (firstLine) nextIndex.byFirstLine.push([firstLine, language.id]);

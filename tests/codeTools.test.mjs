@@ -4,6 +4,8 @@ import { test } from 'node:test';
 
 import {
   duplicateName,
+  filePattern,
+  matchesFilePattern,
   markdownSnippet,
   NavHistory,
   needsFinalNewline,
@@ -130,4 +132,18 @@ test('workspaceKey e tabLabel', () => {
   assert.equal(workspaceKey(['D:\\Proj\\', 'E:/x']), 'd:/proj|e:/x');
   assert.equal(tabLabel('D:\\p\\src\\index.ts', ['D:\\p\\src\\index.ts', 'D:\\p\\lib\\index.ts']), 'index.ts · src');
   assert.equal(tabLabel('D:\\p\\a.ts', ['D:\\p\\a.ts']), 'a.ts');
+});
+
+test('filePattern: padrão com pasta olha o caminho todo (não captura todo .md); sem pasta, só o nome', () => {
+  const rules = filePattern('**/.claude/rules/**/*.md');
+  assert.equal(matchesFilePattern(rules, 'C:\\proj\\docs\\guia.md'), false);
+  assert.equal(matchesFilePattern(rules, 'C:\\proj\\.claude\\rules\\a\\b.md'), true);
+  assert.equal(matchesFilePattern(rules, '/home/u/.claude/rules/x.md'), true);
+  const agents = filePattern('**/.github/agents/*.md');
+  assert.equal(matchesFilePattern(agents, 'D:\\r\\.github\\agents\\x.md'), true);
+  assert.equal(matchesFilePattern(agents, 'D:\\r\\.github\\agents\\sub\\x.md'), false);
+  const name = filePattern('*.code-workspace');
+  assert.equal(matchesFilePattern(name, 'D:\\a\\b.code-workspace'), true);
+  assert.equal(matchesFilePattern(filePattern('Dockerfile.*'), '/x/Dockerfile.dev'), true);
+  assert.equal(matchesFilePattern(filePattern('a+b?.txt'), '/x/a+b1.txt'), true);
 });

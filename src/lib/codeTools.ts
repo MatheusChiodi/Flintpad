@@ -16,6 +16,33 @@ export function duplicateName(name: string, taken: (candidate: string) => boolea
   return `${stem} copy ${Date.now()}${ext}`;
 }
 
+// ---------- Linguagem pelo nome ----------
+
+// Padrão de nome de arquivo das extensões (filenamePatterns). Com "/" o padrão vale para o caminho todo
+// ("**/.claude/rules/**/*.md" não pode virar "*.md" e capturar todo Markdown); sem "/", só para o nome.
+export type FilePattern = { regex: RegExp; fullPath: boolean };
+
+export function filePattern(glob: string): FilePattern {
+  const fullPath = glob.includes('/');
+  let source = '';
+  for (let i = 0; i < glob.length; i++) {
+    const char = glob[i];
+    if (char === '*' && glob[i + 1] === '*') {
+      const slash = glob[i + 2] === '/';
+      source += slash ? '(?:.*/)?' : '.*';
+      i += slash ? 2 : 1;
+    } else if (char === '*') source += '[^/]*';
+    else if (char === '?') source += '[^/]';
+    else source += /[.+^${}()|[\]\\]/.test(char) ? `\\${char}` : char;
+  }
+  // "**/" no começo já é coberto por "(?:^|/)".
+  if (fullPath) source = `(?:^|/)${source.startsWith('(?:.*/)?') ? source.slice('(?:.*/)?'.length) : source}`;
+  return { regex: new RegExp(fullPath ? `${source}$` : `^${source}$`, 'i'), fullPath };
+}
+
+/** O arquivo casa com o padrão? Padrões com "/" olham o caminho todo; os demais, só o nome. */
+export const matchesFilePattern = (pattern: FilePattern, path: string) => pattern.regex.test(pattern.fullPath ? path.replace(/\\/g, '/') : baseName(path));
+
 // ---------- Quick Open ----------
 
 /** "app.ts:12:4" → busca "app.ts", linha 12, coluna 4 (como o Ctrl+P do VS Code). */

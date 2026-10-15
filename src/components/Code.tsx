@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 
 import { buildMatcher, replaceInText } from '../../electron/searchCore.mjs';
 import { setCodeMenuHandler } from '../lib/codeBridge';
-import { duplicateName, NavHistory, type Location, needsFinalNewline, parseQuickOpen, parseSavedEditors, trailingWhitespace, pushClosed, sortPinned, tabsToClose, workspaceKey, type CloseKind } from '../lib/codeTools';
+import { duplicateName, markdownSnippet, runCommandFor, NavHistory, type Location, needsFinalNewline, parseQuickOpen, parseSavedEditors, trailingWhitespace, pushClosed, sortPinned, tabsToClose, workspaceKey, type CloseKind } from '../lib/codeTools';
 import { fuzzyFilter, fuzzyMatch } from '../lib/fuzzy';
 import { useT, type Key } from '../lib/i18n';
 import { loadIconTheme, type IconTheme } from '../lib/iconTheme';
@@ -25,6 +25,7 @@ import { SearchView, type SearchHost, type SearchRequest } from './code/SearchVi
 import { TerminalPanel, type TerminalCommand } from './code/TerminalPanel';
 import { TodoView } from './code/TodoView';
 import { DiffView } from './code/DiffView';
+import { MarkdownPreview } from './code/MarkdownPreview';
 import { problemCounts, ProblemsPanel } from './code/ProblemsPanel';
 import { ContextMenu, isMenuKey, menuPosition, type MenuItem, type MenuRequest } from './ContextMenu';
 import { Vein } from './code/Vein';
@@ -80,7 +81,7 @@ const writeStorage = (key: string, value: unknown) => {
 type EditorTab = { path: string; preview: boolean; pinned?: boolean };
 type SideView = 'explorer' | 'search' | 'todo';
 type PanelView = 'terminal' | 'problems';
-type Layout = { sidebar: boolean; sidebarWidth: number; panel: boolean; panelHeight: number; panelMax: boolean; view: SideView; panelView: PanelView };
+type Layout = { sidebar: boolean; sidebarWidth: number; panel: boolean; panelHeight: number; panelMax: boolean; view: SideView; panelView: PanelView; preview: boolean; previewWidth: number; zen: boolean };
 type LineNumbers = 'on' | 'relative' | 'off';
 type EditorPrefs = {
   minimap: boolean;
@@ -95,7 +96,7 @@ type EditorPrefs = {
   stickyScroll: boolean;
 };
 
-const DEFAULT_LAYOUT: Layout = { sidebar: true, sidebarWidth: 260, panel: false, panelHeight: 260, panelMax: false, view: 'explorer', panelView: 'terminal' };
+const DEFAULT_LAYOUT: Layout = { sidebar: true, sidebarWidth: 260, panel: false, panelHeight: 260, panelMax: false, view: 'explorer', panelView: 'terminal', preview: false, previewWidth: 520, zen: false };
 const SIDE_VIEWS: SideView[] = ['explorer', 'search', 'todo'];
 const DEFAULT_PREFS: EditorPrefs = { minimap: true, wordWrap: false, fontSize: 13, autoSave: true, formatOnSave: false, trimWhitespace: false, finalNewline: false, renderWhitespace: false, lineNumbers: 'on', stickyScroll: true };
 
@@ -188,7 +189,7 @@ export default function Code() {
   const [active, setActiveState] = useState<string | null>(session.active);
   const [layout, setLayoutState] = useState<Layout>(() => {
     const stored = readStorage(STORAGE.layout, DEFAULT_LAYOUT);
-    return { ...stored, view: SIDE_VIEWS.includes(stored.view) ? stored.view : DEFAULT_LAYOUT.view, panelView: stored.panelView === 'problems' ? 'problems' : 'terminal' };
+    return { ...stored, view: SIDE_VIEWS.includes(stored.view) ? stored.view : DEFAULT_LAYOUT.view, panelView: stored.panelView === 'problems' ? 'problems' : 'terminal', previewWidth: Number(stored.previewWidth) || DEFAULT_LAYOUT.previewWidth, zen: false };
   });
   const [prefs, setPrefsState] = useState<EditorPrefs>(() => {
     const stored = readStorage(STORAGE.editor, DEFAULT_PREFS);
@@ -657,6 +658,8 @@ export default function Code() {
     const plainChord = (second: monaco.KeyCode, id: string) => editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, second), () => runCommandRef.current(id));
     plainChord(monaco.KeyCode.KeyM, 'workbench.action.editor.changeLanguageMode');
     plainChord(monaco.KeyCode.KeyD, 'workbench.files.action.compareWithSaved');
+    plainChord(monaco.KeyCode.KeyV, 'markdown.showPreviewToSide');
+    plainChord(monaco.KeyCode.KeyZ, 'workbench.action.toggleZenMode');
 
     let alive = true;
     void (async () => {
@@ -1037,6 +1040,79 @@ export default function Code() {
     setTerminalCommand({ kind: 'new', serial: Date.now() });
   };
 
+  // ---------- Markdown, terminal e cópia ----------
+
+  const togglePreview = () => {
+    const model = activeModel();
+    if (!layout.preview && !(model && /^(markdown|mdx)$/.test(model.getLanguageId()))) {
+      flash(t('code.preview.onlyMarkdown'));
+      return;
+    }
+    setLayout({ preview: !layout.preview });
+  };
+
+  // Link relativo da prévia: abre o arquivo ao lado do atual, se existir.
+  const openFromPreview = async (href: string, _anchor: string) => {
+    if (!session.active) return;
+    const target = joinPath(dirName(session.active), href);
+    const stat = await window.api.ws.stat(target).catch(() => null);
+    if (!stat || stat.dir) {
+      flash(t('code.preview.missing', { path: href }), true);
+      return;
+    }
+    void openPath(target, { pinned: true });
+  };
+
+  const platform = navigator.userAgent.includes('Windows') ? 'win32' : 'posix';
+  const sendToTerminal = (text: string) => {
+    setLayout({ panel: true, panelView: 'terminal' });
+    setTerminalCommand({ kind: 'run', text, serial: Date.now() });
+  };
+
+  // Rodar o arquivo ativo no terminal (salva antes), com o executor da linguagem.
+  const runActiveFile = async () => {
+    const path = session.active;
+    if (!path) return;
+    const command = runCommandFor(path, platform);
+    if (!command) {
+      flash(t('code.run.unsupported', { name: baseName(path) }), true);
+      return;
+    }
+    if (isDirty(path)) await save(path);
+    sendToTerminal(command);
+  };
+
+  // Seleção (ou a linha do cursor) vai para o terminal ativo e é executada.
+  const runSelection = () => {
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    const selection = editor?.getSelection();
+    if (!editor || !model || !selection) return;
+    const text = selection.isEmpty() ? model.getLineContent(selection.positionLineNumber) : model.getValueInRange(selection);
+    if (!text.trim()) return;
+    sendToTerminal(text.replace(/\r?\n/g, '\r'));
+  };
+
+  // Seleção (ou o arquivo todo) como bloco Markdown com caminho e linhas: pronto para colar numa nota.
+  const copyAsMarkdown = () => {
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    const path = session.active;
+    if (!editor || !model || !path) return;
+    const selection = editor.getSelection();
+    const whole = !selection || selection.isEmpty();
+    const range = whole ? model.getFullModelRange() : selection!;
+    // Seleção que termina no início de uma linha não inclui essa linha.
+    const endLine = !whole && range.endColumn === 1 && range.endLineNumber > range.startLineNumber ? range.endLineNumber - 1 : range.endLineNumber;
+    const snippet = markdownSnippet({ code: model.getValueInRange(range), language: model.getLanguageId(), path: relativePath(rootOf(path), path).replace(/\\/g, '/'), startLine: range.startLineNumber, endLine });
+    void navigator.clipboard.writeText(snippet).then(
+      () => flash(t('code.copiedMarkdown')),
+      () => flash(t('code.copyFailed'), true),
+    );
+  };
+
+  const toggleZen = () => setLayout({ zen: !layout.zen });
+
   // Trilha: clicar numa pasta lista o que há nela (pastas entram, arquivos abrem).
   const pickInFolder = async (dir: string) => {
     let entries: DirEntry[];
@@ -1165,6 +1241,11 @@ export default function Code() {
     { id: 'editor.action.fontZoomIn', label: t('code.cmd.zoomIn'), run: () => setPrefs({ fontSize: Math.min(32, prefs.fontSize + 1) }) },
     { id: 'editor.action.fontZoomOut', label: t('code.cmd.zoomOut'), run: () => setPrefs({ fontSize: Math.max(8, prefs.fontSize - 1) }) },
     { id: 'editor.action.fontZoomReset', label: t('code.cmd.zoomReset'), run: () => setPrefs({ fontSize: DEFAULT_PREFS.fontSize }) },
+    { id: 'markdown.showPreviewToSide', label: t('code.cmd.togglePreview'), keybinding: 'Ctrl+K V', run: togglePreview },
+    { id: 'workbench.action.toggleZenMode', label: t('code.cmd.toggleZen'), keybinding: 'Ctrl+K Z', run: toggleZen },
+    { id: 'workbench.action.terminal.runActiveFile', label: t('code.cmd.runFile'), keybinding: 'Ctrl+Alt+N', run: () => void runActiveFile() },
+    { id: 'workbench.action.terminal.runSelectedText', label: t('code.cmd.runSelection'), run: runSelection },
+    { id: 'editor.action.copyAsMarkdown', label: t('code.cmd.copyAsMarkdown'), run: copyAsMarkdown },
     { id: 'workbench.action.navigateBack', label: t('code.cmd.navigateBack'), keybinding: 'Alt+←', run: () => navigate(-1) },
     { id: 'workbench.action.navigateForward', label: t('code.cmd.navigateForward'), keybinding: 'Alt+→', run: () => navigate(1) },
     { id: 'workbench.files.action.compareWithSaved', label: t('code.cmd.compareWithSaved'), keybinding: 'Ctrl+K D', run: () => void compareWithSaved() },
@@ -1256,6 +1337,8 @@ export default function Code() {
         else if (key === 'm') id = 'workbench.action.editor.changeLanguageMode';
         else if (key === 'o') id = 'workbench.action.files.openFolder';
         else if (key === 'd') id = 'workbench.files.action.compareWithSaved';
+        else if (key === 'v') id = 'markdown.showPreviewToSide';
+        else if (key === 'z') id = 'workbench.action.toggleZenMode';
       } else if (event.key === 'F1') id = 'workbench.action.showCommands';
       else if (key === 'k' && !event.shiftKey && !event.altKey) {
         chord = true;
@@ -1270,6 +1353,7 @@ export default function Code() {
       else if (key === 'h' && event.shiftKey) id = 'workbench.action.replaceInFiles';
       else if (key === 'm' && event.shiftKey) id = 'workbench.actions.view.problems';
       else if (key === 's' && !event.shiftKey) id = 'workbench.action.files.save';
+      else if (key === 'n' && event.altKey && !event.shiftKey) id = 'workbench.action.terminal.runActiveFile';
       else if (key === 'pagedown') id = 'workbench.action.nextEditor';
       else if (key === 'pageup') id = 'workbench.action.previousEditor';
       if (!id) return;
@@ -1468,6 +1552,8 @@ export default function Code() {
   const languageId = model?.getLanguageId();
   const languageLabel = languageId ? (allLanguages().find((language) => language.id === languageId)?.label ?? languageId) : null;
   const lspKind = languageId ? serverForLanguage(languageId) : undefined;
+  const isMarkdown = languageId === 'markdown' || languageId === 'mdx';
+  const showPreview = layout.preview && isMarkdown;
   const style = { ...cssVariables(colors), background: 'var(--vsc-editor-background)', color: 'var(--vsc-foreground)', colorScheme: kind.includes('light') ? 'light' : 'dark' } as CSSProperties;
   const titleButton = 'wb-icon-btn';
 
@@ -1529,6 +1615,7 @@ export default function Code() {
     <div className="wb relative flex h-full min-h-0 flex-col" style={style}>
       <div className="flex min-h-0 flex-1">
         {/* Barra de atividades */}
+        {!layout.zen && (
         <nav className="wb-activity" aria-label={t('code.activity.label')}>
           {activityButton(
             'explorer',
@@ -1550,9 +1637,10 @@ export default function Code() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>
           </button>
         </nav>
+        )}
 
         {/* Barra lateral */}
-        {layout.sidebar && (
+        {layout.sidebar && !layout.zen && (
           <>
             <aside className="wb-side" style={{ width: layout.sidebarWidth }} aria-label={sideTitle[layout.view]}>
               <div className="wb-side-title">
@@ -1697,7 +1785,7 @@ export default function Code() {
                 <Vein axis="x" inset={12} />
               </div>
             )}
-            {model && root && (
+            {model && root && !layout.zen && (
               <nav className="wb-crumbs" aria-label={t('code.crumbs.label')}>
                 {relativePath(rootOf(active!), active!)
                   .split(/[\\/]/)
@@ -1723,22 +1811,50 @@ export default function Code() {
                   })}
               </nav>
             )}
-            <div className="relative min-h-0 flex-1">
-              <div ref={host} className={`absolute inset-0 ${model ? '' : 'invisible'}`} />
-              {diff && model && <DiffView key={diff.path} path={diff.path} saved={diff.saved} fontSize={prefs.fontSize} onClose={closeDiff} />}
-              {!model && (
-                <Welcome
-                  t={t}
-                  root={root}
-                  recent={workspace?.recent ?? []}
-                  onCommand={runCommand}
-                  onOpenRecent={(dir) => void window.api.ws.setRoot(dir).then(changeRoot, (error) => flash(errorText(error), true))}
-                />
+            <div className="flex min-h-0 flex-1">
+              <div className="relative min-h-0 min-w-0 flex-1">
+                <div ref={host} className={`absolute inset-0 ${model ? '' : 'invisible'}`} />
+                {diff && model && <DiffView key={diff.path} path={diff.path} saved={diff.saved} fontSize={prefs.fontSize} onClose={closeDiff} />}
+                {!model && (
+                  <Welcome
+                    t={t}
+                    root={root}
+                    recent={workspace?.recent ?? []}
+                    onCommand={runCommand}
+                    onOpenRecent={(dir) => void window.api.ws.setRoot(dir).then(changeRoot, (error) => flash(errorText(error), true))}
+                  />
+                )}
+              </div>
+              {showPreview && model && (
+                <>
+                  <div
+                    className="wb-sash wb-sash-x"
+                    onPointerDown={(event) => {
+                      const width = layout.previewWidth;
+                      startDrag('x', event, (delta) => setLayout({ previewWidth: Math.max(240, Math.min(window.innerWidth * 0.7, width - delta)) }));
+                    }}
+                  />
+                  <div className="wb-md-pane shrink-0" style={{ width: `min(${layout.previewWidth}px, 60%)` }}>
+                    <MarkdownPreview
+                      model={model}
+                      cursorLine={cursor.line}
+                      onOpenFile={(href, anchor) => openFromPreview(href, anchor)}
+                      onRevealLine={(line) => {
+                        const editor = editorRef.current;
+                        if (!editor) return;
+                        editor.setPosition({ lineNumber: line, column: 1 });
+                        editor.revealLineInCenterIfOutsideViewport(line);
+                        editor.focus();
+                      }}
+                      onClose={() => setLayout({ preview: false })}
+                    />
+                  </div>
+                </>
               )}
             </div>
           </div>
 
-          {layout.panel && (
+          {layout.panel && !layout.zen && (
             <>
               {!layout.panelMax && (
                 <div
@@ -1777,6 +1893,7 @@ export default function Code() {
       </div>
 
       {/* Barra de status */}
+      {!layout.zen && (
       <footer className="wb-status" style={{ background: root ? 'var(--vsc-statusBar-background)' : 'var(--vsc-statusBar-noFolderBackground)', color: 'var(--vsc-statusBar-foreground)' }}>
         <button className="wb-status-item" title={root ?? ''} onClick={pickRecent}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><path d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" /></svg>
@@ -1825,8 +1942,15 @@ export default function Code() {
           {prefs.autoSave ? t('code.status.autoSave') : t('code.status.manualSave')}
         </button>
       </footer>
+      )}
 
       {tabMenu && <ContextMenu request={tabMenu} onClose={closeTabMenu} />}
+
+      {layout.zen && (
+        <button type="button" className="wb-zen-exit" onClick={toggleZen}>
+          {t('code.zen.exit')} <kbd className="wb-kbd">Ctrl+K Z</kbd>
+        </button>
+      )}
 
       {quick && (
         <QuickInput

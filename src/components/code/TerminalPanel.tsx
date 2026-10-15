@@ -9,7 +9,7 @@ import { xtermTheme, type WorkbenchColors } from '../../lib/workbenchTheme';
 
 type Instance = { term: Terminal; fit: FitAddon; host: HTMLDivElement };
 type Info = { id: number; title: string };
-export type TerminalCommand = { kind: 'new' | 'kill' | 'focus'; serial: number };
+export type TerminalCommand = { kind: 'new' | 'kill' | 'focus' | 'run'; serial: number; text?: string };
 
 // Painel Terminal: várias sessões, uma visível por vez; os processos ficam no processo principal.
 export function TerminalPanel({ colors, command, maximized, tabs, onClose, onToggleMaximize, onEmpty }: { colors: WorkbenchColors; command: TerminalCommand | null; maximized: boolean; tabs: ReactNode; onClose(): void; onToggleMaximize(): void; onEmpty(): void }) {
@@ -65,6 +65,20 @@ export function TerminalPanel({ colors, command, maximized, tabs, onClose, onTog
     attach(info);
     setTerminals((list) => [...list, info]);
     setActive(info.id);
+    return info;
+  };
+
+  // Texto pedido antes de o painel terminar de montar (Rodar arquivo com o painel fechado) espera aqui.
+  const ready = useRef(false);
+  const pending = useRef<string | null>(null);
+  const run = (id: number, text: string) => {
+    void window.api.term.write(id, `${text}\r`);
+    requestAnimationFrame(() => instances.current.get(id)?.term.focus());
+  };
+  const flushPending = (id: number) => {
+    if (pending.current === null) return;
+    run(id, pending.current);
+    pending.current = null;
   };
 
   const kill = (id: number | null) => {
@@ -77,8 +91,11 @@ export function TerminalPanel({ colors, command, maximized, tabs, onClose, onTog
       if (!alive) return;
       for (const info of list) attach(info, info.buffer);
       setTerminals(list.map(({ id, title }) => ({ id, title })));
-      if (list.length) setActive(list[list.length - 1].id);
-      else void create();
+      ready.current = true;
+      if (list.length) {
+        setActive(list[list.length - 1].id);
+        flushPending(list[list.length - 1].id);
+      } else void create().then((info) => flushPending(info.id));
     });
     const offData = window.api.term.onData((id, data) => instances.current.get(id)?.term.write(data));
     const offExit = window.api.term.onExit((id) => {
@@ -132,6 +149,12 @@ export function TerminalPanel({ colors, command, maximized, tabs, onClose, onTog
     if (!command) return;
     if (command.kind === 'new') void create();
     else if (command.kind === 'kill') kill(active);
+    else if (command.kind === 'run') {
+      const text = command.text ?? '';
+      if (!ready.current) pending.current = text;
+      else if (active !== null) run(active, text);
+      else void create().then((info) => run(info.id, text));
+    }
     else if (active !== null) instances.current.get(active)?.term.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [command]);
