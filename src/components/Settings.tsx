@@ -333,8 +333,8 @@ export function Settings(props: Props) {
                 onClick={() => props.onOpenVault(item.path)}
               >
                 <FolderIcon size={13} className="row-icon" />
-                <span className={`text-[13px] ${item.exists ? '' : 'text-frost-500 line-through'}`}>{item.name}</span>
-                <span className="path-tail ml-auto pl-3 font-mono text-[10.5px] text-frost-500">
+                <span className={`max-w-[50%] shrink-0 truncate text-[13px] ${item.exists ? '' : 'text-frost-500 line-through'}`}>{item.name}</span>
+                <span className="path-tail ml-auto min-w-0 pl-3 font-mono text-[10.5px] text-frost-500">
                   <bdi>{item.exists ? item.path : t('welcome.recent.missing')}</bdi>
                 </span>
               </button>
@@ -342,7 +342,10 @@ export function Settings(props: Props) {
           ))}
         </ul>
       ) : (
-        <p className="text-[12.5px] text-frost-500">{t('settings.vault.noRecent')}</p>
+        <p className="home-empty">
+          <FolderIcon size={13} className="shrink-0" />
+          {t('settings.vault.noRecent')}
+        </p>
       ),
     },
     ...props.shortcuts.map((shortcut) => ({

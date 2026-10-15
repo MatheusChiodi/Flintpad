@@ -264,6 +264,13 @@ ObNotion reads the extensions already installed in your VS Code (the built-in on
 - Shortcuts: every keyboard shortcut, searchable.
 - About: version, Electron, Chromium, Node and OS (copyable), and the app data folder.
 
+Layout and states:
+- Long folder paths (recent vaults, the missing-folder notice, Settings > Vault) are cut at the start, so the folder name at the end stays visible; the full path is in the tooltip. The recent list shows how many vaults it holds.
+- In a low window (under about 640 px tall) the welcome title and spacing shrink so *Choose vault folder* fits without scrolling; the home screen also trims its top margin. At 720×480 nothing scrolls sideways.
+- Dropping a folder dims the screen behind a frosted layer with the app seal and a readable label, even over the light sample page.
+- Empty favorites, recent pages and other vaults show a dashed slot where the list will appear. Start tiles light their icon on hover and keyboard focus and press slightly on click (no movement with reduced motion).
+- Settings: each section has an icon (lit when open); the open section's name is the page heading; while searching, results are grouped by section with a count, and a search with no match shows the seal, the text searched and *Clear search*. Drop-downs use the app's own arrow, and the row whose control has keyboard focus gets the accent edge.
+
 Preferences are saved in the app's `config.json` and checked field by field when read (`src/lib/prefs.ts`); the recent-vault list lives there too (`electron/vaults.cjs`). Tests: `tests/home.test.mjs`.
 
 ## Known limits

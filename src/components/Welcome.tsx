@@ -243,8 +243,10 @@ export function Welcome({ onChoose, onOpen, onError, onSettings }: Props) {
 
       {dragging && (
         <div className="welcome-drop" aria-hidden="true">
-          <FolderIcon size={28} />
-          <span>{t('welcome.drop')}</span>
+          <span className="board-seal">
+            <FolderIcon size={26} />
+          </span>
+          <span className="welcome-drop-label">{t('welcome.drop')}</span>
         </div>
       )}
     </div>

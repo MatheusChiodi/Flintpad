@@ -1566,9 +1566,18 @@ li:focus-within > .welcome-forget {
   font-weight: 500;
   color: var(--color-sheen-300);
   pointer-events: none;
-  background: color-mix(in srgb, var(--color-obsidian-950) 82%, transparent);
+  background: color-mix(in srgb, var(--color-obsidian-950) 86%, transparent);
+  backdrop-filter: blur(6px);
   border: 1.5px dashed color-mix(in srgb, var(--color-sheen-400) 70%, transparent);
   animation: scrim-in 160ms var(--ease-out-quart) backwards;
+}
+
+/* O aviso de soltar fica numa pastilha de vidro: legível mesmo sobre a folha clara da amostra. */
+.welcome-drop-label {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: var(--color-obsidian-900);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
 }
 
 /* Tela inicial (nenhuma página aberta). */
