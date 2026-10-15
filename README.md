@@ -87,6 +87,7 @@ Custom statuses such as `[/]` (in progress) or `[-]` (cancelled) are not support
 - **Autosave**: every change is written to disk a moment later; the header shows *Saving…* / *Saved*, or an error with a retry button.
 - **Import / export**: **JSON** (the full board, re-importable), **SVG** and **PNG** (2× resolution, white or transparent background), the whole board or only the selection; **Copy as PNG** (`Shift+Alt+C`) puts an image on the clipboard. Import takes a `.whiteboard.json` file; the file is validated first (see Limits).
 - **Keyboard**: the canvas is focusable. `Tab` walks through the elements (each is announced with its kind and text), arrows nudge the selection (`Shift` for 10 px), `?` lists every shortcut.
+- **Layout and states**: board names use the full width of the list; rename, duplicate and delete appear on hover or keyboard focus (`Tab` from a name reaches them). The list shows a board count, loading placeholders and its notices as short banners; opening, unreadable files and the empty canvas each have their own state. The title grows with its text, autosave is a small pill (amber dot while saving), and the floating panels fade in (plain fade with reduced motion). In a short window the header shrinks; on a narrow canvas the style panel moves below the find bar instead of being covered.
 
 | Action | Shortcut |
 |---|---|
