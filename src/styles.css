@@ -2817,7 +2817,8 @@ li:focus-within > .welcome-forget {
   box-shadow:
     0 0 0 1px var(--vsc-editorWidget-border),
     0 10px 30px -10px var(--vsc-widget-shadow);
-  opacity: 0.45;
+  /* Discreto, mas ainda legível sobre o código. */
+  opacity: 0.65;
   transition: opacity var(--wb-fast) ease;
 }
 .wb-zen-exit:hover,
