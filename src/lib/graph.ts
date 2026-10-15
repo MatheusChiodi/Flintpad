@@ -396,3 +396,11 @@ export function upsertView(views: SavedView[], name: string, options: GraphOptio
   if (!clean) return views;
   return [{ name: clean, options }, ...views.filter((view) => view.name !== clean)].slice(0, MAX_VIEWS);
 }
+
+/** Rótulo do canvas encurtado com reticências (por pontos de código); o nome inteiro aparece no foco e no cartão. */
+export const LABEL_MAX = 26;
+export function clipLabel(label: string, max = LABEL_MAX): string {
+  const chars = Array.from(label);
+  if (chars.length <= max) return label;
+  return `${chars.slice(0, Math.max(1, max - 1)).join('').trimEnd()}…`;
+}

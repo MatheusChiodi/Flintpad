@@ -1972,6 +1972,42 @@ li:focus-within > .welcome-forget {
     0 10px 30px -12px color-mix(in srgb, var(--color-sheen-400) 45%, transparent);
 }
 
+/* Grafo: painéis de vidro que entram sem roubar a cena (com --motion 0 só esmaecem). */
+.graph-panel {
+  animation: graph-panel-in 220ms var(--ease-out-expo) backwards;
+  scrollbar-gutter: stable;
+}
+
+.graph-pop {
+  animation: palette-in 160ms var(--ease-out-expo) backwards;
+}
+
+.graph-card {
+  animation: graph-card-in 160ms var(--ease-out-expo) backwards;
+}
+
+.graph-enter {
+  animation: content-in 320ms var(--ease-out-expo) backwards;
+}
+
+.graph-scrim {
+  animation: scrim-in 160ms ease-out backwards;
+}
+
+@keyframes graph-panel-in {
+  from {
+    opacity: 0;
+    translate: calc(10px * var(--motion)) 0;
+  }
+}
+
+@keyframes graph-card-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(4px * var(--motion));
+  }
+}
+
 .board-enter {
   animation: content-in 260ms var(--ease-out-expo) backwards;
 }

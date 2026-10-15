@@ -178,3 +178,11 @@ test('visões salvas: limpeza, nomes únicos e a mais recente no topo', () => {
   assert.equal(next[0].options.nodeSize, 1);
   assert.equal(g.upsertView(next, '   ', defaults), next);
 });
+
+test('clipLabel encurta rótulos longos sem partir emoji', () => {
+  assert.equal(g.clipLabel('Curto'), 'Curto');
+  assert.equal(g.clipLabel('a'.repeat(26)), 'a'.repeat(26));
+  assert.equal(g.clipLabel('Roadmap com um nome bem comprido', 10), 'Roadmap c…');
+  assert.equal(g.clipLabel('abc de fgh', 5), 'abc…');
+  assert.equal(g.clipLabel('😀😀😀😀', 3), '😀😀…');
+});

@@ -12,10 +12,11 @@ import {
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import { ContextMenu, isMenuKey, type MenuItem, type MenuRequest } from './ContextMenu';
-import { CloseIcon, DownloadIcon, FitIcon, HelpIcon, Kbd, PauseIcon, PlayIcon, ZoomInIcon, ZoomOutIcon } from './Icons';
+import { CloseIcon, DownloadIcon, FitIcon, GraphIcon, HelpIcon, Kbd, PauseIcon, PlayIcon, ZoomInIcon, ZoomOutIcon } from './Icons';
 import { fuzzyMatch } from '../lib/fuzzy';
 import {
   buildGraph,
+  clipLabel,
   degrees,
   filterGraph,
   fitCamera,
@@ -119,6 +120,8 @@ type GNode = SimulationNodeDatum & {
   related: Set<GNode>;
   fade: number;
   textShift: number;
+  /** Rótulo encurtado para o canvas; o inteiro fica em item.label. */
+  short: string;
   color: number;
   pinned: boolean;
 };
@@ -431,9 +434,10 @@ function createEngine(canvas: HTMLCanvasElement, events: EngineEvents): Engine {
       target.font = `500 ${(14 + size / 4) * textScale}px ${paint.font}`;
       target.globalAlpha = alpha * (node.item.kind === 'unresolved' ? 0.7 : 1);
       target.lineWidth = 3.5;
-      target.strokeText(node.item.label, x, y);
+      const text = isFocus ? node.item.label : node.short;
+      target.strokeText(text, x, y);
       target.fillStyle = isFocus ? paint.labelLit : paint.label;
-      target.fillText(node.item.label, x, y);
+      target.fillText(text, x, y);
     }
     target.globalAlpha = 1;
     return animating;
@@ -641,12 +645,14 @@ function createEngine(canvas: HTMLCanvasElement, events: EngineEvents): Engine {
           related: new Set(),
           fade: 1,
           textShift: 0,
+          short: '',
           color: -1,
           pinned: false,
           x: Math.cos(angle) * distance,
           y: Math.sin(angle) * distance,
         };
         node.item = item;
+        node.short = clipLabel(item.label);
         node.weight = 0;
         node.incoming = 0;
         node.related = new Set();
@@ -823,13 +829,13 @@ const fieldClass =
 const ghostButton =
   'rounded-md px-2 py-1 text-[12px] text-frost-300 ring-1 ring-[var(--hairline-strong)] hover:bg-[var(--hover)] hover:text-frost-100 focus-visible:outline-none focus-visible:ring-sheen-400';
 const iconButton =
-  'grid size-8 place-items-center rounded-md text-frost-300 hover:bg-[var(--hover)] hover:text-frost-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sheen-400 aria-pressed:text-sheen-300';
+  'grid size-8 place-items-center rounded-md text-frost-300 transition-colors duration-150 active:bg-[var(--hover-strong)] hover:bg-[var(--hover)] hover:text-frost-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sheen-400 aria-pressed:text-sheen-300';
 
 function Slider({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void }) {
   return (
     <label className="flex flex-col gap-1 text-[12.5px] text-frost-300">
       {label}
-      <input type="range" className="accent-[#4fbfb4]" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+      <input type="range" className="accent-sheen-400" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
     </label>
   );
 }
@@ -838,7 +844,7 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   return (
     <label className="flex cursor-pointer items-center justify-between gap-3 text-[12.5px] text-frost-300">
       {label}
-      <input type="checkbox" className="size-3.5 accent-[#4fbfb4]" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <input type="checkbox" className="size-3.5 accent-sheen-400" checked={checked} onChange={(event) => onChange(event.target.checked)} />
     </label>
   );
 }
@@ -1101,13 +1107,13 @@ export function Graph({ notes, contents, onOpen, onCreate }: Props) {
     setHidden(new Set());
   };
 
-  const sectionTitle = 'section-label mb-2 mt-4 first:mt-0';
+  const sectionTitle = 'section-label mb-2 mt-4 border-t border-[var(--hairline)] pt-4 first:mt-0 first:border-t-0 first:pt-0';
   const jumpList = `${uid}-jump`;
   const empty = notes.length === 0;
   const noMatch = !empty && filtered.items.length === 0;
 
   return (
-    <div ref={rootRef} className="relative h-full w-full overflow-hidden" onKeyDown={onRootKey}>
+    <div ref={rootRef} className="@container relative h-full w-full overflow-hidden" onKeyDown={onRootKey}>
       <canvas
         ref={canvasRef}
         tabIndex={0}
@@ -1187,10 +1193,13 @@ export function Graph({ notes, contents, onOpen, onCreate }: Props) {
 
       {(empty || noMatch) && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center px-6 text-center">
-          <div className="pointer-events-auto max-w-sm">
-            <p className="font-display text-[18px] font-semibold tracking-tight text-frost-100">{empty ? t('graph.emptyTitle') : t('graph.noMatch')}</p>
+          <div className="graph-enter pointer-events-auto flex max-w-sm flex-col items-center">
+            <span className="board-seal mb-4" aria-hidden="true">
+              <GraphIcon size={26} />
+            </span>
+            <p className="text-balance font-display text-[18px] font-semibold tracking-tight text-frost-100">{empty ? t('graph.emptyTitle') : t('graph.noMatch')}</p>
             {empty ? (
-              <p className="mt-1.5 text-[13px] text-frost-500">{t('graph.emptyHint')}</p>
+              <p className="mt-1.5 text-balance text-[13px] leading-relaxed text-frost-300">{t('graph.emptyHint')}</p>
             ) : (
               <button className={`${ghostButton} mt-3`} onClick={clearFilters}>
                 {t('graph.clearFilter')}
@@ -1244,7 +1253,7 @@ export function Graph({ notes, contents, onOpen, onCreate }: Props) {
                 id={jumpList}
                 role="listbox"
                 aria-label={t('graph.jumpLabel')}
-                className="absolute right-0 top-full z-10 mt-1 max-h-72 w-60 overflow-y-auto rounded-lg bg-obsidian-800/95 p-1 ring-1 ring-[var(--hairline-strong)] backdrop-blur"
+                className="graph-pop absolute right-0 top-full z-10 mt-1 max-h-[min(18rem,calc(100vh-12rem))] w-60 max-w-[calc(100vw-6rem)] overflow-y-auto rounded-lg shadow-[0_18px_40px_-20px_rgb(0_0_0/0.7)] bg-obsidian-800/95 p-1 ring-1 ring-[var(--hairline-strong)] backdrop-blur"
               >
                 {jumpResults.length === 0 && <li className="px-2 py-1.5 text-[12.5px] text-frost-500">{t('graph.jumpEmpty')}</li>}
                 {jumpResults.map((item, index) => (
@@ -1265,7 +1274,7 @@ export function Graph({ notes, contents, onOpen, onCreate }: Props) {
             )}
           </div>
           <button
-            className="shrink-0 whitespace-nowrap rounded-md bg-obsidian-800/80 px-2.5 py-1.5 text-[12.5px] text-frost-300 ring-1 ring-[var(--hairline-strong)] backdrop-blur hover:text-frost-100 focus-visible:outline-none focus-visible:ring-sheen-400"
+            className="graph-chip shrink-0 whitespace-nowrap rounded-md bg-obsidian-800/80 px-2.5 py-1.5 text-[12.5px] text-frost-300 ring-1 ring-[var(--hairline-strong)] backdrop-blur hover:bg-obsidian-700/90 hover:text-frost-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sheen-400 aria-expanded:text-sheen-300 aria-expanded:ring-[color-mix(in_srgb,var(--color-sheen-400)_45%,transparent)]"
             aria-expanded={panel}
             onClick={() => setPanel((open) => !open)}
           >
@@ -1275,7 +1284,7 @@ export function Graph({ notes, contents, onOpen, onCreate }: Props) {
         {panel && (
           <div
             data-graph-panel
-            className="pointer-events-auto min-h-0 w-72 max-w-full overflow-y-auto rounded-lg bg-obsidian-800/90 p-4 ring-1 ring-[var(--hairline-strong)] backdrop-blur"
+            className="graph-panel pointer-events-auto min-h-0 w-72 max-w-full overflow-y-auto overscroll-contain rounded-lg bg-obsidian-800/90 p-4 shadow-[0_18px_40px_-20px_rgb(0_0_0/0.7)] ring-1 ring-[var(--hairline-strong)] backdrop-blur"
           >
             <div className={sectionTitle}>{t('graph.filters')}</div>
             <div className="flex flex-col gap-2.5">
@@ -1453,12 +1462,22 @@ export function Graph({ notes, contents, onOpen, onCreate }: Props) {
       </div>
 
       {info && (
-        <div className="pointer-events-none absolute bottom-4 left-5 max-w-[min(22rem,calc(100%-7rem))] rounded-lg bg-obsidian-800/85 px-3 py-2 ring-1 ring-[var(--hairline-strong)] backdrop-blur">
-          <div className="truncate text-[13px] font-medium text-frost-100">{info.label}</div>
-          <div className="truncate text-[11.5px] text-frost-500">
+        <div
+          key={info.id}
+          className="graph-card pointer-events-none absolute bottom-4 left-5 max-w-[min(22rem,calc(100%-17.5rem))] rounded-lg bg-obsidian-800/85 px-3 py-2 shadow-[0_18px_40px_-20px_rgb(0_0_0/0.7)] ring-1 ring-[var(--hairline-strong)] backdrop-blur @max-[560px]:bottom-16 @max-[560px]:max-w-[calc(100%-2.5rem)]"
+        >
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className={`size-2 shrink-0 rounded-full ${info.kind === 'unresolved' ? 'border border-dashed border-frost-500' : ''}`}
+              style={{ background: info.kind === 'tag' ? 'var(--graph-tag)' : info.kind === 'unresolved' ? 'transparent' : 'var(--color-sheen-300)' }}
+            />
+            <div className="truncate text-[13px] font-medium text-frost-100">{info.label}</div>
+          </div>
+          <div className="truncate pl-4 text-[11.5px] text-frost-500">
             {info.kind === 'note' ? info.path : info.kind === 'tag' ? t('graph.kind.tag') : t('graph.kind.unresolved')}
           </div>
-          <div className="mt-1 flex gap-3 text-[11.5px] text-frost-300">
+          <div className="mt-1 flex gap-3 pl-4 text-[11.5px] tabular-nums text-frost-300">
             <span>{t('graph.incoming', { count: infoDegree?.incoming ?? 0 })}</span>
             {info.kind === 'note' && <span>{t('graph.outgoing', { count: infoDegree?.outgoing ?? 0 })}</span>}
           </div>
@@ -1479,6 +1498,7 @@ export function Graph({ notes, contents, onOpen, onCreate }: Props) {
         <button className={iconButton} aria-label={t('graph.fit')} title={`${t('graph.fit')} (0)`} onClick={() => engine.current?.fit()}>
           <FitIcon />
         </button>
+        <span aria-hidden="true" className="mx-0.5 my-1.5 w-px bg-[var(--hairline-strong)]" />
         <button className={iconButton} aria-pressed={paused} aria-label={paused ? t('graph.resume') : t('graph.pause')} title={`${paused ? t('graph.resume') : t('graph.pause')} (${t('graph.keySpace')})`} onClick={togglePause}>
           {paused ? <PlayIcon /> : <PauseIcon />}
         </button>
@@ -1518,7 +1538,7 @@ function ShortcutHelp({ onClose }: { onClose: () => void }) {
   useEffect(() => closeRef.current?.focus(), []);
   return (
     <div
-      className="absolute inset-0 z-20 grid place-items-center bg-obsidian-950/60 p-4"
+      className="graph-scrim absolute inset-0 z-20 grid place-items-center bg-obsidian-950/60 p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -1527,7 +1547,7 @@ function ShortcutHelp({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-sm rounded-xl bg-obsidian-800 p-5 ring-1 ring-[var(--hairline-strong)]"
+        className="graph-pop flex max-h-full w-full max-w-sm flex-col rounded-xl bg-obsidian-800 p-5 shadow-[0_24px_60px_-24px_rgb(0_0_0/0.8)] ring-1 ring-[var(--hairline-strong)]"
         onKeyDown={(event) => {
           if (event.key === 'Escape' || event.key === 'Tab') {
             // Um único botão: Tab fica no diálogo, Esc fecha.
@@ -1545,7 +1565,7 @@ function ShortcutHelp({ onClose }: { onClose: () => void }) {
             <CloseIcon size={14} />
           </button>
         </div>
-        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-[12.5px] text-frost-300">
+        <dl className="-mr-2 grid min-h-0 grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 overflow-y-auto pr-2 text-[12.5px] text-frost-300">
           {SHORTCUTS.map(([keys, label]) => (
             <div key={label} className="contents">
               <dt className="justify-self-start">
