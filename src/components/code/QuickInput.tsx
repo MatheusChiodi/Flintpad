@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 // Caixa de seleção no topo, como o Quick Input do VS Code: Quick Open, paleta de comandos,
 // seletores de tema e perguntas de texto (nome de arquivo, número da linha).
@@ -49,6 +49,7 @@ function Highlighted({ text, positions }: { text: string; positions?: number[] }
 }
 
 export function QuickInput({ value, placeholder, items, message, activeId, onValueChange, onPick, onActive, onClose }: Props) {
+  const uid = useId();
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
@@ -76,11 +77,17 @@ export function QuickInput({ value, placeholder, items, message, activeId, onVal
 
   return (
     <div className="wb-quick-scrim" onMouseDown={onClose}>
-      <div className="wb-quick text-[13px]" role="dialog" onMouseDown={(event) => event.stopPropagation()}>
+      <div className="wb-quick text-[13px]" role="dialog" aria-label={placeholder || undefined} onMouseDown={(event) => event.stopPropagation()}>
         <div className="p-2">
           <input
             ref={input}
             className="wb-quick-input"
+            role="combobox"
+            aria-expanded={items.length > 0}
+            aria-controls={`${uid}-list`}
+            aria-activedescendant={items[active] ? `${uid}-${active}` : undefined}
+            aria-label={placeholder || message}
+            aria-describedby={message ? `${uid}-message` : undefined}
             value={value}
             placeholder={placeholder}
             spellCheck={false}
@@ -98,9 +105,9 @@ export function QuickInput({ value, placeholder, items, message, activeId, onVal
             }}
           />
         </div>
-        {message && <div className="px-4 pb-2.5 text-[12px] text-[var(--vsc-descriptionForeground)]">{message}</div>}
+        {message && <div id={`${uid}-message`} role="status" className="px-4 pb-2.5 text-[12px] text-[var(--vsc-descriptionForeground)]">{message}</div>}
         {items.length > 0 && (
-          <div ref={list} className="max-h-[min(440px,60vh)] overflow-y-auto pb-1.5" role="listbox">
+          <div ref={list} className="max-h-[min(440px,60vh)] overflow-y-auto pb-1.5" role="listbox" id={`${uid}-list`}>
             {items.map((item, index) => {
               const separator = item.group && item.group !== items[index - 1]?.group;
               const selected = index === active;
@@ -108,6 +115,7 @@ export function QuickInput({ value, placeholder, items, message, activeId, onVal
                 <div key={item.id} data-index={index}>
                   {separator && index > 0 && <div className="mx-4 my-1 border-t border-[var(--vsc-pickerGroup-border)]" />}
                   <div
+                    id={`${uid}-${index}`}
                     role="option"
                     aria-selected={selected}
                     className="wb-quick-row"

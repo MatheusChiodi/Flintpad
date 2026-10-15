@@ -86,6 +86,8 @@ const session = {
   recentFiles: [] as string[],
 };
 
+// Mensagem do erro sem o prefixo que o IPC do Electron acrescenta.
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
 const keyOf = (path: string) => path.replace(/\\/g, '/').toLowerCase();
 const modelFor = (path: string) => monaco.editor.getModels().find((model) => model.uri.scheme === 'file' && samePath(model.uri.fsPath, path)) ?? null;
 const isDirty = (path: string) => {
@@ -286,7 +288,7 @@ export default function Code() {
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
 
-  const activate = (path: string | null) => {
+  const activate = (path: string | null, focusEditor = true) => {
     const editor = editorRef.current;
     const previous = session.active;
     if (editor && previous) session.viewStates.set(keyOf(previous), editor.saveViewState());
@@ -299,7 +301,7 @@ export default function Code() {
     if (model) {
       const state = session.viewStates.get(keyOf(path!));
       if (state) editor.restoreViewState(state);
-      requestAnimationFrame(() => editor.focus());
+      if (focusEditor) requestAnimationFrame(() => editor.focus());
     }
   };
 
@@ -366,7 +368,13 @@ export default function Code() {
   const revert = async (path: string) => {
     const model = modelFor(path);
     if (!model) return;
-    const content = await window.api.ws.read(path);
+    let content: string;
+    try {
+      content = await window.api.ws.read(path);
+    } catch (error) {
+      flash(`${t('code.readError', { path: baseName(path) })} ${errorText(error)}`, true);
+      return;
+    }
     model.pushEditOperations([], [{ range: model.getFullModelRange(), text: content }], () => null);
     session.saved.set(keyOf(path), model.getAlternativeVersionId());
     forceUpdate();
@@ -393,6 +401,32 @@ export default function Code() {
           modelFor(path)?.dispose();
           closeTabNow(path);
         }
+      },
+    });
+  };
+
+  // Fechar vários de uma vez: os sem alteração saem já; os alterados pedem uma resposta só.
+  const closeMany = (paths: string[]) => {
+    const dirty = paths.filter((path) => isDirty(path));
+    paths.filter((path) => !isDirty(path)).forEach(closeTabNow);
+    if (!dirty.length) return;
+    if (dirty.length === 1 || prefsRef.current.autoSave) return dirty.forEach(closeTab);
+    setQuick({
+      kind: 'pick',
+      placeholder: t('code.confirmCloseMany', { count: dirty.length }),
+      items: [
+        { id: 'save', label: t('code.saveAllAndClose') },
+        { id: 'discard', label: t('code.discardAll') },
+        { id: 'cancel', label: t('code.cancel') },
+      ],
+      onPick: (item) => {
+        if (item.id === 'save') void Promise.all(dirty.map((path) => save(path))).then(() => dirty.filter((path) => !isDirty(path)).forEach(closeTabNow));
+        else if (item.id === 'discard')
+          for (const path of dirty) {
+            session.saved.delete(keyOf(path));
+            modelFor(path)?.dispose();
+            closeTabNow(path);
+          }
       },
     });
   };
@@ -583,12 +617,12 @@ export default function Code() {
       prompt(t('code.explorer.newFile'), t('code.prompt.newFile', { dir: relativePath(rootOf(dir), dir) || baseName(dir) }), '', (name) => {
         void window.api.ws.create(joinPath(dir, name.trim()), false).then(
           (path) => openPath(path, { pinned: true }),
-          (error) => flash(String(error.message ?? error), true),
+          (error) => flash(errorText(error), true),
         );
       }, validName),
     newFolder: (dir: string) =>
       prompt(t('code.explorer.newFolder'), t('code.prompt.newFolder', { dir: relativePath(rootOf(dir), dir) || baseName(dir) }), '', (name) => {
-        void window.api.ws.create(joinPath(dir, name.trim()), true).catch((error) => flash(String(error.message ?? error), true));
+        void window.api.ws.create(joinPath(dir, name.trim()), true).catch((error) => flash(errorText(error), true));
       }, validName),
     rename: (entry: DirEntry) =>
       prompt(t('code.explorer.rename'), t('code.prompt.rename', { name: entry.name }), entry.name, (name) => {
@@ -609,7 +643,7 @@ export default function Code() {
           }
           setTabs([...session.tabs]);
           activate(session.active);
-        }, (error) => flash(String(error.message ?? error), true));
+        }, (error) => flash(errorText(error), true));
       }, validName),
     remove: (entry: DirEntry) =>
       setQuick({
@@ -627,7 +661,7 @@ export default function Code() {
               modelFor(tab.path)?.dispose();
               closeTabNow(tab.path);
             }
-          }, (error) => flash(String(error.message ?? error), true));
+          }, (error) => flash(errorText(error), true));
         },
       }),
   };
@@ -741,7 +775,7 @@ export default function Code() {
         ...(workspace?.recent ?? []).map((dir) => ({ id: dir, label: baseName(dir), description: dir })),
         ...(workspace?.vault && !(workspace.recent ?? []).some((dir) => samePath(dir, workspace.vault!)) ? [{ id: workspace.vault, label: baseName(workspace.vault), description: t('code.recent.vault') }] : []),
       ],
-      onPick: (item) => void window.api.ws.setRoot(item.id).then(changeRoot, (error) => flash(String(error.message ?? error), true)),
+      onPick: (item) => void window.api.ws.setRoot(item.id).then(changeRoot, (error) => flash(errorText(error), true)),
     });
 
   const toggleTerminal = () => {
@@ -779,18 +813,21 @@ export default function Code() {
       run: () => {
         const model = activeModel();
         if (!model) return;
-        void window.api.ws.saveAs(session.active!).then(async (target) => {
-          if (!target) return;
-          await window.api.ws.write(target, model.getValue());
-          await openPath(target, { pinned: true });
-        });
+        void window.api.ws
+          .saveAs(session.active!)
+          .then(async (target) => {
+            if (!target) return;
+            await window.api.ws.write(target, model.getValue());
+            await openPath(target, { pinned: true });
+          })
+          .catch((error) => flash(t('code.writeFailed', { name: baseName(session.active ?? ''), reason: errorText(error) }), true));
       },
     },
     { id: 'workbench.action.files.saveAll', label: t('code.cmd.saveAll'), run: () => session.tabs.filter((tab) => isDirty(tab.path)).forEach((tab) => void save(tab.path)) },
     { id: 'workbench.action.files.revert', label: t('code.cmd.revert'), run: () => session.active && void revert(session.active) },
     { id: 'workbench.action.closeActiveEditor', label: t('code.cmd.closeEditor'), keybinding: 'Ctrl+W', run: () => session.active && closeTab(session.active) },
-    { id: 'workbench.action.closeAllEditors', label: t('code.cmd.closeAll'), run: () => [...session.tabs].forEach((tab) => closeTab(tab.path)) },
-    { id: 'workbench.action.closeOtherEditors', label: t('code.cmd.closeOthers'), run: () => session.tabs.filter((tab) => !session.active || !samePath(tab.path, session.active)).forEach((tab) => closeTab(tab.path)) },
+    { id: 'workbench.action.closeAllEditors', label: t('code.cmd.closeAll'), run: () => closeMany(session.tabs.map((tab) => tab.path)) },
+    { id: 'workbench.action.closeOtherEditors', label: t('code.cmd.closeOthers'), run: () => closeMany(session.tabs.filter((tab) => !session.active || !samePath(tab.path, session.active)).map((tab) => tab.path)) },
     { id: 'workbench.action.nextEditor', label: t('code.cmd.nextEditor'), keybinding: 'Ctrl+PageDown', run: () => cycleEditor(1) },
     { id: 'workbench.action.previousEditor', label: t('code.cmd.previousEditor'), keybinding: 'Ctrl+PageUp', run: () => cycleEditor(-1) },
     { id: 'workbench.action.toggleSidebarVisibility', label: t('code.cmd.toggleSidebar'), keybinding: 'Ctrl+B', run: () => setLayout({ sidebar: !layout.sidebar }) },
@@ -837,6 +874,12 @@ export default function Code() {
   };
   const runCommandRef = useRef(runCommand);
   runCommandRef.current = runCommand;
+
+  // Modo de captura (testes): comandos do workbench acessíveis ao script de avaliação.
+  useEffect(() => {
+    if (!window.api.debug) return;
+    (window as unknown as { __code: unknown }).__code = { run: (id: string) => runCommandRef.current(id), open: (path: string) => openPathRef.current(path, { pinned: true }) };
+  }, []);
 
   // ---------- Atalhos ----------
 
@@ -1161,7 +1204,31 @@ export default function Code() {
         <div className="flex min-w-0 flex-1 flex-col">
           <div className={`flex min-h-0 flex-col ${layout.panel && layout.panelMax ? 'hidden' : 'flex-1'}`}>
             {tabs.length > 0 && (
-              <div className="wb-tabs" role="tablist">
+              <div
+                className="wb-tabs"
+                role="tablist"
+                aria-label={t('code.tabs.label')}
+                onKeyDown={(event) => {
+                  // Setas andam entre as guias (como numa tablist); Delete fecha a guia focada.
+                  const index = tabs.findIndex((tab) => active && samePath(tab.path, active));
+                  let next = -1;
+                  if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+                  else if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+                  else if (event.key === 'Home') next = 0;
+                  else if (event.key === 'End') next = tabs.length - 1;
+                  else if (event.key === 'Delete' && index >= 0) {
+                    event.preventDefault();
+                    closeTab(tabs[index].path);
+                    return;
+                  } else return;
+                  event.preventDefault();
+                  const list = event.currentTarget;
+                  const target = tabs[next];
+                  if (!target) return;
+                  activate(target.path, false);
+                  requestAnimationFrame(() => list.querySelector<HTMLElement>(`[data-path="${CSS.escape(target.path)}"]`)?.focus());
+                }}
+              >
                 {tabs.map((tab) => {
                   const isActive = active !== null && samePath(tab.path, active);
                   const dirty = isDirty(tab.path);
@@ -1169,6 +1236,8 @@ export default function Code() {
                     <div
                       key={tab.path}
                       role="tab"
+                      tabIndex={isActive ? 0 : -1}
+                      data-path={tab.path}
                       aria-selected={isActive}
                       className="wb-tab"
                       data-active={isActive}
@@ -1219,7 +1288,7 @@ export default function Code() {
                   root={root}
                   recent={workspace?.recent ?? []}
                   onCommand={runCommand}
-                  onOpenRecent={(dir) => void window.api.ws.setRoot(dir).then(changeRoot, (error) => flash(String(error.message ?? error), true))}
+                  onOpenRecent={(dir) => void window.api.ws.setRoot(dir).then(changeRoot, (error) => flash(errorText(error), true))}
                 />
               )}
             </div>
