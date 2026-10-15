@@ -178,12 +178,23 @@ Not there yet, compared to Bruno: pre/post-request scripts and `tests` blocks in
 
 `Ctrl+Shift+K` opens a workbench laid out like VS Code, built on Monaco (the editor inside VS Code):
 
-- **Explorer** for any folder on disk (the vault by default; `Open folder…`, `Open file…` and recent folders from the buttons above it). `Add folder to workspace…` opens several projects side by side, as a VS Code multi-root workspace, with new file/folder, rename, delete to trash, reveal in File Explorer and live refresh when files change on disk.
-- **Editor tabs** with preview tabs (single click, italic), dirty markers, breadcrumbs, auto save (toggle in the status bar) and `Ctrl+S`.
-- **Quick Open** (`Ctrl+P`), **Command Palette** (`Ctrl+Shift+P` or `F1`, including every Monaco editor action), go to line (`Ctrl+G`) and go to symbol (`Ctrl+Shift+O`).
-- **Integrated terminal** (`` Ctrl+` ``, new with `` Ctrl+Shift+` ``): real PowerShell sessions through a pseudo-terminal, several at once, kept alive when you switch tabs.
+- **Explorer** for any folder on disk (the vault by default; `Open folder…`, `Open file…` and recent folders from the buttons above it). `Add folder to workspace…` opens several projects side by side, as a VS Code multi-root workspace, with new file/folder, rename, **duplicate**, **drag and drop to move** (open tabs follow), delete to trash, copy absolute or relative path, reveal in File Explorer and live refresh when files change on disk. The tree works from the keyboard (arrows, `Home`/`End`, `F2`, `Delete`, `Shift+F10` for the context menu) and says when a folder is loading or can't be read.
+- **Search** (`Ctrl+Shift+F`, the selection becomes the query): every file in the open folders, with match case, whole word (accent-aware) and regular expression (`Alt+C`/`Alt+W`/`Alt+R`), files to include/exclude as globs (`src, *.ts` / `dist, *.min.js`), results grouped by file with the match highlighted. **Replace** (`Ctrl+Shift+H`) previews each change and replaces in one file or everywhere; files open in the editor change in place (undo with `Ctrl+Z`), the rest on disk. **Find in folder…** in the explorer's context menu scopes the search to a folder.
+- **TODOs** view: every `TODO`, `FIXME`, `HACK`, `XXX`, `BUG` and `NOTE` comment in the workspace, filterable by tag and refreshed when files change.
+- **Editor tabs** with preview tabs (single click, italic), dirty markers, auto save (toggle in the status bar) and `Ctrl+S`. Right-click (or `Shift+F10`) a tab to close others / to the right / saved / all, **pin** it (pinned tabs stay on the left and survive "close others"), compare with saved, copy its path or reveal it. `Ctrl+Shift+T` **reopens the last closed editor**, and the open tabs of each workspace **come back when the app restarts**. Arrow keys move between tabs and `Delete` closes one.
+- **Breadcrumbs** you can click: a folder lists its contents (folders drill down, files open); the file name opens its symbols.
+- **Quick Open** (`Ctrl+P`, `file.ts:12:4` jumps to a line and column), **Command Palette** (`Ctrl+Shift+P` or `F1`, including every Monaco editor action), go to line (`Ctrl+G`), go to symbol (`Ctrl+Shift+O`) and **go back / forward** between positions (`Alt+←` / `Alt+→`), across files.
+- **Compare with saved** (`Ctrl+K D`): the file on disk next to your unsaved edits, side by side or inline, with a change count.
+- **Markdown preview** to the side (`Ctrl+K V`): headings, task lists, quotes, tables, highlighted code, front matter and `[[wikilinks]]`. It follows the cursor, double-clicking a block moves the cursor there, relative links open the file and web links open in the browser. The preview is built from a syntax tree (no HTML from the file is rendered) and does not load images.
+- **Problems** panel (`Ctrl+Shift+M`, or click the error/warning counts in the status bar): diagnostics grouped by file with a filter; it shares the bottom panel with the terminal.
+- **Integrated terminal** (`` Ctrl+` ``, new with `` Ctrl+Shift+` ``): real PowerShell sessions through a pseudo-terminal, several at once, kept alive when you switch tabs. **Run active file** (`Ctrl+Alt+N`) saves and runs it with the language's runner (`node`, `node --experimental-strip-types` for TypeScript, `python`, `ruby`, `go run`, `bash`, PowerShell…); **Run selected text** sends the selection (or the current line).
+- **On save** (only when you save, never on auto save): format document, trim trailing whitespace (Markdown is left alone, where two spaces mean a line break) and insert a final newline, each toggled from the palette.
+- **View options** from the palette: render whitespace, line numbers (absolute, relative, hidden), sticky scroll, minimap, word wrap (`Alt+Z`), font size. **Zen mode** (`Ctrl+K Z`) hides everything but the tabs and the editor.
+- **Copy as Markdown block**: the selection (or the whole file) as a fenced block headed by its relative path and line numbers, ready to paste into a page.
 - **Language servers**: the native TypeScript 7 server (`tsc --lsp`) for TypeScript/JavaScript and the VS Code JSON, CSS/SCSS/Less and HTML servers. Project-aware completions, hover, diagnostics, go to definition/references across files (`F12`, `Shift+F12`), rename, formatting, and JSON validation with the schemas VS Code extensions declare (package.json, tsconfig.json…).
 - **Status bar** with errors/warnings, cursor position, indentation, line endings and language mode, each clickable as in VS Code.
+
+In the Code tab a few app shortcuts take their VS Code meaning: `Ctrl+P` (Quick Open), `Ctrl+Shift+P` (palette), `Ctrl+G` (go to line), `Ctrl+N` (new file), `Ctrl+W` (close editor), `Ctrl+Shift+F` (search instead of favorite) and `Ctrl+Shift+T` (reopen editor; with nothing to reopen it falls back to reopening an app tab). Search and replace run in the main process with the same folder checks as the rest of the workspace (files over 1 MB, binaries, `.git` and `node_modules` are skipped; at most 2,000 results). The search/replace logic is shared by both sides in `electron/searchCore.mjs`; pure rules (tab closing, navigation history, save helpers, runners, Markdown snippet, saved tabs, file patterns) are in `src/lib/codeTools.ts` and the Markdown preview parser in `src/lib/markdownPreview.ts`, covered by `tests/codeSearch.test.mjs`, `tests/codeTools.test.mjs` and `tests/markdownPreview.test.mjs`.
 
 ObNotion reads the extensions already installed in your VS Code (the built-in ones and those in `~/.vscode/extensions`):
 
@@ -192,6 +203,7 @@ ObNotion reads the extensions already installed in your VS Code (the built-in on
 - **File icon themes** (Seti by default, Minimal, Modern or any installed one) in the explorer, tabs and Quick Open.
 - **Languages and language configuration** (file associations, comments, brackets, indentation rules) and **snippets**.
 - There is no extensions view: what the installed extensions contribute just works. Extensions that run their own code in the VS Code extension host (ESLint, Prettier, debuggers, Git, assistants) do not run here.
+- AI features of editors like Cursor (chat, inline edits, completions from a model) are not included: they need an online service, and the app stays local and offline.
 
 ### Languages
 
@@ -212,12 +224,12 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 ## Project layout
 
 - `electron/main.cjs`: window, menu, disk access restricted to the vault, HTTP requests, VS Code extension reader.
-- `electron/workspace.cjs`: the Code tab's open folder (file access limited to it, the vault and files picked in a dialog) and its file watcher.
+- `electron/workspace.cjs`: the Code tab's open folder (file access limited to it, the vault and files picked in a dialog), its file watcher and search/replace in files (`electron/searchCore.mjs`, shared with the renderer).
 - `electron/terminal.cjs`, `electron/lsp.cjs`: terminal sessions and language server processes.
 - `electron/preload.cjs`: the `window.api` bridge.
 - `src/App.tsx`: state (tabs, link index).
 - `src/whiteboard/`: the whiteboard module (see Whiteboards above).
-- `src/components/`: `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, extensions).
+- `src/components/`: `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, search, TODOs, problems, compare with saved, Markdown preview).
 - `src/lib/`: link parsing, note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
 - `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `OBNOTION_SHOT`/`OBNOTION_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
 - `docs/`: illustrations used in this file.

@@ -1982,6 +1982,7 @@ function recentCommands(): string[] {
 const WELCOME_ACTIONS: [command: string, label: Key, keys: string, icon: ReactNode][] = [
   ['workbench.action.quickOpen', 'code.cmd.quickOpen', 'Ctrl+P', <path key="i" d="M7 12.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11ZM11 11l3.5 3.5" />],
   ['workbench.action.showCommands', 'code.cmd.showCommands', 'Ctrl+Shift+P', <path key="i" d="m3 4.5 3.5 3.5L3 11.5M8.5 12h5" />],
+  ['workbench.view.search', 'code.cmd.showSearch', 'Ctrl+Shift+F', <path key="i" d="M2 4h7M2 7.5h5M2 11h4M11.5 13a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM13.3 12.8l1.7 1.7" />],
   ['workbench.action.files.newUntitledFile', 'code.cmd.newFile', 'Ctrl+N', <path key="i" d="M9.5 1.5h-6v13h9v-10zM9.5 1.5v3h3M8 7.5v5M5.5 10h5" />],
   ['workbench.action.files.openFolder', 'code.cmd.openFolder', 'Ctrl+K Ctrl+O', <path key="i" d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" />],
   ['workbench.action.addRootFolder', 'code.cmd.addFolder', '', <path key="i" d="M1.5 3.5h4.5l1.5 1.5h7v3M8.5 12.5h-7v-9M12 9.5v5M9.5 12h5" />],

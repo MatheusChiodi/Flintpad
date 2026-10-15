@@ -2582,7 +2582,7 @@ button.wb-status-item:hover {
   margin-top: 40px;
   display: grid;
   gap: 36px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
 }
 .wb-welcome h2 {
   margin-bottom: 8px;
