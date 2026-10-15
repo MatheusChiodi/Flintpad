@@ -63,6 +63,9 @@ const createScript = `(async () => { ${helpers}
     key('a');                                   // seta, do centro do retângulo ao centro da elipse
     await wait(60);
     await drag(220, 290, 580, 190);
+    key('p');                                   // lápis (formato v2): um traço livre
+    await wait(60);
+    await drag(300, 420, 420, 470);
     await until(() => document.querySelector('[data-testid=wb-status]')?.textContent === 'Saved', 'gravação automática');
     const drawn = elements();
     document.querySelector('[data-testid=wb-export-svg]').click();
@@ -77,7 +80,7 @@ const reopenScript = `(async () => { ${helpers}
   try {
     const row = await until(() => document.querySelector('[data-testid=wb-list] button[title$=".whiteboard.json"]'), 'quadro na lista');
     row.click();
-    await until(() => document.querySelectorAll('[data-element-id]').length >= 3, 'elementos do quadro');
+    await until(() => document.querySelectorAll('[data-element-id]').length >= 4, 'elementos do quadro');
     report({ ok: true, name: row.textContent, elements: elements(), lines: document.querySelectorAll('[data-kind=arrow] line').length });
   } catch (error) { report({ ok: false, error: String(error) }); }
 })()`;
@@ -122,7 +125,7 @@ test('quadro branco: criar, desenhar, mover, ligar, gravar sozinho, reabrir e ex
 
   const first = await runApp(createScript, 'create.png');
   assert.equal(first.ok, true, first.error);
-  assert.deepEqual(first.elements.map((e) => e.kind), ['rectangle', 'ellipse', 'arrow']);
+  assert.deepEqual(first.elements.map((e) => e.kind), ['rectangle', 'ellipse', 'arrow', 'draw']);
   assert.deepEqual([first.elements[0].x, first.elements[0].y], [140, 250]);
 
   // O arquivo no vault tem o formato versionado, a forma movida e a seta presa às duas formas.
@@ -131,8 +134,10 @@ test('quadro branco: criar, desenhar, mover, ligar, gravar sozinho, reabrir e ex
   assert.ok(file, 'arquivo do quadro criado em Whiteboards/');
   const saved = JSON.parse(readFileSync(path.join(folder, file), 'utf8'));
   assert.equal(saved.format, 'obnotion-whiteboard');
-  assert.equal(saved.version, 1);
-  const [rectangle, ellipse, arrow] = saved.elements;
+  assert.equal(saved.version, 2);
+  const [rectangle, ellipse, arrow, drawing] = saved.elements;
+  assert.equal(drawing.kind, 'draw');
+  assert.ok(drawing.points.length >= 4 && drawing.points.every((n) => n >= 0 && n <= 1));
   assert.deepEqual([rectangle.kind, rectangle.x, rectangle.y, rectangle.w, rectangle.h], ['rectangle', 140, 250, 160, 80]);
   assert.deepEqual([ellipse.kind, ellipse.x, ellipse.y], ['ellipse', 500, 150]);
   assert.deepEqual([arrow.kind, arrow.start, arrow.end], ['arrow', { shape: rectangle.id }, { shape: ellipse.id }]);

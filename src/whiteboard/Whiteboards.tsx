@@ -5,7 +5,7 @@ import { BoardEditor, type Saver } from './BoardEditor';
 import { importedName } from './files.ts';
 import { useWbT, type WbKey } from './i18n.ts';
 import { PencilIcon, UploadIcon } from './icons';
-import { emptyBoard, MAX_BOARD_BYTES, parseBoard, type Board, type ParseResult } from './model.ts';
+import { emptyBoard, MAX_BOARD_BYTES, parseBoard, resolveLink, type Board, type ParseResult } from './model.ts';
 import { sampleBoard } from './sample.ts';
 import { createBoard, deleteBoard, listBoards, readBoard, renameBoard, type BoardEntry } from './storage.ts';
 
@@ -15,7 +15,14 @@ let lastOpened: string | null = null;
 type Loaded = { path: string; result: ParseResult | { ok: false; error: 'unreadable' } };
 type Message = { kind: 'ok' | 'error'; text: string };
 
-export default function Whiteboards() {
+export type WhiteboardsProps = {
+  /** Notas do vault: sugestões e destino dos links dos elementos. */
+  notes?: readonly { path: string; name: string }[];
+  /** Abre uma nota do vault (link de um elemento). */
+  onOpenNote?: (path: string) => void;
+};
+
+export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps = {}) {
   const t = useWbT();
   const [boards, setBoards] = useState<BoardEntry[] | null>(null);
   const [listFailed, setListFailed] = useState(false);
@@ -131,6 +138,18 @@ export default function Whiteboards() {
     if (!result.ok) return setMessage({ kind: 'error', text: t(`error.${result.error}` as WbKey) });
     const path = await create(importedName(file.name) || t('untitled'), { ...result.board, sample: undefined });
     if (path) setMessage({ kind: 'ok', text: result.dropped ? `${t('imported')} ${t('dropped', { count: result.dropped })}` : t('imported') });
+  };
+
+  /** Link de um elemento: site abre no navegador do sistema; nota abre numa guia do app. */
+  const openLink = async (link: string) => {
+    const target = resolveLink(link, notes);
+    if (!target) return setMessage({ kind: 'error', text: /^https?:/i.test(link) ? t('linkInvalid') : t('linkNotFound', { link }) });
+    if (target.type === 'url') {
+      window.open(target.url, '_blank', 'noopener');
+      return;
+    }
+    await saver.current?.flush();
+    onOpenNote?.(target.path);
   };
 
   const current = boards?.find((b) => b.path === selected);
@@ -276,6 +295,8 @@ export default function Whiteboards() {
             initial={loaded.result.board}
             t={t}
             saver={saver}
+            notes={notes}
+            onOpenLink={(link) => void openLink(link)}
             onRename={(name) => void rename(selected, name)}
             banner={
               <>

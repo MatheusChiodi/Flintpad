@@ -143,3 +143,57 @@ export function measureText(text: string, size: number, family: string, lineHeig
   }
   return { w: Math.ceil(width) + 4, h: Math.ceil(lines.length * size * lineHeight) + 4 };
 }
+
+// ---------------------------------------------------------------- imagens
+
+/** Formatos aceitos ao colar, arrastar ou inserir (o modelo recusa o resto, inclusive SVG). */
+export const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const MAX_IMAGE_SIDE = 1600;
+const KEEP_ORIGINAL_BYTES = 1_200_000;
+
+const blobToDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('read'));
+    reader.readAsDataURL(blob);
+  });
+
+/**
+ * Lê uma imagem para embutir no quadro. Imagens grandes são reduzidas (lado maior até 1600 px) e
+ * recomprimidas, para o arquivo do quadro continuar leve. Erro 'unsupported' para outros formatos.
+ */
+export async function readImage(blob: Blob): Promise<{ src: string; w: number; h: number }> {
+  if (!IMAGE_TYPES.includes(blob.type)) throw new Error('unsupported');
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    image.decoding = 'async';
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('decode'));
+      image.src = url;
+    });
+    const width = image.naturalWidth || 1;
+    const height = image.naturalHeight || 1;
+    const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(width, height));
+    const w = Math.max(1, Math.round(width * scale));
+    const h = Math.max(1, Math.round(height * scale));
+    if (scale === 1 && blob.size <= KEEP_ORIGINAL_BYTES) return { src: await blobToDataUrl(blob), w, h };
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('canvas');
+    context.drawImage(image, 0, 0, w, h);
+    // JPEG continua JPEG; o resto vira WebP, que mantém a transparência.
+    return { src: canvas.toDataURL(blob.type === 'image/jpeg' ? 'image/jpeg' : 'image/webp', 0.86), w, h };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/** Põe um PNG na área de transferência do sistema. */
+export async function copyPng(blob: Blob) {
+  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+}

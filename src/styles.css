@@ -1152,6 +1152,22 @@ button {
   outline: none;
 }
 
+/* Quadro escuro: as cores do desenho são invertidas só na tela (o arquivo e a exportação continuam
+   claros); imagens e o texto em edição passam pela inversão de volta. */
+.wb-canvas.wb-dark {
+  background-color: #16191e;
+  background-image: radial-gradient(circle, rgb(230 235 240 / 0.12) 1px, transparent 1.4px);
+}
+
+.wb-dark .wb-scene,
+.wb-dark textarea[data-ui='text'] {
+  filter: invert(0.93) hue-rotate(180deg);
+}
+
+.wb-dark .wb-scene image {
+  filter: invert(1) hue-rotate(180deg);
+}
+
 /* Barras de rolagem */
 ::-webkit-scrollbar {
   width: 10px;

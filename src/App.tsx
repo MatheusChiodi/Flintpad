@@ -837,7 +837,7 @@ export default function App() {
             </Suspense>
           ) : activePath === WHITEBOARDS ? (
             <Suspense fallback={<p className="p-5 text-frost-500">{t('code.loading')}</p>}>
-              <Whiteboards />
+              <Whiteboards notes={notes} onOpenNote={(path) => open(path)} />
             </Suspense>
           ) : activePath === TASKS ? (
             <Tasks notes={notes} contents={contents} onOpen={open} onSaved={saved} />
