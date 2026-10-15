@@ -1263,7 +1263,7 @@ li:focus-within > .welcome-forget {
 
 .home-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 6px;
 }
 
@@ -1384,6 +1384,10 @@ li:focus-within > .welcome-forget {
   gap: 20px;
   padding: 12px 0;
   border-bottom: 1px solid var(--hairline);
+}
+
+.settings-row[data-compact] {
+  padding: 7px 0;
 }
 
 .settings-row[data-wide] {

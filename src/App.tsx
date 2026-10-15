@@ -206,7 +206,8 @@ export default function App() {
   };
 
   const notify = (kind: ToastMessage['kind'], text: string, detail?: string) => setToast({ id: Date.now(), kind, text, detail });
-  const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
+  // Erros do processo principal chegam embrulhados ("Error invoking remote method 'x': Error: …"): fica só o motivo.
+  const reason = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/^Error invoking remote method '[^']*': (?:\w*Error: )?/, '');
 
   // O nome vem de quem digitou (busca rápida, link para página nova): sai limpo para o disco e para o link.
   const createNote = async (name = t('note.untitled'), folder = '') => {

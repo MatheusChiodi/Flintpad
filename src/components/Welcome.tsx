@@ -64,7 +64,7 @@ export function Welcome({ onChoose, onOpen, onError, onSettings }: Props) {
 
   return (
     <div
-      className="frame welcome relative flex h-full items-center justify-center gap-20 overflow-y-auto px-10 py-8"
+      className="frame welcome relative flex h-full justify-center gap-20 overflow-y-auto px-10 py-14 [align-items:safe_center]"
       data-dragging={dragging || undefined}
       onDragEnter={(event) => {
         if (!event.dataTransfer.types.includes('Files')) return;

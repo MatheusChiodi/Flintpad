@@ -29,7 +29,7 @@ type Props = {
   initialSection?: SettingsSection;
 };
 
-type Row = { section: SettingsSection; id: string; title: string; desc?: string; control?: ReactNode; wide?: boolean };
+type Row = { section: SettingsSection; id: string; title: string; desc?: string; control?: ReactNode; wide?: boolean; compact?: boolean; keys?: string };
 
 export function Settings(props: Props) {
   const { vault, onClose } = props;
@@ -324,12 +324,13 @@ export function Settings(props: Props) {
         <p className="text-[12.5px] text-frost-500">{t('settings.vault.noRecent')}</p>
       ),
     },
-    { section: 'shortcuts', id: 'shortcuts-intro', title: t('settings.section.shortcuts'), desc: t('settings.shortcuts.desc') },
     ...props.shortcuts.map((shortcut) => ({
       section: 'shortcuts' as const,
       id: `key:${shortcut.label}`,
       title: shortcut.label,
-      desc: undefined,
+      // As teclas entram na busca: "ctrl shift" acha os atalhos com essas teclas.
+      keys: shortcut.keys,
+      compact: true,
       control: <Kbd>{shortcut.keys}</Kbd>,
     })),
     {
@@ -378,7 +379,7 @@ export function Settings(props: Props) {
 
   const searching = query.trim().length > 0;
   const sectionTitle = (name: SettingsSection) => t(`settings.section.${name}` as Key);
-  const visible = searching ? rows.filter((row) => matchesSetting(query, [row.title, row.desc ?? '', sectionTitle(row.section)])) : rows.filter((row) => row.section === section);
+  const visible = searching ? rows.filter((row) => matchesSetting(query, [row.title, row.desc ?? '', row.keys ?? '', sectionTitle(row.section)])) : rows.filter((row) => row.section === section);
   // Na busca, os resultados aparecem agrupados pela seção de origem.
   const groups = SETTINGS_SECTIONS.map((name) => ({ name, rows: visible.filter((row) => row.section === name) })).filter((group) => group.rows.length);
 
@@ -440,8 +441,9 @@ export function Settings(props: Props) {
             {groups.map((group) => (
               <section key={group.name}>
                 <h3 className="section-label pb-1 pt-5">{sectionTitle(group.name)}</h3>
+                {group.name === 'shortcuts' && <p className="pb-1 pt-1.5 text-[12px] text-frost-500">{t('settings.shortcuts.desc')}</p>}
                 {group.rows.map((row) => (
-                  <div key={row.id} className="settings-row" data-wide={row.wide || undefined}>
+                  <div key={row.id} className="settings-row" data-wide={row.wide || undefined} data-compact={row.compact || undefined}>
                     <div className="min-w-0 flex-1">
                       <div className="text-[13px] text-frost-100">{row.title}</div>
                       {row.desc && <div className="mt-0.5 break-words text-[12px] leading-snug text-frost-500">{row.desc}</div>}
