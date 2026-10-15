@@ -29,7 +29,8 @@ export function useResolvedLink(target: string) {
 // Ir para um título: quem pede (link com #seção, Sumário) grava o pedido; o editor da página
 // o atende ao terminar de carregar ou, se já estiver aberto, pelo evento.
 export const gotoHeadingEvent = 'obnotion:goto-heading';
-export type HeadingRequest = { path: string; text: string; index?: number };
+// Com `task`, o alvo é a tarefa de posição `index` entre as caixas de seleção da página (tela de Tarefas).
+export type HeadingRequest = { path: string; text: string; index?: number; task?: boolean };
 let pendingHeading: HeadingRequest | null = null;
 
 export function gotoHeading(request: HeadingRequest) {

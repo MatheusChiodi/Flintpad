@@ -406,23 +406,27 @@ export default function App() {
 
   // Nota de hoje: uma página por dia numa pasta própria, criada na primeira vez que é aberta.
   // Se a pasta de modelos tiver uma página com o nome da pasta do diário ("Modelos/Diário"), ela é o modelo.
-  const openDaily = async () => {
+  // Garante a nota de hoje (com o modelo, se houver) e devolve o caminho; falha vira exceção para quem chamou.
+  const ensureDaily = async () => {
     const now = new Date();
     const folder = translate('daily.folder');
     const path = `${folder}/${isoDate(now)}.md`;
     if (!latest.current.notes.some((n) => n.path === path)) {
-      try {
-        const created = await window.api.create(path);
-        const template = `${translate('templates.folder')}/${folder}.md`;
-        if (latest.current.notes.some((n) => n.path === template)) {
-          await window.api.write(created, applyTemplate(await window.api.read(template), { title: isoDate(now), date: now }));
-        }
-        await refresh();
-      } catch (error) {
-        return notify('error', translate('notes.error.create'), reason(error));
+      const created = await window.api.create(path);
+      const template = `${translate('templates.folder')}/${folder}.md`;
+      if (latest.current.notes.some((n) => n.path === template)) {
+        await window.api.write(created, applyTemplate(await window.api.read(template), { title: isoDate(now), date: now }));
       }
+      await refresh();
     }
-    open(path);
+    return path;
+  };
+  const openDaily = async () => {
+    try {
+      open(await ensureDaily());
+    } catch (error) {
+      notify('error', translate('notes.error.create'), reason(error));
+    }
   };
 
   // Modelos: páginas na pasta de modelos. Variáveis {{title}}, {{date}}, {{time}} e {{date:FORMATO}}.
@@ -840,7 +844,18 @@ export default function App() {
               <Whiteboards notes={notes} onOpenNote={(path) => open(path)} />
             </Suspense>
           ) : activePath === TASKS ? (
-            <Tasks notes={notes} contents={contents} onOpen={open} onSaved={saved} />
+            <Tasks
+              notes={notes}
+              contents={contents}
+              onOpen={open}
+              onOpenTask={(task, newTab) => {
+                open(task.path, newTab);
+                gotoHeading({ path: task.path, text: task.text, index: task.index, task: true });
+              }}
+              onOpenTarget={(target) => void openTarget(target)}
+              onEnsureDaily={ensureDaily}
+              onSaved={saved}
+            />
           ) : activePath === GRAPH ? (
             <Graph notes={notes} contents={contents} onOpen={(path, newTab) => open(path, newTab)} onCreate={(name) => void createAndOpen(name)} />
           ) : isNote ? (

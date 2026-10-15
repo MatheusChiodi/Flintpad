@@ -141,13 +141,16 @@ function blockText(block: any): string {
     .join('');
 }
 
-function headingBlocks(blocks: any[], out: any[] = []): any[] {
+function headingBlocks(blocks: any[], out: any[] = [], type = 'heading'): any[] {
   for (const block of blocks) {
-    if (block.type === 'heading') out.push(block);
-    if (block.children?.length) headingBlocks(block.children, out);
+    if (block.type === type) out.push(block);
+    if (block.children?.length) headingBlocks(block.children, out, type);
   }
   return out;
 }
+
+// Comparação frouxa de texto de tarefa: o bloco mostra links pelo nome e não tem a sintaxe Markdown.
+const looseKey = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 
 // Gravações em andamento por nota, para a próxima abertura esperar por elas.
 const pendingWrites = new Map<string, Promise<void>>();
@@ -225,6 +228,7 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
 
   // Rola até o título pedido e põe o cursor nele: pelo índice quando o texto confere, senão pelo texto.
   const showHeading = (request: HeadingRequest) => {
+    if (request.task) return showTask(request);
     const headings = headingBlocks(editor.document);
     const wanted = headingKey(request.text);
     const byIndex = request.index !== undefined ? headings[request.index] : undefined;
@@ -238,6 +242,23 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
     element?.classList.add('flash');
     window.setTimeout(() => element?.classList.remove('flash'), FLASH_MS);
     editor.setTextCursorPosition(block, 'end');
+  };
+  const reveal = (block: any) => {
+    const element = content.current?.querySelector(`[data-id="${CSS.escape(block.id)}"]`);
+    element?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    element?.classList.add('flash');
+    window.setTimeout(() => element?.classList.remove('flash'), FLASH_MS);
+    editor.setTextCursorPosition(block, 'end');
+    editor.focus();
+  };
+  // Tarefa: pela posição entre as caixas de seleção, conferindo o texto; se não bater, pelo texto.
+  const showTask = (request: HeadingRequest) => {
+    const tasks = headingBlocks(editor.document, [], 'checkListItem');
+    const wanted = looseKey(request.text);
+    const matches = (block: any) => Boolean(wanted) && looseKey(blockText(block)).includes(wanted);
+    const byIndex = request.index !== undefined ? tasks[request.index] : undefined;
+    const block = byIndex && matches(byIndex) ? byIndex : (tasks.find(matches) ?? byIndex);
+    if (block) reveal(block);
   };
   const showHeadingRef = useRef(showHeading);
   showHeadingRef.current = showHeading;

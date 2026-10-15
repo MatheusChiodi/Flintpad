@@ -253,6 +253,20 @@ export const HelpIcon = (props: IconProps) => (
 );
 
 // Marca: uma lasca de obsidiana com uma faceta acesa.
+// Bandeira de prioridade (tela de Tarefas).
+export const FlagIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 13.5V2.75M4 3.25h7.25L9.75 6l1.5 2.75H4" />
+  </Icon>
+);
+
+// Repetição: duas setas em ciclo.
+export const RepeatIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M3 7.25v-.5A2.25 2.25 0 0 1 5.25 4.5h7.25M10.5 2.5l2 2-2 2M13 8.75v.5a2.25 2.25 0 0 1-2.25 2.25H3.5M5.5 13.5l-2-2 2-2" />
+  </Icon>
+);
+
 export function Mark({ size = 20, className }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
