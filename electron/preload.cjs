@@ -50,9 +50,12 @@ contextBridge.exposeInMainWorld('api', {
     create: (target, isDir) => ipcRenderer.invoke('ws:create', target, isDir),
     rename: (from, to) => ipcRenderer.invoke('ws:rename', from, to),
     remove: (target) => ipcRenderer.invoke('ws:delete', target),
+    copy: (from, to) => ipcRenderer.invoke('ws:copy', from, to),
     reveal: (target) => ipcRenderer.invoke('ws:reveal', target),
     realpath: (target) => ipcRenderer.invoke('ws:realpath', target),
     stat: (target) => ipcRenderer.invoke('ws:stat', target),
+    search: (options) => ipcRenderer.invoke('ws:search', options),
+    replace: (options, replacement, paths) => ipcRenderer.invoke('ws:replace', options, replacement, paths),
     onChanged: (callback) => listen('ws:changed', callback),
   },
   term: {

@@ -193,9 +193,138 @@ function registerWorkspaceIpc({ getWin, getVault, readConfig, saveConfig, readOn
     return target;
   });
 
+  // Duplicar no explorador: copia bytes (vale para imagens e binários), sem sobrescrever.
+  ipcMain.handle('ws:copy', async (_e, from, to) => {
+    const source = guard(from, true);
+    const target = guard(to, true);
+    if (fs.existsSync(target)) throw new Error(t('error.exists'));
+    await fsp.copyFile(source, target, fs.constants.COPYFILE_EXCL);
+    return target;
+  });
+
   ipcMain.handle('ws:delete', (_e, target) => shell.trashItem(guard(target, true)));
 
   ipcMain.handle('ws:reveal', (_e, target) => shell.showItemInFolder(guard(target)));
+
+  // ---------- Busca e substituição em arquivos ----------
+
+  // A lógica de busca é um módulo ES compartilhado com o renderer e os testes.
+  let core = null;
+  const loadCore = async () => (core ??= await import('./searchCore.mjs'));
+  // Cada busca nova cancela a anterior (digitar rápido não empilha varreduras do disco).
+  let searchSerial = 0;
+
+  const relativeTo = (base, file) => path.relative(base, file).split(path.sep).join('/');
+
+  /** Arquivos de texto das pastas pedidas, já filtrados por incluir/excluir. */
+  async function* searchableFiles(bases, include, exclude, serial) {
+    for (const base of bases) {
+      const stack = [base];
+      while (stack.length) {
+        if (serial !== searchSerial) return;
+        const dir = stack.pop();
+        let entries;
+        try {
+          entries = await fsp.readdir(dir, { withFileTypes: true });
+        } catch {
+          continue; // pasta sem permissão
+        }
+        entries.sort((a, b) => b.name.localeCompare(a.name));
+        for (const entry of entries) {
+          if (NOT_SEARCHED.has(entry.name)) continue;
+          const full = path.join(dir, entry.name);
+          const rel = relativeTo(rootFor(full) ?? base, full);
+          if (exclude?.(rel)) continue;
+          if (entry.isDirectory()) stack.push(full);
+          else if (entry.isFile() && (!include || include(rel))) yield full;
+        }
+      }
+    }
+  }
+  const rootFor = (file) => currentRoots().find((dir) => isInside(file, dir)) ?? null;
+
+  async function readText(file, maxBytes) {
+    const stat = await fsp.stat(file);
+    if (stat.size > maxBytes) return null;
+    const buffer = await fsp.readFile(file);
+    if (buffer.subarray(0, BINARY_SNIFF_BYTES).includes(0)) return null;
+    return buffer.toString('utf8');
+  }
+
+  const searchOptions = (options) => ({
+    query: String(options?.query ?? ''),
+    isRegex: Boolean(options?.isRegex),
+    matchCase: Boolean(options?.matchCase),
+    wholeWord: Boolean(options?.wholeWord),
+  });
+
+  // Pastas onde buscar: as do workspace, ou uma pasta dentro delas ("Localizar na pasta").
+  const searchBases = (folder) => {
+    if (typeof folder === 'string' && folder) {
+      const full = guard(folder);
+      if (!currentRoots().some((dir) => isInside(full, dir))) throw new Error(t('error.outsideWorkspace'));
+      return [full];
+    }
+    return currentRoots();
+  };
+
+  ipcMain.handle('ws:search', async (_e, options) => {
+    const serial = ++searchSerial;
+    const { buildMatcher, findMatches, globMatcher, SEARCH_LIMITS } = await loadCore();
+    const matcher = buildMatcher(searchOptions(options));
+    const include = globMatcher(String(options?.include ?? ''));
+    const exclude = globMatcher(String(options?.exclude ?? ''));
+    const maxResults = Math.max(1, Math.min(SEARCH_LIMITS.maxResults, Number(options?.maxResults) || SEARCH_LIMITS.maxResults));
+    const results = [];
+    let total = 0;
+    let files = 0;
+    let truncated = false;
+    for await (const file of searchableFiles(searchBases(options?.folder), include, exclude, serial)) {
+      if (serial !== searchSerial) return { cancelled: true, results: [], total: 0, files: 0, truncated: false };
+      let text;
+      try {
+        text = await readText(file, SEARCH_LIMITS.maxFileBytes);
+      } catch {
+        continue;
+      }
+      if (text === null) continue;
+      files++;
+      const matches = findMatches(text, matcher, maxResults - total);
+      if (!matches.length) continue;
+      results.push({ path: file, matches });
+      total += matches.length;
+      if (total >= maxResults) {
+        truncated = true;
+        break;
+      }
+    }
+    return { cancelled: false, results, total, files, truncated };
+  });
+
+  // Substitui nos arquivos indicados (os que não estão abertos no editor; os abertos o renderer troca no modelo).
+  ipcMain.handle('ws:replace', async (_e, options, replacement, paths) => {
+    const { buildMatcher, replaceInText, SEARCH_LIMITS } = await loadCore();
+    const opts = searchOptions(options);
+    const matcher = buildMatcher(opts);
+    let count = 0;
+    const changed = [];
+    const failed = [];
+    for (const file of Array.isArray(paths) ? paths : []) {
+      try {
+        const full = guard(file, true);
+        const text = await readText(full, SEARCH_LIMITS.maxFileBytes);
+        if (text === null) continue;
+        const result = replaceInText(text, matcher, String(replacement ?? ''), opts.isRegex);
+        if (!result.count) continue;
+        await fsp.writeFile(full, result.text, 'utf8');
+        count += result.count;
+        changed.push(full);
+      } catch (error) {
+        failed.push({ path: String(file), reason: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    return { count, changed, failed };
+  });
 
   // O language server devolve caminhos em minúsculas; aqui volta a grafia real do disco.
   ipcMain.handle('ws:realpath', async (_e, target) => {

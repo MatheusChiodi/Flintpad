@@ -10,6 +10,9 @@ export type Tab = { id: number; stack: string[]; idx: number; pinned?: boolean }
 // Aba Código: pasta aberta, itens do explorador e terminais.
 export type WorkspaceState = { root: string | null; roots: string[]; recent: string[]; vault: string | null };
 export type DirEntry = { name: string; path: string; dir: boolean };
+// Busca em arquivos da aba Código (ws:search).
+export type FileSearchOptions = { query: string; isRegex?: boolean; matchCase?: boolean; wholeWord?: boolean; include?: string; exclude?: string; folder?: string; maxResults?: number };
+export type FileSearchResult = { cancelled: boolean; results: { path: string; matches: import('../electron/searchCore.mjs').SearchMatch[] }[]; total: number; files: number; truncated: boolean };
 export type TerminalInfo = { id: number; title: string; cwd: string };
 
 // Preferências guardadas pelo processo principal em config.json.
@@ -100,9 +103,12 @@ declare global {
         create(target: string, isDir: boolean): Promise<string>;
         rename(from: string, to: string): Promise<string>;
         remove(target: string): Promise<void>;
+        copy(from: string, to: string): Promise<string>;
         reveal(target: string): Promise<void>;
         realpath(target: string): Promise<string | null>;
         stat(target: string): Promise<{ dir: boolean; size: number; mtime: number } | null>;
+        search(options: FileSearchOptions): Promise<FileSearchResult>;
+        replace(options: FileSearchOptions, replacement: string, paths: string[]): Promise<{ count: number; changed: string[]; failed: { path: string; reason: string }[] }>;
         onChanged(callback: (paths: string[]) => void): () => void;
       };
       term: {

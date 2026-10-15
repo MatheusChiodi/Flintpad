@@ -6,7 +6,9 @@ import jsonWorker from 'monaco-editor/language/json/json.worker.js?worker';
 import tsWorker from 'monaco-editor/language/typescript/ts.worker.js?worker';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
+import { buildMatcher, replaceInText } from '../../electron/searchCore.mjs';
 import { setCodeMenuHandler } from '../lib/codeBridge';
+import { duplicateName } from '../lib/codeTools';
 import { fuzzyFilter, fuzzyMatch } from '../lib/fuzzy';
 import { useT, type Key } from '../lib/i18n';
 import { loadIconTheme, type IconTheme } from '../lib/iconTheme';
@@ -15,11 +17,13 @@ import { baseName, dirName, isInside, joinPath, relativePath, samePath } from '.
 import { allLanguages, applyTokenTheme, fileLanguage, installExtensions, languageForFile } from '../lib/textmate';
 import { toMonacoTheme, toSnippetEntries, type SnippetEntry, type VsExtension, type VsTheme } from '../lib/vscode';
 import { cssVariables, OBNOTION_THEME, themeKind, workbenchColors, type ThemeKind, type WorkbenchColors } from '../lib/workbenchTheme';
-import type { DirEntry, MenuAction, WorkspaceState } from '../types';
+import type { DirEntry, FileSearchOptions, MenuAction, WorkspaceState } from '../types';
 import { Explorer } from './code/Explorer';
 import { FileIconView } from './code/FileIconView';
 import { QuickInput, type QuickItem } from './code/QuickInput';
+import { SearchView, type SearchHost, type SearchRequest } from './code/SearchView';
 import { TerminalPanel, type TerminalCommand } from './code/TerminalPanel';
+import { TodoView } from './code/TodoView';
 import { Vein } from './code/Vein';
 
 self.MonacoEnvironment = {
@@ -69,10 +73,12 @@ const writeStorage = (key: string, value: unknown) => {
 };
 
 type EditorTab = { path: string; preview: boolean };
-type Layout = { sidebar: boolean; sidebarWidth: number; panel: boolean; panelHeight: number; panelMax: boolean };
+type SideView = 'explorer' | 'search' | 'todo';
+type Layout = { sidebar: boolean; sidebarWidth: number; panel: boolean; panelHeight: number; panelMax: boolean; view: SideView };
 type EditorPrefs = { minimap: boolean; wordWrap: boolean; fontSize: number; autoSave: boolean };
 
-const DEFAULT_LAYOUT: Layout = { sidebar: true, sidebarWidth: 260, panel: false, panelHeight: 260, panelMax: false };
+const DEFAULT_LAYOUT: Layout = { sidebar: true, sidebarWidth: 260, panel: false, panelHeight: 260, panelMax: false, view: 'explorer' };
+const SIDE_VIEWS: SideView[] = ['explorer', 'search', 'todo'];
 const DEFAULT_PREFS: EditorPrefs = { minimap: true, wordWrap: false, fontSize: 13, autoSave: true };
 
 // O que sobrevive à troca de aba: abas do editor, posição de cada arquivo e versão salva de cada modelo.
@@ -157,7 +163,10 @@ export default function Code() {
   const [ready, setReady] = useState(false);
   const [tabs, setTabsState] = useState<EditorTab[]>(session.tabs);
   const [active, setActiveState] = useState<string | null>(session.active);
-  const [layout, setLayoutState] = useState<Layout>(() => readStorage(STORAGE.layout, DEFAULT_LAYOUT));
+  const [layout, setLayoutState] = useState<Layout>(() => {
+    const stored = readStorage(STORAGE.layout, DEFAULT_LAYOUT);
+    return SIDE_VIEWS.includes(stored.view) ? stored : { ...stored, view: DEFAULT_LAYOUT.view };
+  });
   const [prefs, setPrefsState] = useState<EditorPrefs>(() => readStorage(STORAGE.editor, DEFAULT_PREFS));
   const [themePath, setThemePath] = useState(() => localStorage.getItem(STORAGE.colorTheme) ?? '');
   const [iconThemePath, setIconThemePath] = useState<string | null>(() => localStorage.getItem(STORAGE.iconTheme));
@@ -170,6 +179,7 @@ export default function Code() {
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
   const [terminalCommand, setTerminalCommand] = useState<TerminalCommand | null>(null);
   const [collapseSignal, setCollapseSignal] = useState(0);
+  const [searchRequest, setSearchRequest] = useState<SearchRequest | null>(null);
   const [, setLspVersion] = useState(0);
 
   const root = workspace?.root ?? null;
@@ -604,12 +614,76 @@ export default function Code() {
     return session.files.list;
   };
 
+  // ---------- Vistas da barra lateral ----------
+
+  const showView = (view: SideView) => setLayout({ sidebar: true, view });
+  // Clicar na vista que já está aberta fecha a barra, como na barra de atividades do VS Code.
+  const toggleView = (view: SideView) => (layout.sidebar && layout.view === view ? setLayout({ sidebar: false }) : showView(view));
+
+  /** Abre a busca em arquivos; a seleção de uma linha do editor vira a consulta. */
+  const showSearch = (patch: Omit<SearchRequest, 'serial'> = {}) => {
+    const editor = editorRef.current;
+    const selection = editor?.getSelection();
+    const selected = selection && !selection.isEmpty() ? editor!.getModel()?.getValueInRange(selection) : undefined;
+    showView('search');
+    setSearchRequest({ query: selected && !/[\r\n]/.test(selected) ? selected : undefined, ...patch, serial: Date.now() });
+  };
+
+  const openAt = (path: string, line: number, column: number, length: number) =>
+    void openPath(path, { pinned: true, selection: { startLineNumber: line, startColumn: column, endLineNumber: line, endColumn: column + length } });
+
+  const searchHost: SearchHost = {
+    iconTheme,
+    displayPath,
+    open: openAt,
+    notify: flash,
+    // Arquivo aberto troca no modelo (Ctrl+Z desfaz); se não tinha alteração pendente, já salva.
+    replaceOpen: (paths: string[], options: FileSearchOptions, replacement: string) => {
+      const handled: string[] = [];
+      let count = 0;
+      const matcher = buildMatcher(options);
+      for (const path of paths) {
+        const model = modelFor(path);
+        if (!model) continue;
+        handled.push(path);
+        const wasDirty = isDirty(path);
+        const result = replaceInText(model.getValue(), matcher, replacement, options.isRegex);
+        if (!result.count) continue;
+        count += result.count;
+        model.pushEditOperations([], [{ range: model.getFullModelRange(), text: result.text }], () => null);
+        if (!wasDirty) void save(path);
+      }
+      forceUpdate();
+      return { handled, count };
+    },
+  };
+
   // ---------- Perguntas (nome de arquivo etc.) ----------
 
   const prompt = (placeholder: string, message: string, value: string, onSubmit: (value: string) => void, validate?: (value: string) => string | null) =>
     setQuick({ kind: 'prompt', placeholder, message, value, onSubmit, validate });
 
   const validName = (value: string) => (!value.trim() ? t('code.prompt.required') : /[<>:"|?*]/.test(value.replace(/^[a-z]:/i, '')) ? t('code.prompt.invalid') : null);
+
+  // Renomear ou mover (arrastar no explorador): as guias de dentro passam a apontar para o novo caminho, com o conteúdo atual.
+  const moveEntry = (entry: DirEntry, target: string) => {
+    void window.api.ws.rename(entry.path, target).then(async (renamed) => {
+      const affected = session.tabs.filter((tab) => isInside(tab.path, entry.path));
+      for (const tab of affected) {
+        const next = renamed + tab.path.slice(entry.path.length);
+        const old = modelFor(tab.path);
+        const value = old?.getValue();
+        const wasDirty = isDirty(tab.path);
+        old?.dispose();
+        const model = await ensureModel(next);
+        if (value !== undefined && wasDirty) model.setValue(value);
+        session.tabs = session.tabs.map((item) => (item === tab ? { ...item, path: next } : item));
+        if (session.active && samePath(session.active, tab.path)) session.active = next;
+      }
+      setTabs([...session.tabs]);
+      activate(session.active);
+    }, (error) => flash(errorText(error), true));
+  };
 
   const explorerActions = {
     open: (path: string, pinned: boolean) => void openPath(path, { pinned }),
@@ -626,25 +700,25 @@ export default function Code() {
       }, validName),
     rename: (entry: DirEntry) =>
       prompt(t('code.explorer.rename'), t('code.prompt.rename', { name: entry.name }), entry.name, (name) => {
-        const target = joinPath(dirName(entry.path), name.trim());
-        void window.api.ws.rename(entry.path, target).then(async (renamed) => {
-          // Abas dentro do que foi renomeado passam a apontar para o novo caminho, com o conteúdo atual.
-          const affected = session.tabs.filter((tab) => isInside(tab.path, entry.path));
-          for (const tab of affected) {
-            const next = renamed + tab.path.slice(entry.path.length);
-            const old = modelFor(tab.path);
-            const value = old?.getValue();
-            const wasDirty = isDirty(tab.path);
-            old?.dispose();
-            const model = await ensureModel(next);
-            if (value !== undefined && wasDirty) model.setValue(value);
-            session.tabs = session.tabs.map((item) => (item === tab ? { ...item, path: next } : item));
-            if (session.active && samePath(session.active, tab.path)) session.active = next;
-          }
-          setTabs([...session.tabs]);
-          activate(session.active);
-        }, (error) => flash(errorText(error), true));
+        moveEntry(entry, joinPath(dirName(entry.path), name.trim()));
       }, validName),
+    move: (entry: DirEntry, targetDir: string) => moveEntry(entry, joinPath(targetDir, entry.name)),
+    duplicate: (entry: DirEntry) => {
+      const dir = dirName(entry.path);
+      void window.api.ws
+        .readDir(dir)
+        .then((siblings) => {
+          const name = duplicateName(entry.name, (candidate) => siblings.some((item) => item.name.toLowerCase() === candidate.toLowerCase()));
+          return window.api.ws.copy(entry.path, joinPath(dir, name));
+        })
+        .then((copy) => openPath(copy, { pinned: true }), (error) => flash(errorText(error), true));
+    },
+    copyRelativePath: (path: string) => void navigator.clipboard.writeText(relativePath(rootOf(path), path)),
+    findInFolder: (dir: string) => {
+      const base = rootOf(dir);
+      const rel = base && !samePath(base, dir) ? relativePath(base, dir) : '';
+      showSearch({ include: rel ? `./${rel}` : '' });
+    },
     remove: (entry: DirEntry) =>
       setQuick({
         kind: 'pick',
@@ -831,7 +905,10 @@ export default function Code() {
     { id: 'workbench.action.nextEditor', label: t('code.cmd.nextEditor'), keybinding: 'Ctrl+PageDown', run: () => cycleEditor(1) },
     { id: 'workbench.action.previousEditor', label: t('code.cmd.previousEditor'), keybinding: 'Ctrl+PageUp', run: () => cycleEditor(-1) },
     { id: 'workbench.action.toggleSidebarVisibility', label: t('code.cmd.toggleSidebar'), keybinding: 'Ctrl+B', run: () => setLayout({ sidebar: !layout.sidebar }) },
-    { id: 'workbench.view.explorer', label: t('code.cmd.showExplorer'), run: () => setLayout({ sidebar: true }) },
+    { id: 'workbench.view.explorer', label: t('code.cmd.showExplorer'), run: () => showView('explorer') },
+    { id: 'workbench.view.search', label: t('code.cmd.showSearch'), keybinding: 'Ctrl+Shift+F', run: () => showSearch() },
+    { id: 'workbench.action.replaceInFiles', label: t('code.cmd.replaceInFiles'), keybinding: 'Ctrl+Shift+H', run: () => showSearch({ replace: true }) },
+    { id: 'workbench.view.todo', label: t('code.cmd.showTodos'), run: () => showView('todo') },
     { id: 'workbench.files.action.collapseExplorerFolders', label: t('code.explorer.collapse'), run: () => setCollapseSignal(Date.now()) },
     { id: 'workbench.action.togglePanel', label: t('code.cmd.togglePanel'), keybinding: 'Ctrl+J', run: () => setLayout({ panel: !layout.panel }) },
     { id: 'workbench.action.toggleMaximizedPanel', label: t('code.cmd.maximizePanel'), run: () => setLayout({ panel: true, panelMax: !layout.panelMax }) },
@@ -892,6 +969,7 @@ export default function Code() {
           'export-pdf': 'workbench.action.showCommands',
           'new-note': 'workbench.action.files.newUntitledFile',
           graph: 'workbench.action.gotoLine',
+          'toggle-favorite': 'workbench.view.search',
         };
         if (action === 'close-tab') {
           if (!session.tabs.length) return false;
@@ -935,6 +1013,8 @@ export default function Code() {
       else if (key === 'b' && !event.shiftKey) id = 'workbench.action.toggleSidebarVisibility';
       else if (key === 'j' && !event.shiftKey) id = 'workbench.action.togglePanel';
       else if (key === 'o' && event.shiftKey) id = 'workbench.action.gotoSymbol';
+      else if (key === 'f' && event.shiftKey) id = 'workbench.view.search';
+      else if (key === 'h' && event.shiftKey) id = 'workbench.action.replaceInFiles';
       else if (key === 's' && !event.shiftKey) id = 'workbench.action.files.save';
       else if (key === 'pagedown') id = 'workbench.action.nextEditor';
       else if (key === 'pageup') id = 'workbench.action.previousEditor';
@@ -1126,27 +1206,49 @@ export default function Code() {
   const style = { ...cssVariables(colors), background: 'var(--vsc-editor-background)', color: 'var(--vsc-foreground)', colorScheme: kind.includes('light') ? 'light' : 'dark' } as CSSProperties;
   const titleButton = 'wb-icon-btn';
 
-  const activityButton = (title: string, icon: ReactNode) => {
-    const selected = layout.sidebar;
+  const activityButton = (view: SideView, title: string, icon: ReactNode) => {
+    const selected = layout.sidebar && layout.view === view;
     return (
-      <button className="wb-activity-btn" data-on={selected} aria-pressed={selected} title={title} onClick={() => setLayout({ sidebar: !selected })}>
+      <button className="wb-activity-btn" data-on={selected} aria-pressed={selected} title={title} aria-label={title} onClick={() => toggleView(view)}>
         <span aria-hidden className="wb-vein" />
         {icon}
       </button>
     );
   };
 
+  const noFolder = (
+    <div className="px-4 py-3">
+      <p className="opacity-80">{t('code.explorer.noFolder')}</p>
+      <button className="mt-3 w-full rounded-lg py-1.5 font-medium transition-[filter] duration-150 hover:brightness-110" style={{ background: 'var(--vsc-button-background)', color: 'var(--vsc-button-foreground)' }} onClick={() => void openFolder()}>
+        {t('code.cmd.openFolder')}
+      </button>
+    </div>
+  );
+
+  const sideTitle: Record<SideView, string> = { explorer: t('code.explorer.title'), search: t('code.search.title'), todo: t('code.todo.title') };
+
   return (
     <div className="wb relative flex h-full min-h-0 flex-col" style={style}>
       <div className="flex min-h-0 flex-1">
         {/* Barra de atividades */}
-        <nav className="wb-activity">
+        <nav className="wb-activity" aria-label={t('code.activity.label')}>
           {activityButton(
+            'explorer',
             t('code.cmd.showExplorer'),
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="M14.5 3H7.7A1.7 1.7 0 0 0 6 4.7v12.6C6 18.2 6.8 19 7.7 19h9.6c.9 0 1.7-.8 1.7-1.7V7.5L14.5 3Z" /><path d="M14 3v5h5M3 7v13.3c0 .9.8 1.7 1.7 1.7H15" /></svg>,
           )}
+          {activityButton(
+            'search',
+            `${t('code.cmd.showSearch')} (Ctrl+Shift+F)`,
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m15.5 15.5 5 5" /></svg>,
+          )}
+          {activityButton(
+            'todo',
+            t('code.cmd.showTodos'),
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6.5 5.5 8 8 5M4 12.5 5.5 14 8 11M4 18.5 5.5 20 8 17M11 6.5h9M11 12.5h9M11 18.5h6" /></svg>,
+          )}
           <span className="flex-1" />
-          <button className="wb-activity-btn" title={`${t('code.cmd.showCommands')} (Ctrl+Shift+P)`} onClick={() => setQuick({ kind: 'main', value: '>' })}>
+          <button className="wb-activity-btn" title={`${t('code.cmd.showCommands')} (Ctrl+Shift+P)`} aria-label={t('code.cmd.showCommands')} onClick={() => setQuick({ kind: 'main', value: '>' })}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>
           </button>
         </nav>
@@ -1154,20 +1256,30 @@ export default function Code() {
         {/* Barra lateral */}
         {layout.sidebar && (
           <>
-            <aside className="wb-side" style={{ width: layout.sidebarWidth }}>
+            <aside className="wb-side" style={{ width: layout.sidebarWidth }} aria-label={sideTitle[layout.view]}>
               <div className="wb-side-title">
-                <span className="flex-1 truncate">{t('code.explorer.title')}</span>
-                <button className={titleButton} title={t('code.cmd.openFolder')} onClick={() => void openFolder()}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"><path d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" /></svg>
-                </button>
-                <button className={titleButton} title={t('code.cmd.addFolder')} onClick={() => void addFolder()}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"><path d="M1.5 3.5h4.5l1.5 1.5h7v3M8.5 12.5h-7v-9M12 9.5v5M9.5 12h5" /></svg>
-                </button>
-                <button className={titleButton} title={t('code.cmd.openRecent')} onClick={pickRecent}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="8" cy="8" r="5.5" /><path d="M8 5v3l2 1.5" /></svg>
-                </button>
+                <h2 className="flex-1 truncate">{sideTitle[layout.view]}</h2>
+                {layout.view === 'explorer' && (
+                  <>
+                    <button className={titleButton} title={t('code.cmd.openFolder')} aria-label={t('code.cmd.openFolder')} onClick={() => void openFolder()}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"><path d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" /></svg>
+                    </button>
+                    <button className={titleButton} title={t('code.cmd.addFolder')} aria-label={t('code.cmd.addFolder')} onClick={() => void addFolder()}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"><path d="M1.5 3.5h4.5l1.5 1.5h7v3M8.5 12.5h-7v-9M12 9.5v5M9.5 12h5" /></svg>
+                    </button>
+                    <button className={titleButton} title={t('code.cmd.openRecent')} aria-label={t('code.cmd.openRecent')} onClick={pickRecent}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="8" cy="8" r="5.5" /><path d="M8 5v3l2 1.5" /></svg>
+                    </button>
+                  </>
+                )}
               </div>
-              {roots.length ? (
+              {!roots.length ? (
+                noFolder
+              ) : layout.view === 'search' ? (
+                <SearchView host={searchHost} request={searchRequest} rootsKey={roots.join('|')} />
+              ) : layout.view === 'todo' ? (
+                <TodoView iconTheme={iconTheme} displayPath={displayPath} open={openAt} rootsKey={roots.join('|')} />
+              ) : (
                 <div className={`flex min-h-0 flex-1 flex-col ${roots.length > 1 ? 'overflow-y-auto' : ''}`}>
                   {roots.map((dir) => (
                     <Explorer
@@ -1180,13 +1292,6 @@ export default function Code() {
                       collapseSignal={collapseSignal}
                     />
                   ))}
-                </div>
-              ) : (
-                <div className="px-4 py-3">
-                  <p className="opacity-80">{t('code.explorer.noFolder')}</p>
-                  <button className="mt-3 w-full rounded-lg py-1.5 font-medium transition-[filter] duration-150 hover:brightness-110" style={{ background: 'var(--vsc-button-background)', color: 'var(--vsc-button-foreground)' }} onClick={() => void openFolder()}>
-                    {t('code.cmd.openFolder')}
-                  </button>
                 </div>
               )}
             </aside>

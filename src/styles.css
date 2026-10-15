@@ -1699,6 +1699,223 @@ button {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wb-accent) 55%, transparent);
 }
 
+/* Busca em arquivos e listas de resultado (busca, TODOs, problemas) */
+.wb-search-form {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 2px 10px 8px 4px;
+}
+.wb-search-expand {
+  height: 28px;
+  width: 18px;
+}
+.wb-field {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 1px;
+  border-radius: 7px;
+  padding-right: 3px;
+  background: var(--vsc-input-background);
+  box-shadow: inset 0 0 0 1px var(--vsc-input-border, var(--wb-guide));
+  transition: box-shadow var(--wb-fast) ease;
+}
+.wb-field:focus-within {
+  box-shadow: inset 0 0 0 1px var(--wb-accent);
+}
+.wb-field-input {
+  min-width: 0;
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  background: transparent;
+  color: var(--vsc-input-foreground);
+  font-size: 13px;
+  outline: none;
+}
+.wb-field-input::placeholder {
+  color: var(--vsc-input-placeholderForeground);
+}
+.wb .wb-field-input:focus-visible {
+  outline: none;
+}
+.wb-toggle {
+  display: inline-flex;
+  height: 22px;
+  min-width: 22px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  padding: 0 3px;
+  color: var(--wb-quiet);
+  transition:
+    background-color var(--wb-fast) ease,
+    color var(--wb-fast) ease;
+}
+.wb-toggle:hover {
+  background: var(--wb-hover);
+  color: var(--vsc-foreground);
+}
+.wb-toggle[data-on='true'] {
+  color: var(--vsc-inputOption-activeForeground, var(--vsc-foreground));
+  background: var(--vsc-inputOption-activeBackground, color-mix(in srgb, var(--wb-accent) 22%, transparent));
+  box-shadow: inset 0 0 0 1px var(--vsc-inputOption-activeBorder, color-mix(in srgb, var(--wb-accent) 70%, transparent));
+}
+.wb-link-btn {
+  border-radius: 4px;
+  font-size: 11.5px;
+  color: var(--wb-quiet);
+  transition: color var(--wb-fast) ease;
+}
+.wb-link-btn:hover {
+  color: var(--vsc-foreground);
+}
+.wb-search-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11.5px;
+  color: var(--wb-quiet);
+}
+.wb-search-msg {
+  padding: 4px 16px 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--wb-quiet);
+}
+.wb-search-msg[data-error] {
+  color: var(--vsc-errorForeground, var(--vsc-editorError-foreground));
+}
+.wb-spinner {
+  height: 12px;
+  width: 12px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1.5px solid var(--wb-guide);
+  border-top-color: var(--wb-accent);
+  animation: wb-spin calc(700ms * var(--motion) + 300ms) linear infinite;
+}
+@keyframes wb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.wb-results {
+  padding-inline: 6px;
+}
+.wb-result-file,
+.wb-result-line {
+  position: relative;
+  display: flex;
+  height: 22px;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  border-radius: 6px;
+  padding: 0 6px;
+  white-space: nowrap;
+  transition: background-color var(--wb-fast) ease;
+}
+.wb-result-line {
+  padding-left: 26px;
+  font-size: 12.5px;
+}
+.wb-result-file:hover,
+.wb-result-line:hover {
+  background: var(--wb-hover);
+}
+.wb-results:focus-visible [data-selected='true'] {
+  background: var(--vsc-list-activeSelectionBackground, var(--wb-press));
+  color: var(--vsc-list-activeSelectionForeground, inherit);
+  box-shadow: inset 0 0 0 1px var(--wb-accent);
+}
+.wb-results [data-selected='true'] {
+  background: var(--vsc-list-inactiveSelectionBackground, var(--wb-hover));
+}
+.wb .wb-results:focus-visible {
+  outline: none;
+}
+.wb-result-dir {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11.5px;
+  color: var(--wb-quiet);
+}
+.wb-result-line-no {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--wb-quiet);
+}
+.wb-badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0 6px;
+  min-width: 18px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--vsc-badge-foreground, var(--vsc-foreground));
+  background: var(--vsc-badge-background, var(--wb-press));
+}
+.wb-match-preview {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
+}
+.wb-match {
+  border-radius: 2px;
+  color: inherit;
+  background: var(--vsc-editor-findMatchHighlightBackground, color-mix(in srgb, var(--wb-accent) 30%, transparent));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--wb-accent) 35%, transparent);
+}
+.wb-match-old {
+  color: inherit;
+  background: var(--vsc-diffEditor-removedTextBackground, rgb(255 80 80 / 0.22));
+}
+.wb-match-new {
+  text-decoration: none;
+  background: var(--vsc-diffEditor-insertedTextBackground, rgb(80 200 120 / 0.22));
+}
+.wb-todo-tag {
+  flex-shrink: 0;
+  border-radius: 4px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 15px;
+  color: var(--wb-todo, var(--wb-accent));
+  background: color-mix(in srgb, var(--wb-todo, var(--wb-accent)) 16%, transparent);
+}
+.wb-todo-chip {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.wb-todo-chip[data-on='true'] {
+  color: var(--wb-todo, var(--wb-accent));
+}
+[data-tag='FIXME'],
+[data-tag='BUG'] {
+  --wb-todo: var(--vsc-editorError-foreground, #f14c4c);
+}
+[data-tag='HACK'],
+[data-tag='XXX'] {
+  --wb-todo: var(--vsc-editorWarning-foreground, #cca700);
+}
+[data-tag='NOTE'] {
+  --wb-todo: var(--vsc-editorInfo-foreground, #3794ff);
+}
+
 /* Menu de contexto da moldura, com as cores do tema do workbench. */
 .wb .context-menu {
   background: var(--vsc-editorWidget-background, var(--vsc-quickInput-background));
