@@ -2028,6 +2028,13 @@ button {
 .wb-tab[data-dirty='true']:not(:hover) .wb-tab-close .wb-x {
   display: none;
 }
+/* Guia fixada: o alfinete fica sempre à vista (clicar desafixa). */
+.wb-tab[data-pinned='true'] .wb-tab-pin {
+  opacity: 0.7;
+}
+.wb-tab[data-pinned='true'] {
+  padding-right: 4px;
+}
 .wb-tabs > .wb-vein {
   top: 6px;
   left: 0;
@@ -2247,6 +2254,37 @@ button.wb-status-item:hover {
   height: 2px;
   border-radius: 2px;
   background: var(--vsc-panelTitle-activeBorder);
+  transform-origin: center;
+  transition:
+    transform var(--wb-glide) var(--wb-ease),
+    opacity var(--wb-fast) ease;
+}
+.wb-panel-title[data-on='false'] {
+  color: var(--vsc-panelTitle-inactiveForeground);
+  transition: color var(--wb-fast) ease;
+}
+.wb-panel-title[data-on='false']:hover {
+  color: var(--vsc-panelTitle-activeForeground);
+}
+.wb-panel-title[data-on='false']::after {
+  opacity: 0;
+  transform: scaleX(0.3);
+}
+.wb-panel-title .wb-badge {
+  letter-spacing: 0;
+}
+/* Ícones de gravidade (Problemas) */
+.wb-sev {
+  flex-shrink: 0;
+}
+.wb-sev[data-sev='error'] {
+  color: var(--vsc-editorError-foreground);
+}
+.wb-sev[data-sev='warning'] {
+  color: var(--vsc-editorWarning-foreground);
+}
+.wb-sev[data-sev='info'] {
+  color: var(--vsc-editorInfo-foreground);
 }
 .wb-chip {
   flex-shrink: 0;

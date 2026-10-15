@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 
 import { buildMatcher, replaceInText } from '../../electron/searchCore.mjs';
 import { setCodeMenuHandler } from '../lib/codeBridge';
-import { duplicateName } from '../lib/codeTools';
+import { duplicateName, parseSavedEditors, pushClosed, sortPinned, tabsToClose, workspaceKey, type CloseKind } from '../lib/codeTools';
 import { fuzzyFilter, fuzzyMatch } from '../lib/fuzzy';
 import { useT, type Key } from '../lib/i18n';
 import { loadIconTheme, type IconTheme } from '../lib/iconTheme';
@@ -24,6 +24,8 @@ import { QuickInput, type QuickItem } from './code/QuickInput';
 import { SearchView, type SearchHost, type SearchRequest } from './code/SearchView';
 import { TerminalPanel, type TerminalCommand } from './code/TerminalPanel';
 import { TodoView } from './code/TodoView';
+import { problemCounts, ProblemsPanel } from './code/ProblemsPanel';
+import { ContextMenu, isMenuKey, menuPosition, type MenuItem, type MenuRequest } from './ContextMenu';
 import { Vein } from './code/Vein';
 
 self.MonacoEnvironment = {
@@ -51,6 +53,7 @@ const STORAGE = {
   layout: 'obnotion:code-layout',
   editor: 'obnotion:code-editor',
   recentCommands: 'obnotion:code-recent-commands',
+  editors: 'obnotion:code-editors:',
 };
 // Tema de ícones padrão do VS Code.
 const DEFAULT_ICON_THEME_ID = 'vs-seti';
@@ -72,12 +75,13 @@ const writeStorage = (key: string, value: unknown) => {
   }
 };
 
-type EditorTab = { path: string; preview: boolean };
+type EditorTab = { path: string; preview: boolean; pinned?: boolean };
 type SideView = 'explorer' | 'search' | 'todo';
-type Layout = { sidebar: boolean; sidebarWidth: number; panel: boolean; panelHeight: number; panelMax: boolean; view: SideView };
+type PanelView = 'terminal' | 'problems';
+type Layout = { sidebar: boolean; sidebarWidth: number; panel: boolean; panelHeight: number; panelMax: boolean; view: SideView; panelView: PanelView };
 type EditorPrefs = { minimap: boolean; wordWrap: boolean; fontSize: number; autoSave: boolean };
 
-const DEFAULT_LAYOUT: Layout = { sidebar: true, sidebarWidth: 260, panel: false, panelHeight: 260, panelMax: false, view: 'explorer' };
+const DEFAULT_LAYOUT: Layout = { sidebar: true, sidebarWidth: 260, panel: false, panelHeight: 260, panelMax: false, view: 'explorer', panelView: 'terminal' };
 const SIDE_VIEWS: SideView[] = ['explorer', 'search', 'todo'];
 const DEFAULT_PREFS: EditorPrefs = { minimap: true, wordWrap: false, fontSize: 13, autoSave: true };
 
@@ -90,6 +94,9 @@ const session = {
   installed: null as Promise<VsExtension[]> | null,
   files: null as { root: string; list: Promise<string[]> } | null,
   recentFiles: [] as string[],
+  // Guias fechadas (Reabrir editor fechado) e se as guias salvas do workspace já foram restauradas.
+  closed: [] as string[],
+  restored: false,
 };
 
 // Mensagem do erro sem o prefixo que o IPC do Electron acrescenta.
@@ -165,7 +172,7 @@ export default function Code() {
   const [active, setActiveState] = useState<string | null>(session.active);
   const [layout, setLayoutState] = useState<Layout>(() => {
     const stored = readStorage(STORAGE.layout, DEFAULT_LAYOUT);
-    return SIDE_VIEWS.includes(stored.view) ? stored : { ...stored, view: DEFAULT_LAYOUT.view };
+    return { ...stored, view: SIDE_VIEWS.includes(stored.view) ? stored.view : DEFAULT_LAYOUT.view, panelView: stored.panelView === 'problems' ? 'problems' : 'terminal' };
   });
   const [prefs, setPrefsState] = useState<EditorPrefs>(() => readStorage(STORAGE.editor, DEFAULT_PREFS));
   const [themePath, setThemePath] = useState(() => localStorage.getItem(STORAGE.colorTheme) ?? '');
@@ -175,7 +182,8 @@ export default function Code() {
   const [iconTheme, setIconTheme] = useState<IconTheme | null>(null);
   const [quick, setQuick] = useState<Quick | null>(null);
   const [cursor, setCursor] = useState({ line: 1, column: 1, selected: 0 });
-  const [markers, setMarkers] = useState({ errors: 0, warnings: 0 });
+  const [markers, setMarkers] = useState(() => problemCounts());
+  const [markerVersion, setMarkerVersion] = useState(0);
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
   const [terminalCommand, setTerminalCommand] = useState<TerminalCommand | null>(null);
   const [collapseSignal, setCollapseSignal] = useState(0);
@@ -341,7 +349,7 @@ export default function Code() {
         next.splice(at + 1, 0, tab);
       }
     }
-    setTabs(next);
+    setTabs(sortPinned(next));
     activate(path);
     const editor = editorRef.current;
     if (editor && options.selection) {
@@ -369,6 +377,7 @@ export default function Code() {
     const index = current.findIndex((tab) => samePath(tab.path, path));
     if (index < 0) return;
     const next = current.filter((_, i) => i !== index);
+    session.closed = pushClosed(session.closed, path);
     setTabs(next);
     if (session.active && samePath(session.active, path)) activate(next[Math.min(index, next.length - 1)]?.path ?? null);
     session.viewStates.delete(keyOf(path));
@@ -441,6 +450,81 @@ export default function Code() {
     });
   };
 
+  const closeTabs = (kind: CloseKind, path: string | null = session.active) => {
+    if (!path && kind !== 'all') return;
+    closeMany(tabsToClose(session.tabs, kind, path ?? '', isDirty));
+  };
+
+  // Guia fixada: fica à esquerda, não é reaproveitada como visualização e sobrevive a "Fechar os outros".
+  const togglePin = (path: string | null = session.active) => {
+    if (!path) return;
+    setTabs(sortPinned(session.tabs.map((tab) => (samePath(tab.path, path) ? { ...tab, pinned: !tab.pinned, preview: false } : tab))));
+  };
+
+  const reopenClosed = () => {
+    const [path, ...rest] = session.closed;
+    if (!path) return false;
+    session.closed = rest;
+    void openPath(path, { pinned: true });
+    return true;
+  };
+
+  const [tabMenu, setTabMenu] = useState<MenuRequest | null>(null);
+  const closeTabMenu = useCallback(() => setTabMenu(null), []);
+  const openTabMenu = (position: { x: number; y: number }, tab: EditorTab) => {
+    const index = session.tabs.findIndex((item) => samePath(item.path, tab.path));
+    const items: MenuItem[] = [
+      { label: t('code.cmd.closeEditor'), keys: 'Ctrl+W', run: () => closeTab(tab.path) },
+      { label: t('code.tabs.closeOthers'), disabled: session.tabs.length < 2, run: () => closeTabs('others', tab.path) },
+      { label: t('code.tabs.closeRight'), disabled: index >= session.tabs.length - 1, run: () => closeTabs('right', tab.path) },
+      { label: t('code.tabs.closeSaved'), run: () => closeTabs('saved', tab.path) },
+      { label: t('code.cmd.closeAll'), run: () => closeTabs('all') },
+      { kind: 'separator' },
+      { label: tab.pinned ? t('code.tabs.unpin') : t('code.tabs.pin'), run: () => togglePin(tab.path) },
+      { kind: 'separator' },
+      { label: t('code.explorer.copyPath'), run: () => void navigator.clipboard.writeText(tab.path) },
+      { label: t('code.explorer.copyRelativePath'), run: () => void navigator.clipboard.writeText(relativePath(rootOf(tab.path), tab.path)) },
+      { label: t('code.tabs.revealInSide'), run: () => revealInExplorer(tab.path) },
+      { label: t('code.explorer.reveal'), run: () => void window.api.ws.reveal(tab.path) },
+    ];
+    setTabMenu({ ...position, items, label: baseName(tab.path) });
+  };
+
+  // Mostra o arquivo no explorador (abre a vista; o explorador abre as pastas até ele).
+  const revealInExplorer = (path: string) => {
+    showView('explorer');
+    if (!session.active || !samePath(session.active, path)) activate(path);
+  };
+
+  // ---------- Guias entre sessões ----------
+
+  const restoreEditors = async (workspaceRoots: string[]) => {
+    let saved;
+    try {
+      saved = parseSavedEditors(JSON.parse(localStorage.getItem(STORAGE.editors + workspaceKey(workspaceRoots)) ?? 'null'));
+    } catch {
+      return;
+    }
+    const restored: EditorTab[] = [];
+    for (const tab of saved.tabs) {
+      try {
+        await ensureModel(tab.path);
+        restored.push({ path: tab.path, preview: false, pinned: tab.pinned });
+      } catch {
+        // arquivo apagado ou fora das pastas abertas: a guia não volta
+      }
+    }
+    // O usuário pode ter aberto algo enquanto os arquivos eram lidos: isso vence.
+    if (!restored.length || session.tabs.length) return;
+    setTabs(sortPinned(restored));
+    activate(restored.find((tab) => saved.active && samePath(tab.path, saved.active))?.path ?? restored[0].path);
+  };
+
+  useEffect(() => {
+    if (!ready || !session.restored || !roots.length) return;
+    writeStorage(STORAGE.editors + workspaceKey(roots), { tabs: tabs.map((tab) => ({ path: tab.path, pinned: Boolean(tab.pinned) })), active });
+  }, [ready, tabs, active, roots]);
+
   // ---------- Inicialização ----------
 
   useEffect(() => {
@@ -478,13 +562,8 @@ export default function Code() {
       }),
       editor.onDidChangeModel(() => forceUpdate()),
       monaco.editor.onDidChangeMarkers(() => {
-        let errors = 0;
-        let warnings = 0;
-        for (const marker of monaco.editor.getModelMarkers({})) {
-          if (marker.severity === monaco.MarkerSeverity.Error) errors++;
-          else if (marker.severity === monaco.MarkerSeverity.Warning) warnings++;
-        }
-        setMarkers({ errors, warnings });
+        setMarkers(problemCounts());
+        setMarkerVersion((n) => n + 1);
       }),
       // "Ir para definição" em outro arquivo abre uma aba, como no VS Code.
       monaco.editor.registerEditorOpener({
@@ -511,6 +590,12 @@ export default function Code() {
       configureServers(state.root, list.flatMap((extension) => extension.jsonValidation));
       setReady(true);
       if (session.active) activate(session.active);
+      if (!session.restored) {
+        // Primeira abertura da aba nesta sessão do app: volta com as guias da última vez neste workspace.
+        if (!session.tabs.length) await restoreEditors(state.roots);
+        session.restored = true;
+        forceUpdate();
+      }
     })();
 
     const offStatus = onServerStatus(() => setLspVersion((n) => n + 1));
@@ -735,6 +820,7 @@ export default function Code() {
               modelFor(tab.path)?.dispose();
               closeTabNow(tab.path);
             }
+            session.closed = session.closed.filter((path) => !isInside(path, entry.path));
           }, (error) => flash(errorText(error), true));
         },
       }),
@@ -852,15 +938,17 @@ export default function Code() {
       onPick: (item) => void window.api.ws.setRoot(item.id).then(changeRoot, (error) => flash(errorText(error), true)),
     });
 
-  const toggleTerminal = () => {
-    if (layout.panel) setLayout({ panel: false });
+  // Terminal e Problemas dividem o painel: o atalho de um mostra a sua guia; se ela já está à vista, fecha o painel.
+  const togglePanelView = (view: PanelView) => {
+    if (layout.panel && layout.panelView === view) setLayout({ panel: false });
     else {
-      setLayout({ panel: true });
-      setTerminalCommand({ kind: 'focus', serial: Date.now() });
+      setLayout({ panel: true, panelView: view });
+      if (view === 'terminal') setTerminalCommand({ kind: 'focus', serial: Date.now() });
     }
   };
+  const toggleTerminal = () => togglePanelView('terminal');
   const newTerminal = () => {
-    setLayout({ panel: true });
+    setLayout({ panel: true, panelView: 'terminal' });
     setTerminalCommand({ kind: 'new', serial: Date.now() });
   };
 
@@ -901,7 +989,13 @@ export default function Code() {
     { id: 'workbench.action.files.revert', label: t('code.cmd.revert'), run: () => session.active && void revert(session.active) },
     { id: 'workbench.action.closeActiveEditor', label: t('code.cmd.closeEditor'), keybinding: 'Ctrl+W', run: () => session.active && closeTab(session.active) },
     { id: 'workbench.action.closeAllEditors', label: t('code.cmd.closeAll'), run: () => closeMany(session.tabs.map((tab) => tab.path)) },
-    { id: 'workbench.action.closeOtherEditors', label: t('code.cmd.closeOthers'), run: () => closeMany(session.tabs.filter((tab) => !session.active || !samePath(tab.path, session.active)).map((tab) => tab.path)) },
+    { id: 'workbench.action.closeOtherEditors', label: t('code.cmd.closeOthers'), run: () => closeTabs('others') },
+    { id: 'workbench.action.closeEditorsToTheRight', label: t('code.tabs.closeRight'), run: () => closeTabs('right') },
+    { id: 'workbench.action.closeUnmodifiedEditors', label: t('code.tabs.closeSaved'), run: () => closeTabs('saved') },
+    { id: 'workbench.action.reopenClosedEditor', label: t('code.cmd.reopenClosed'), keybinding: 'Ctrl+Shift+T', run: () => void reopenClosed() },
+    { id: 'workbench.action.pinEditor', label: t('code.cmd.togglePin'), run: () => togglePin() },
+    { id: 'workbench.files.action.showActiveFileInExplorer', label: t('code.tabs.revealInSide'), run: () => session.active && revealInExplorer(session.active) },
+    { id: 'workbench.actions.view.problems', label: t('code.cmd.showProblems'), keybinding: 'Ctrl+Shift+M', run: () => togglePanelView('problems') },
     { id: 'workbench.action.nextEditor', label: t('code.cmd.nextEditor'), keybinding: 'Ctrl+PageDown', run: () => cycleEditor(1) },
     { id: 'workbench.action.previousEditor', label: t('code.cmd.previousEditor'), keybinding: 'Ctrl+PageUp', run: () => cycleEditor(-1) },
     { id: 'workbench.action.toggleSidebarVisibility', label: t('code.cmd.toggleSidebar'), keybinding: 'Ctrl+B', run: () => setLayout({ sidebar: !layout.sidebar }) },
@@ -949,6 +1043,8 @@ export default function Code() {
     }
     runEditorAction(id);
   };
+  const reopenClosedRef = useRef(reopenClosed);
+  reopenClosedRef.current = reopenClosed;
   const runCommandRef = useRef(runCommand);
   runCommandRef.current = runCommand;
 
@@ -971,6 +1067,8 @@ export default function Code() {
           graph: 'workbench.action.gotoLine',
           'toggle-favorite': 'workbench.view.search',
         };
+        // Ctrl+Shift+T reabre o editor fechado; sem nenhum, segue para o App (reabrir guia do app).
+        if (action === 'reopen-tab') return reopenClosedRef.current();
         if (action === 'close-tab') {
           if (!session.tabs.length) return false;
           runCommandRef.current('workbench.action.closeActiveEditor');
@@ -1015,6 +1113,7 @@ export default function Code() {
       else if (key === 'o' && event.shiftKey) id = 'workbench.action.gotoSymbol';
       else if (key === 'f' && event.shiftKey) id = 'workbench.view.search';
       else if (key === 'h' && event.shiftKey) id = 'workbench.action.replaceInFiles';
+      else if (key === 'm' && event.shiftKey) id = 'workbench.actions.view.problems';
       else if (key === 's' && !event.shiftKey) id = 'workbench.action.files.save';
       else if (key === 'pagedown') id = 'workbench.action.nextEditor';
       else if (key === 'pageup') id = 'workbench.action.previousEditor';
@@ -1227,6 +1326,39 @@ export default function Code() {
 
   const sideTitle: Record<SideView, string> = { explorer: t('code.explorer.title'), search: t('code.search.title'), todo: t('code.todo.title') };
 
+  // Guias do painel (Problemas / Terminal), no lugar do título.
+  const problemTotal = markers.errors + markers.warnings;
+  const panelTabs = (
+    <div className="flex items-center gap-3" role="tablist" aria-label={t('code.panel.label')}>
+      {(['problems', 'terminal'] as PanelView[]).map((view) => (
+        <button
+          key={view}
+          role="tab"
+          aria-selected={layout.panelView === view}
+          className="wb-panel-title"
+          data-on={layout.panelView === view}
+          onClick={() => {
+            setLayout({ panelView: view });
+            if (view === 'terminal') setTerminalCommand({ kind: 'focus', serial: Date.now() });
+          }}
+        >
+          {view === 'problems' ? t('code.problems.title') : t('code.terminal')}
+          {view === 'problems' && problemTotal > 0 && <span className="wb-badge ml-1.5">{problemTotal}</span>}
+        </button>
+      ))}
+    </div>
+  );
+  const panelActions = (
+    <span className="flex items-center gap-0.5" style={{ color: 'var(--vsc-panelTitle-activeForeground)' }}>
+      <button className="wb-icon-btn" title={t('code.cmd.maximizePanel')} aria-label={t('code.cmd.maximizePanel')} onClick={() => setLayout({ panelMax: !layout.panelMax })}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: layout.panelMax ? 'rotate(180deg)' : undefined, transition: 'transform var(--wb-glide) var(--wb-ease)' }}><path d="m4 10 4-4 4 4" /></svg>
+      </button>
+      <button className="wb-icon-btn" title={t('code.cmd.togglePanel')} aria-label={t('code.cmd.togglePanel')} onClick={() => setLayout({ panel: false, panelMax: false })}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+      </button>
+    </span>
+  );
+
   return (
     <div className="wb relative flex h-full min-h-0 flex-col" style={style}>
       <div className="flex min-h-0 flex-1">
@@ -1349,24 +1481,50 @@ export default function Code() {
                       data-dirty={dirty}
                       data-preview={tab.preview}
                       title={tab.path}
+                      data-pinned={Boolean(tab.pinned)}
                       onClick={() => activate(tab.path)}
                       onDoubleClick={() => setTabs(session.tabs.map((item) => (item === tab ? { ...item, preview: false } : item)))}
                       onAuxClick={(event) => event.button === 1 && closeTab(tab.path)}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        openTabMenu(menuPosition(event), tab);
+                      }}
+                      onKeyDown={(event) => {
+                        if (!isMenuKey(event)) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        openTabMenu(menuPosition(event), tab);
+                      }}
                     >
                       <FileIconView icon={iconTheme?.forFile(tab.path, modelFor(tab.path)?.getLanguageId()) ?? null} />
                       <span className="wb-tab-name truncate">{baseName(tab.path)}</span>
-                      <button
-                        className="wb-tab-close"
-                        title={t('code.cmd.closeEditor')}
-                        aria-label={`${t('code.cmd.closeEditor')}: ${baseName(tab.path)}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          closeTab(tab.path);
-                        }}
-                      >
-                        <span className="wb-dot" />
-                        <svg className="wb-x" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7" /></svg>
-                      </button>
+                      {tab.pinned ? (
+                        <button
+                          className="wb-tab-close wb-tab-pin"
+                          title={t('code.tabs.unpin')}
+                          aria-label={`${t('code.tabs.unpin')}: ${baseName(tab.path)}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            togglePin(tab.path);
+                          }}
+                        >
+                          <span className="wb-dot" />
+                          <svg className="wb-x" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9.5 2.5 13.5 6.5 11 7.5 8.5 10l-.5 3L3 8l3-.5L8.5 5Z" /><path d="m5.5 10.5-3 3" /></svg>
+                        </button>
+                      ) : (
+                        <button
+                          className="wb-tab-close"
+                          title={t('code.cmd.closeEditor')}
+                          aria-label={`${t('code.cmd.closeEditor')}: ${baseName(tab.path)}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            closeTab(tab.path);
+                          }}
+                        >
+                          <span className="wb-dot" />
+                          <svg className="wb-x" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7" /></svg>
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -1411,14 +1569,26 @@ export default function Code() {
                 />
               )}
               <div className={`shrink-0 border-t ${layout.panelMax ? 'flex-1' : ''}`} style={{ height: layout.panelMax ? undefined : layout.panelHeight, borderColor: 'var(--vsc-panel-border)' }}>
-                <TerminalPanel
-                  colors={colors}
-                  command={terminalCommand}
-                  maximized={layout.panelMax}
-                  onClose={() => setLayout({ panel: false, panelMax: false })}
-                  onToggleMaximize={() => setLayout({ panelMax: !layout.panelMax })}
-                  onEmpty={() => setLayout({ panel: false, panelMax: false })}
-                />
+                {layout.panelView === 'problems' ? (
+                  <ProblemsPanel
+                    tabs={panelTabs}
+                    actions={panelActions}
+                    version={markerVersion}
+                    iconTheme={iconTheme}
+                    displayPath={displayPath}
+                    open={(path, line, column, endLine, endColumn) => void openPath(path, { pinned: true, selection: { startLineNumber: line, startColumn: column, endLineNumber: endLine, endColumn } })}
+                  />
+                ) : (
+                  <TerminalPanel
+                    colors={colors}
+                    command={terminalCommand}
+                    maximized={layout.panelMax}
+                    tabs={panelTabs}
+                    onClose={() => setLayout({ panel: false, panelMax: false })}
+                    onToggleMaximize={() => setLayout({ panelMax: !layout.panelMax })}
+                    onEmpty={() => setLayout({ panel: false, panelMax: false })}
+                  />
+                )}
               </div>
             </>
           )}
@@ -1431,7 +1601,7 @@ export default function Code() {
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><path d="M1.5 3.5h4.5l1.5 1.5h7v7.5h-13z" /></svg>
           {root ? baseName(root) + (roots.length > 1 ? ` +${roots.length - 1}` : '') : t('code.explorer.noFolder')}
         </button>
-        <button className="wb-status-item" title={t('code.status.problems')} onClick={toggleTerminal}>
+        <button className="wb-status-item" title={t('code.status.problems')} aria-label={`${t('code.status.problems')}: ${markers.errors} / ${markers.warnings}`} onClick={() => togglePanelView('problems')}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="8" cy="8" r="6" /><path d="m5.8 5.8 4.4 4.4M10.2 5.8l-4.4 4.4" /></svg>
           {markers.errors}
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="ml-1"><path d="M8 2 14.5 13.5h-13z" /><path d="M8 6.5v3M8 11.6v.1" strokeLinecap="round" /></svg>
@@ -1474,6 +1644,8 @@ export default function Code() {
           {prefs.autoSave ? t('code.status.autoSave') : t('code.status.manualSave')}
         </button>
       </footer>
+
+      {tabMenu && <ContextMenu request={tabMenu} onClose={closeTabMenu} />}
 
       {quick && (
         <QuickInput

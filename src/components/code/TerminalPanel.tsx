@@ -2,7 +2,7 @@ import '@xterm/xterm/css/xterm.css';
 
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { useT } from '../../lib/i18n';
 import { xtermTheme, type WorkbenchColors } from '../../lib/workbenchTheme';
@@ -12,7 +12,7 @@ type Info = { id: number; title: string };
 export type TerminalCommand = { kind: 'new' | 'kill' | 'focus'; serial: number };
 
 // Painel Terminal: várias sessões, uma visível por vez; os processos ficam no processo principal.
-export function TerminalPanel({ colors, command, maximized, onClose, onToggleMaximize, onEmpty }: { colors: WorkbenchColors; command: TerminalCommand | null; maximized: boolean; onClose(): void; onToggleMaximize(): void; onEmpty(): void }) {
+export function TerminalPanel({ colors, command, maximized, tabs, onClose, onToggleMaximize, onEmpty }: { colors: WorkbenchColors; command: TerminalCommand | null; maximized: boolean; tabs: ReactNode; onClose(): void; onToggleMaximize(): void; onEmpty(): void }) {
   const t = useT();
   const area = useRef<HTMLDivElement>(null);
   const instances = useRef(new Map<number, Instance>());
@@ -139,7 +139,7 @@ export function TerminalPanel({ colors, command, maximized, onClose, onToggleMax
   return (
     <div className="wb-panel-enter flex h-full min-h-0 flex-col" style={{ background: 'var(--vsc-panel-background)' }}>
       <div className="wb-panel-head">
-        <span className="wb-panel-title">{t('code.terminal')}</span>
+        {tabs}
         <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
           {terminals.map((info, index) => (
             <button key={info.id} className="wb-chip" data-on={info.id === active} onClick={() => setActive(info.id)}>
@@ -148,16 +148,16 @@ export function TerminalPanel({ colors, command, maximized, onClose, onToggleMax
           ))}
         </div>
         <span className="flex items-center gap-0.5" style={{ color: 'var(--vsc-panelTitle-activeForeground)' }}>
-          <button className="wb-icon-btn" title={t('code.cmd.newTerminal')} onClick={() => void create()}>
+          <button className="wb-icon-btn" title={t('code.cmd.newTerminal')} aria-label={t('code.cmd.newTerminal')} onClick={() => void create()}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M8 3v10M3 8h10" /></svg>
           </button>
-          <button className="wb-icon-btn" title={t('code.cmd.killTerminal')} onClick={() => kill(active)}>
+          <button className="wb-icon-btn" title={t('code.cmd.killTerminal')} aria-label={t('code.cmd.killTerminal')} onClick={() => kill(active)}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 8.5h6.6l.7-8.5" /></svg>
           </button>
-          <button className="wb-icon-btn" title={t('code.cmd.maximizePanel')} onClick={onToggleMaximize}>
+          <button className="wb-icon-btn" title={t('code.cmd.maximizePanel')} aria-label={t('code.cmd.maximizePanel')} onClick={onToggleMaximize}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" style={{ transform: maximized ? 'rotate(180deg)' : undefined, transition: 'transform var(--wb-glide) var(--wb-ease)' }}><path d="m4 10 4-4 4 4" /></svg>
           </button>
-          <button className="wb-icon-btn" title={t('code.cmd.togglePanel')} onClick={onClose}>
+          <button className="wb-icon-btn" title={t('code.cmd.togglePanel')} aria-label={t('code.cmd.togglePanel')} onClick={onClose}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="m4 4 8 8M12 4l-8 8" /></svg>
           </button>
         </span>
