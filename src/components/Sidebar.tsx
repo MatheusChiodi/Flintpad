@@ -351,7 +351,7 @@ export function Sidebar(props: Props) {
   );
 
   const navButton = (label: string, keys: string, Icon: typeof SearchIcon, action: () => void) => (
-    <button className="row w-full px-2 text-[13px]" title={label} onClick={action}>
+    <button className="row w-full px-2 text-[13px]" title={`${label} (${keys.replace(/ /g, '+')})`} aria-label={label} onClick={action}>
       <Icon className="row-icon" />
       <span className="rail-hide flex-1 text-left">{label}</span>
       <Kbd>{keys}</Kbd>
@@ -375,7 +375,7 @@ export function Sidebar(props: Props) {
           <SidebarIcon size={16} />
         </button>
       </div>
-      <nav className="flex flex-col gap-px px-2 pb-3">
+      <nav className="sidebar-nav flex flex-col gap-px px-2 pb-3">
         {navButton(t('sidebar.search'), 'Ctrl P', SearchIcon, onSearch)}
         {navButton(t('sidebar.newPage'), 'Ctrl N', NewPageIcon, () => onNew(''))}
         {navButton(t('nav.daily'), 'Ctrl D', CalendarIcon, onDaily)}

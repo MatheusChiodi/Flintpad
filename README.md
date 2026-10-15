@@ -37,7 +37,7 @@ Each note is a light page set into the dark frame. Type `/` to insert headings, 
 
 <img src="docs/links.svg" alt="Links inside a page and the backlinks panel" width="640">
 
-Link pages with `[[Page]]`, `[[Page|alias]]` or `[[Page#section]]`; type `[` to get page suggestions, and `[Page#` to pick one of that page's headings. A link with a section opens the page scrolled to that heading (it briefly glows), and the section survives editing. Links to pages that do not exist yet are faded; clicking one creates the page, and renaming or moving a page updates every link that points to it. Hovering a link shows a preview card with the start of the page (or of the section); click its title to open it.
+Link pages with `[[Page]]`, `[[Page|alias]]` or `[[Page#section]]`; type `[` to get page suggestions, and `[Page#` to pick one of that page's headings. A link with a section opens the page scrolled to that heading (it briefly glows), and the section survives editing. Links to pages that do not exist yet get a muted color and a dotted underline (still readable); clicking one creates the page, and renaming or moving a page updates every link that points to it. Hovering a link shows a preview card with the start of the page (or of the section); click its title to open it.
 
 The side panel (wide windows) has:
 
@@ -153,7 +153,7 @@ Pages open in tabs with their own back/forward history, next to a collapsible pa
 
 **Page tree**: right-click a page (or press the menu key / `Shift+F10`) for open in new tab, rename, duplicate, move to…, favorite, copy link and move to trash. On a focused row, `F2` renames in place, `Delete` moves to the trash and the arrow keys walk the tree. Drag a page onto a folder (or onto the *Pages* header for the vault root) to move it. The filter field above the tree narrows it to matching pages; the buttons beside *Pages* reveal the open page and collapse or expand every folder. The open page's folders open by themselves. Moving a page to the trash shows a notice with **Undo**, which recreates it with the same text.
 
-**Tabs**: right-click a tab to pin it, duplicate it, copy its link or close it, the others or the ones to its right. A pinned tab stays at the left, ignores `Ctrl+W` and opens links in a new tab. Drag tabs to reorder them (`Shift+←/→` on a focused tab). The open tabs, their history and pins come back the next time the vault is opened.
+**Tabs**: right-click a tab to pin it, duplicate it, copy its link or close it, the others or the ones to its right. A pinned tab stays at the left, ignores `Ctrl+W` and opens links in a new tab. Drag tabs to reorder them (`Shift+←/→` on a focused tab). With many tabs open the strip scrolls sideways (the mouse wheel works too) instead of squeezing the names; a faded edge shows there are more, and the active tab is always scrolled into view. The open tabs, their history and pins come back the next time the vault is opened.
 
 Star a page to pin it in a Favorites section above the page tree: from the links panel, the star beside the title in smaller windows, the page tree, or `Ctrl+Shift+F`. The last 20 pages you opened come first in quick search while the field is empty, and the most recent ones are listed on the home screen when no page is open. Both lists are kept per vault.
 
@@ -180,7 +180,7 @@ Star a page to pin it in a Favorites section above the page tree: from the links
 | Open another vault | `Ctrl+O` |
 | Quit | `Ctrl+Shift+Q` |
 
-The menu bar is hidden; press `Alt` to show it. In a narrow window (under 900 px) the sidebar collapses into an icon rail; use quick search to reach pages. With the sidebar hidden (`Ctrl+\`), a button at the left of the tabs brings it back.
+The menu bar is hidden; press `Alt` to show it. In a narrow window (under 900 px) the sidebar collapses into an icon rail; use quick search to reach pages. Between 900 and 1280 px the sidebar and links panel get slimmer so the page keeps a comfortable column, and the page's margins and title shrink with it. In a short window (under 620 px tall) the sidebar's shortcuts become a single row of icons (hover for the name and shortcut), leaving the height to the page tree. With the sidebar hidden (`Ctrl+\`), a button at the left of the tabs brings it back.
 
 ### Requests
 
