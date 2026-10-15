@@ -31,7 +31,7 @@ Everything is original code. Nothing was copied from Obsidian, Notion, Bruno, Ex
 
 ## Getting started
 
-**Download:** grab the portable `Flintpad <version>.exe` from the [latest release](https://github.com/MatheusChiodi/Flintpad/releases/latest) and run it; no installation needed. The build is not code-signed yet, so Windows SmartScreen may ask you to confirm (*More info → Run anyway*).
+**Download:** grab the portable `Flintpad-<version>-portable.exe` from the [latest release](https://github.com/MatheusChiodi/Flintpad/releases/latest) and run it; no installation needed. The build is not code-signed yet, so Windows SmartScreen may ask you to confirm (*More info → Run anyway*).
 
 **Build from source** (Node.js 22 or newer):
 
@@ -44,7 +44,7 @@ npm start       # production build + app
 npm run dist    # portable Windows executable in release/
 ```
 
-On Windows you can also double-click `gerar-exe.bat` to build the executable.
+On Windows you can also double-click `gerar-exe.bat`: option 1 builds `releasewin-unpackedFlintpad.exe` in about a minute, option 2 the single portable `.exe` for distribution (several minutes, most of it compressing the Electron runtime). `npm run dist:dir` is the fast build from the command line.
 
 On first launch, pick the vault folder (or drag a folder onto the window). It can be an existing Obsidian vault: files stay plain `.md` and YAML frontmatter is preserved. An empty vault offers a few example pages to start from. Coming from ObNotion (the project's former name)? Your settings and recent vaults are carried over on first launch.
 

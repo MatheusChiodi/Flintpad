@@ -20,7 +20,8 @@ npm run dev        # app with hot reload
 npm test           # unit tests (Node's built-in runner)
 npm run build      # type check + production build
 npm run test:e2e   # builds and runs the Electron end-to-end test
-npm run dist       # portable Windows executable in release/
+npm run dist:dir   # fast build: release/win-unpacked/Flintpad.exe
+npm run dist       # single portable Windows executable in release/
 ```
 
 ## Guidelines
