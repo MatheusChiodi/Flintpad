@@ -51,6 +51,16 @@
   --hairline-strong: rgb(170 200 230 / 0.14);
   --hover: rgb(170 200 230 / 0.07);
   --hover-strong: rgb(170 200 230 / 0.12);
+  /* Paleta do grafo: grupos de cor e cor por pasta (o canvas lê estes tokens). */
+  --graph-1: #4fbfb4;
+  --graph-2: #7aa2f7;
+  --graph-3: #c792ea;
+  --graph-4: #f0a35e;
+  --graph-5: #e6c86e;
+  --graph-6: #8bd17c;
+  --graph-7: #f07fa3;
+  --graph-8: #6fc3df;
+  --graph-tag: #b9a4f0;
   /* 1 = movimento completo; 0 = só esmaecer (prefers-reduced-motion). Todo deslocamento multiplica por isto. */
   --motion: 1;
 }

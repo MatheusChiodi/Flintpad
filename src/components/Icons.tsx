@@ -210,6 +210,48 @@ export const EyeIcon = ({ off, ...props }: IconProps & { off?: boolean }) => (
   </Icon>
 );
 
+// Grafo: aproximar, afastar, enquadrar, pausar, baixar e ajuda.
+export const ZoomInIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="7" cy="7" r="4.25" />
+    <path d="m10.25 10.25 3.5 3.5M5.25 7h3.5M7 5.25v3.5" />
+  </Icon>
+);
+
+export const ZoomOutIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="7" cy="7" r="4.25" />
+    <path d="m10.25 10.25 3.5 3.5M5.25 7h3.5" />
+  </Icon>
+);
+
+export const FitIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M2.25 5.5V3.75a1.5 1.5 0 0 1 1.5-1.5H5.5M10.5 2.25h1.75a1.5 1.5 0 0 1 1.5 1.5V5.5M13.75 10.5v1.75a1.5 1.5 0 0 1-1.5 1.5H10.5M5.5 13.75H3.75a1.5 1.5 0 0 1-1.5-1.5V10.5" />
+    <circle cx="8" cy="8" r="1.75" />
+  </Icon>
+);
+
+export const PauseIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M5.5 3.5v9M10.5 3.5v9" />
+  </Icon>
+);
+
+export const DownloadIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M8 2.5v7.75M4.75 7 8 10.25 11.25 7M2.75 13.25h10.5" />
+  </Icon>
+);
+
+export const HelpIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="8" cy="8" r="5.75" />
+    <path d="M6.25 6.4a1.85 1.85 0 0 1 3.6.6c0 1.25-1.85 1.5-1.85 2.6" />
+    <circle cx="8" cy="11.4" r="0.35" fill="currentColor" />
+  </Icon>
+);
+
 // Marca: uma lasca de obsidiana com uma faceta acesa.
 export function Mark({ size = 20, className }: { size?: number; className?: string }) {
   return (
