@@ -104,7 +104,12 @@ function writeStored(key: string, value: unknown) {
 
 const loadOptions = (): Options => ({ ...sanitizeOptions(readStored(STORAGE_KEY), DEFAULTS), search: '' });
 
-const prefersReducedMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+// A preferência das Configurações (data-motion-pref) vale mais que a do sistema.
+const prefersReducedMotion = () => {
+  const pref = document.documentElement.dataset.motionPref;
+  if (pref) return pref === 'reduce';
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+};
 
 type GNode = SimulationNodeDatum & {
   id: string;

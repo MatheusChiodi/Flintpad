@@ -1,6 +1,6 @@
 'use strict';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
   debug: Boolean(process.env.OBNOTION_SHOT),
@@ -9,6 +9,20 @@ contextBridge.exposeInMainWorld('api', {
   setSettings: (settings) => ipcRenderer.invoke('settings:set', settings),
   getVault: () => ipcRenderer.invoke('vault:get'),
   chooseVault: () => ipcRenderer.invoke('vault:choose'),
+  openVault: (folder) => ipcRenderer.invoke('vault:open', folder),
+  recentVaults: () => ipcRenderer.invoke('vault:recent'),
+  forgetVault: (folder) => ipcRenderer.invoke('vault:forget', folder),
+  missingVault: () => ipcRenderer.invoke('vault:missing'),
+  revealVault: (which) => ipcRenderer.invoke('vault:reveal', which),
+  appInfo: () => ipcRenderer.invoke('app:info'),
+  // Caminho no disco de um arquivo ou pasta solto na janela (arrastar e soltar).
+  pathForFile: (file) => {
+    try {
+      return webUtils.getPathForFile(file) || null;
+    } catch {
+      return null;
+    }
+  },
   readAll: () => ipcRenderer.invoke('vault:readAll'),
   read: (rel) => ipcRenderer.invoke('note:read', rel),
   write: (rel, content) => ipcRenderer.invoke('note:write', rel, content),

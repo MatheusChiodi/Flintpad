@@ -50,6 +50,14 @@ export function touchRecent(pins: Pins, path: string): Pins {
   return { ...pins, recents: [path, ...pins.recents.filter((p) => p !== path)].slice(0, MAX_RECENTS) };
 }
 
+// Tira uma página só das recentes (o favorito, se houver, fica).
+export function removeRecent(pins: Pins, path: string): Pins {
+  if (!pins.recents.includes(path)) return pins;
+  return { ...pins, recents: pins.recents.filter((p) => p !== path) };
+}
+
+export const clearRecents = (pins: Pins): Pins => (pins.recents.length ? { ...pins, recents: [] } : pins);
+
 // A página renomeada mantém o lugar nas duas listas.
 export function renamePath(pins: Pins, from: string, to: string): Pins {
   if (from === to || !(pins.favorites.includes(from) || pins.recents.includes(from))) return pins;

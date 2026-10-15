@@ -11,6 +11,7 @@ const { LANGUAGES, translator } = require('./i18n.cjs');
 const { registerWorkspaceIpc } = require('./workspace.cjs');
 const { registerTerminalIpc } = require('./terminal.cjs');
 const { registerLspIpc } = require('./lsp.cjs');
+const { pushRecentVault, forgetRecentVault, sanitizeStoredPrefs } = require('./vaults.cjs');
 
 // Os ganchos de teste só existem em desenvolvimento: no app empacotado as variáveis são descartadas
 // (o preload herda o ambiente já limpo).
@@ -42,6 +43,10 @@ let languageServers = null;
 let vault = process.env.OBNOTION_VAULT || null;
 let language = 'pt-BR';
 let t = translator(language);
+// Vault salvo que não foi encontrado ao abrir (pendrive fora, pasta apagada): a tela de boas-vindas avisa.
+let missingVault = null;
+// Preferências da interface (cor de destaque, fonte, corretor…): o renderer valida campo a campo.
+let prefs = {};
 
 function readConfig() {
   try {
@@ -68,7 +73,11 @@ function setLanguage(next) {
 
 function loadConfig() {
   const saved = readConfig();
-  if (!vault && saved.vault && fs.existsSync(saved.vault)) vault = saved.vault;
+  if (!vault && saved.vault) {
+    if (fs.existsSync(saved.vault)) vault = saved.vault;
+    else missingVault = saved.vault;
+  }
+  prefs = sanitizeStoredPrefs(saved.prefs);
   // OBNOTION_LANG é a língua inicial (testes); sem nada salvo, vale a língua do sistema.
   const wanted = [process.env.OBNOTION_LANG, saved.language].find((candidate) => LANGUAGES.includes(candidate));
   setLanguage(wanted ?? (app.getLocale().toLowerCase().startsWith('pt') ? 'pt-BR' : 'en'));
@@ -101,6 +110,35 @@ async function uniquePath(rel) {
   }
 }
 
+// O corretor ortográfico do Chromium segue a preferência e a língua da interface.
+function applySpellcheck() {
+  const session = win?.webContents.session;
+  if (!session) return;
+  session.setSpellCheckerEnabled(prefs.spellcheck !== false);
+  try {
+    // No Windows e no macOS o corretor é o do sistema e ignora esta lista.
+    if (process.platform !== 'win32' && process.platform !== 'darwin') session.setSpellCheckerLanguages([language === 'en' ? 'en-US' : 'pt-BR']);
+  } catch {
+    // dicionário indisponível: fica o padrão
+  }
+}
+
+// Abre uma pasta como vault: grava como último aberto e põe no topo dos recentes.
+async function openVault(folder) {
+  vault = folder;
+  missingVault = null;
+  await saveConfig({ vault, recentVaults: pushRecentVault(readConfig().recentVaults, folder) });
+  return vault;
+}
+
+async function isDirectory(folder) {
+  try {
+    return (await fsp.stat(folder)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 function registerIpc() {
   ipcMain.handle('vault:get', () => vault);
 
@@ -110,19 +148,63 @@ function registerIpc() {
       properties: ['openDirectory', 'createDirectory'],
     });
     if (result.canceled || !result.filePaths[0]) return vault;
-    vault = result.filePaths[0];
-    await saveConfig({ vault });
-    return vault;
+    return openVault(result.filePaths[0]);
   });
 
-  ipcMain.handle('settings:get', () => ({ language }));
+  // Abre um vault pelo caminho (recentes, pasta solta na janela). Só pastas que existem.
+  ipcMain.handle('vault:open', async (_e, folder) => {
+    if (typeof folder !== 'string' || !path.isAbsolute(folder)) throw new Error(t('error.notFolder'));
+    const full = path.resolve(folder);
+    if (!(await isDirectory(full))) throw new Error(t('error.notFolder'));
+    return openVault(full);
+  });
+
+  // Vaults recentes, do mais novo ao mais antigo, com a marca de quem não existe mais.
+  ipcMain.handle('vault:recent', async () => {
+    const list = pushRecentVault(readConfig().recentVaults, vault ?? '');
+    return Promise.all(list.map(async (folder) => ({ path: folder, name: path.basename(folder) || folder, exists: await isDirectory(folder) })));
+  });
+
+  ipcMain.handle('vault:forget', async (_e, folder) => {
+    if (typeof folder !== 'string') return;
+    if (missingVault === folder) missingVault = null;
+    const config = readConfig();
+    await saveConfig({ recentVaults: forgetRecentVault(config.recentVaults, folder), ...(config.vault === folder && folder !== vault ? { vault: null } : {}) });
+  });
+
+  ipcMain.handle('vault:missing', () => missingVault);
+
+  // Mostra a pasta do vault (ou a de dados do app) no gerenciador de arquivos do sistema.
+  ipcMain.handle('vault:reveal', async (_e, which) => {
+    const target = which === 'data' ? app.getPath('userData') : vault;
+    if (!target) return;
+    const error = await shell.openPath(target);
+    if (error) throw new Error(error);
+  });
+
+  ipcMain.handle('app:info', () => ({
+    version: app.getVersion(),
+    electron: process.versions.electron,
+    chrome: process.versions.chrome,
+    node: process.versions.node,
+    platform: `${process.platform} ${process.arch}`,
+    dataPath: app.getPath('userData'),
+  }));
+
+  ipcMain.handle('settings:get', () => ({ language, prefs }));
 
   ipcMain.handle('settings:set', async (_e, settings) => {
     if (LANGUAGES.includes(settings?.language) && settings.language !== language) {
       setLanguage(settings.language);
       await saveConfig({ language });
+      applySpellcheck();
     }
-    return { language };
+    if (settings && 'prefs' in settings) {
+      prefs = sanitizeStoredPrefs(settings.prefs);
+      await saveConfig({ prefs });
+      applySpellcheck();
+    }
+    return { language, prefs };
   });
 
   ipcMain.handle('vault:readAll', async () => {
@@ -557,6 +639,8 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+
+  applySpellcheck();
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url)) shell.openExternal(url);

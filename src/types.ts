@@ -15,8 +15,11 @@ export type FileSearchOptions = { query: string; isRegex?: boolean; matchCase?: 
 export type FileSearchResult = { cancelled: boolean; results: { path: string; matches: import('../electron/searchCore.mjs').SearchMatch[] }[]; total: number; files: number; truncated: boolean };
 export type TerminalInfo = { id: number; title: string; cwd: string };
 
-// Preferências guardadas pelo processo principal em config.json.
-export type Settings = { language: Language };
+// Preferências guardadas pelo processo principal em config.json. `prefs` chega cru: passa por sanitizePrefs.
+export type Settings = { language: Language; prefs: unknown };
+// Vault aberto antes, para reabrir pela tela de boas-vindas ou pelas Configurações.
+export type RecentVault = { path: string; name: string; exists: boolean };
+export type AppInfo = { version: string; electron: string; chrome: string; node: string; platform: string; dataPath: string };
 
 export const GRAPH = '::graph';
 export const REQUESTS = '::requests';
@@ -61,6 +64,14 @@ declare global {
       setSettings(settings: Partial<Settings>): Promise<Settings>;
       getVault(): Promise<string | null>;
       chooseVault(): Promise<string | null>;
+      openVault(folder: string): Promise<string>;
+      recentVaults(): Promise<RecentVault[]>;
+      forgetVault(folder: string): Promise<void>;
+      /** Vault salvo que não existia mais ao abrir o app. */
+      missingVault(): Promise<string | null>;
+      revealVault(which?: 'vault' | 'data'): Promise<void>;
+      appInfo(): Promise<AppInfo>;
+      pathForFile(file: File): string | null;
       readAll(): Promise<{ path: string; content: string }[]>;
       read(rel: string): Promise<string>;
       write(rel: string, content: string): Promise<void>;

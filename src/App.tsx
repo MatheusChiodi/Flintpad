@@ -4,21 +4,24 @@ import { DailyNav } from './components/DailyNav';
 import { discardNote, Editor, findOpenEvent, flushNote, insertMarkdown, openLinkEvent, pendingWrite, trackWrite } from './components/Editor';
 import { LinkPreview } from './components/LinkPreview';
 import { Graph } from './components/Graph';
-import { FolderIcon, GraphIcon, Kbd, Mark, NewPageIcon, PageIcon, PlusIcon, SearchIcon } from './components/Icons';
+import { Home } from './components/Home';
 import { Presence, Stage } from './components/Motion';
 import { LinksPanel, QuickSwitcher, TabBar, type BacklinkItem, type Command, type Picker } from './components/Panels';
 import { Requests } from './components/Requests';
-import { Settings } from './components/Settings';
+import { Settings, type Shortcut } from './components/Settings';
 import { Sidebar } from './components/Sidebar';
 import { Tasks } from './components/Tasks';
 import { Toast, type ToastMessage } from './components/Toast';
+import { Welcome } from './components/Welcome';
 import { handleCodeMenu } from './lib/codeBridge';
-import { translate, Trans, useLanguage, useT, type Key } from './lib/i18n';
+import { translate, useLanguage, useT, type Key } from './lib/i18n';
+import { sanitizeFolder } from './lib/prefs';
+import { usePrefs } from './lib/prefsContext';
 import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks, splitFrontmatter } from './lib/links';
 import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIndex';
 import { gotoHeading } from './lib/noteBridge';
 import { applyTemplate, dailyNeighbors, extractHeadings, folderList, isDailyNote, isoDate, linkContexts, templatesIn, linkMentions, parseLinkTarget, sanitizeNotePath, tagIndex, unlinkedMentions } from './lib/notes';
-import { emptyPins, loadPins, prunePins, removePath, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
+import { clearRecents, emptyPins, loadPins, prunePins, removePath, removeRecent, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
 import { closeOthers, closeToRight, loadSession, moveTab, restoreSession, saveSession, togglePin } from './lib/tabs';
 import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
 
@@ -27,14 +30,16 @@ const Code = lazy(() => import('./components/Code'));
 // Quadro branco: módulo isolado em src/whiteboard, também baixado só quando a guia abre.
 const Whiteboards = lazy(() => import('./whiteboard'));
 
-const MAX_EMPTY_RECENTS = 5;
-
 const RAIL_STORAGE_KEY = 'obnotion:sidebar-rail';
 const currentPath = (tab?: Tab) => tab?.stack[tab.idx] ?? '';
 
 export default function App() {
   const t = useT();
   const { language } = useLanguage();
+  const { prefs, setPrefs } = usePrefs();
+  // Pasta onde Ctrl N cria páginas, por vault (como a "localização padrão" do Obsidian).
+  const [newNoteFolder, setNewNoteFolder] = useState('');
+  const [startDaily, setStartDaily] = useState(false);
   // undefined = carregando; null = nenhum vault escolhido.
   const [vault, setVault] = useState<string | null | undefined>(undefined);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -106,6 +111,11 @@ export default function App() {
       setWidePaths(new Set(Array.isArray(wide) ? wide.filter((item): item is string => typeof item === 'string') : []));
     } catch {
       setWidePaths(new Set());
+    }
+    try {
+      setNewNoteFolder(sanitizeFolder(localStorage.getItem(`obnotion:new-folder:${path}`)));
+    } catch {
+      setNewNoteFolder('');
     }
     const stored = loadPins(path);
     const loaded = { ...stored, recents: prunePins(stored, list.map((n) => n.path)).recents };
@@ -360,18 +370,57 @@ export default function App() {
 
   // Troca de vault: as guias, recentes e favoritos passam a ser os do novo vault.
   // Uma falha (pasta sumiu, sem permissão) vira aviso em vez de exceção solta.
-  const chooseVault = async () => {
+  const switchVault = async (pick: () => Promise<string | null>) => {
     try {
-      const chosen = await window.api.chooseVault();
+      const chosen = await pick();
       if (!chosen || chosen === vault) return;
       setTabs([]);
       setClosed([]);
+      setSettings(false);
       setVault(chosen);
       const list = await refresh();
       loadVaultPins(chosen, list);
       restoreTabs(chosen, list);
     } catch (error) {
-      notify('error', translate('notes.error.load'), reason(error));
+      notify('error', translate('welcome.openFailed'), reason(error));
+    }
+  };
+  const chooseVault = () => switchVault(() => window.api.chooseVault());
+  const openVault = (folder: string) => switchVault(() => window.api.openVault(folder));
+
+  const changeNewNoteFolder = (folder: string) => {
+    const clean = sanitizeFolder(folder);
+    setNewNoteFolder(clean);
+    try {
+      if (vault) localStorage.setItem(`obnotion:new-folder:${vault}`, clean);
+    } catch {
+      // armazenamento indisponível: vale só nesta sessão
+    }
+  };
+
+  // Páginas de exemplo para um vault vazio: nunca sobrescrevem nada (create escolhe um nome livre).
+  const createStarter = async () => {
+    try {
+      const pages: [name: Key, body: Key][] = [
+        ['starter.home.name', 'starter.home.body'],
+        ['starter.keys.name', 'starter.keys.body'],
+        ['starter.ideas.name', 'starter.ideas.body'],
+      ];
+      let first = '';
+      for (const [name, body] of pages) {
+        const path = await window.api.create(`${translate(name)}.md`);
+        await window.api.write(path, translate(body));
+        first ||= path;
+      }
+      // Modelo da nota diária: Ctrl D passa a criar o dia com ele.
+      const template = await window.api.create(`${translate('templates.folder')}/${translate('daily.folder')}.md`);
+      await window.api.write(template, translate('starter.daily.body'));
+      await refresh();
+      open(first);
+      notify('ok', translate('home.starter.done'));
+    } catch (error) {
+      notify('error', translate('notes.error.create'), reason(error));
+      await refresh().catch(() => {});
     }
   };
 
@@ -487,7 +536,7 @@ export default function App() {
     });
 
   const menu: Record<MenuAction, () => void> = {
-    'new-note': () => void createAndOpen(),
+    'new-note': () => void createAndOpen(undefined, newNoteFolder),
     'new-tab': () => open('', true),
     'reopen-tab': reopenTab,
     'close-tab': () => closeTab(latest.current.activeId),
@@ -592,6 +641,16 @@ export default function App() {
     ['settings', 'cmd.settings', 'Ctrl ,', menu.settings],
     ['choose-vault', 'cmd.chooseVault', 'Ctrl O', menu['choose-vault']],
   ];
+  // Lista de atalhos das Configurações: os da paleta mais os que só existem no menu ou no teclado.
+  const shortcuts: Shortcut[] = [
+    { label: t('empty.search'), keys: 'Ctrl P' },
+    ...commandList.filter(([, , keys]) => keys).map(([, label, keys]) => ({ label: t(label), keys: keys! })),
+    { label: t('settings.key.nextTab'), keys: 'Ctrl Tab' },
+    { label: t('settings.key.prevTab'), keys: 'Ctrl Shift Tab' },
+    { label: t('settings.key.zoom'), keys: 'Ctrl = / Ctrl -' },
+    { label: t('settings.key.resetZoom'), keys: 'Ctrl 0' },
+    { label: t('settings.key.fullscreen'), keys: 'F11' },
+  ];
   const commands: Command[] = commandList
     .filter(([, , , , enabled]) => enabled !== false)
     .map(([id, label, keys, run]) => ({ id, label: t(label), keys, run }));
@@ -616,7 +675,14 @@ export default function App() {
       loadVaultPins(path, list);
       const start = window.api.startNote;
       if (start) open(isSpecialPath(start) || list.some((n) => n.path === start) ? start : GRAPH);
-      else restoreTabs(path, list);
+      // Preferência "Ao abrir o app": as guias de antes, essas mais a nota de hoje, ou a tela inicial.
+      else if (prefs.startup === 'home') {
+        sessionVault.current = path;
+      } else {
+        restoreTabs(path, list);
+        // A nota de hoje abre depois que as guias restauradas e a lista de notas estiverem no estado.
+        if (prefs.startup === 'daily') setStartDaily(true);
+      }
     });
     const offMenu = window.api.onMenu((action) => {
       // Na aba Código, atalhos como Ctrl+P e Ctrl+Shift+P seguem o VS Code.
@@ -673,6 +739,13 @@ export default function App() {
   const headings = useMemo(() => (isNote ? extractHeadings(contents[activePath] ?? '') : []), [isNote, contents, activePath]);
 
   useEffect(() => {
+    if (!startDaily) return;
+    setStartDaily(false);
+    void openDaily();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDaily]);
+
+  useEffect(() => {
     if (vault && sessionVault.current === vault) saveSession(vault, tabs, activeId);
   }, [vault, tabs, activeId]);
 
@@ -689,11 +762,26 @@ export default function App() {
     [pins.recents, notes, activePath],
   );
 
+  const favoriteNotes = pins.favorites.flatMap((path) => notes.find((n) => n.path === path) ?? []);
+
   if (vault === undefined) return null;
 
   const settingsModal = (
     <Presence when={settings} name="settings">
-      <Settings vault={vault} onChooseVault={chooseVault} onClose={() => setSettings(false)} />
+      <Settings
+        vault={vault}
+        notes={notes}
+        contents={contents}
+        tagCount={tags.length}
+        folders={folderList(notes)}
+        newNoteFolder={newNoteFolder}
+        onNewNoteFolder={changeNewNoteFolder}
+        shortcuts={shortcuts}
+        onChooseVault={() => void chooseVault()}
+        onOpenVault={(folder) => void openVault(folder)}
+        onNotify={notify}
+        onClose={() => setSettings(false)}
+      />
     </Presence>
   );
 
@@ -705,90 +793,16 @@ export default function App() {
 
   if (vault === null) {
     return (
-      <div className="frame flex h-full items-center justify-center gap-20 overflow-y-auto px-10 py-8">
-        <div className="stagger max-w-[440px]">
-          <div className="flex items-center gap-2.5">
-            <Mark size={26} />
-            <span className="font-display text-lg font-semibold tracking-tight text-frost-100">ObNotion</span>
-          </div>
-          <h1 className="mt-9 font-display text-[44px] font-semibold leading-[1.05] tracking-[-0.025em] text-frost-100">
-            {t('welcome.title')}
-          </h1>
-          <p className="mt-5 text-[15px] leading-relaxed text-frost-300">
-            {t('welcome.body')}
-          </p>
-          <button className="button-primary mt-8" onClick={chooseVault}>
-            <FolderIcon />
-            {t('welcome.choose')}
-          </button>
-          <ul className="mt-10 flex flex-col gap-2.5 border-t border-(--hairline) pt-6 text-[13px] text-frost-500">
-            <li className="flex items-center gap-2.5">
-              <PageIcon className="text-sheen-400" />
-              {t('welcome.feature.files')}
-            </li>
-            <li className="flex items-center gap-2.5">
-              <GraphIcon className="text-sheen-400" />
-              {t('welcome.feature.links')}
-            </li>
-            <li className="flex items-center gap-2.5">
-              <PlusIcon className="text-sheen-400" />
-              <span>
-                <Trans k="welcome.feature.blocks" values={{ key: <Kbd>/</Kbd> }} />
-              </span>
-            </li>
-          </ul>
-        </div>
-
-        {/* Amostra do produto: a folha encaixada na obsidiana. Decorativa. */}
-        <div className="relative hidden w-[360px] shrink-0 min-[980px]:block" aria-hidden="true">
-          <svg
-            className="constellation absolute -left-14 -top-24 text-sheen-400"
-            width="460"
-            height="150"
-            viewBox="0 0 460 150"
-            fill="none"
-          >
-            <path
-              d="M96 150 150 62l96-34 104 46 62-52M150 62 60 40M350 74l-40 76M246 28l-30 122"
-              stroke="currentColor"
-              strokeOpacity="0.25"
-              pathLength={1}
-            />
-            <circle cx="150" cy="62" r="6" fill="currentColor" />
-            <circle cx="246" cy="28" r="4" fill="currentColor" fillOpacity="0.75" />
-            <circle cx="350" cy="74" r="7.5" fill="currentColor" />
-            <circle cx="412" cy="22" r="3.5" fill="currentColor" fillOpacity="0.6" />
-            <circle cx="60" cy="40" r="3" fill="currentColor" fillOpacity="0.5" />
-          </svg>
-          <div className="welcome-sheet relative px-8 pb-9 pt-7">
-            <p className="font-mono text-[10.5px] text-ink-faint">{t('welcome.sample.path')}</p>
-            <p className="mt-3 font-display text-[26px] font-semibold leading-tight tracking-[-0.02em]">{t('welcome.sample.title')}</p>
-            <p className="mt-3 text-[13.5px] leading-relaxed">
-              <Trans
-                k="welcome.sample.body"
-                values={{
-                  budget: <span className="wikilink">{t('welcome.sample.budget')}</span>,
-                  plan: <span className="wikilink">{t('welcome.sample.plan')}</span>,
-                }}
-              />
-            </p>
-            <ul className="mt-4 flex flex-col gap-2 text-[13.5px]">
-              <li className="flex items-center gap-2.5 text-ink-faint line-through">
-                <span className="grid h-3.5 w-3.5 place-items-center rounded-[3px] bg-sheen-700 text-[9px] text-white no-underline">
-                  ✓
-                </span>
-                {t('welcome.sample.done')}
-              </li>
-              <li className="flex items-center gap-2.5">
-                <span className="h-3.5 w-3.5 rounded-[3px] border border-ink-faint" />
-                {t('welcome.sample.todo')}
-              </li>
-            </ul>
-          </div>
-        </div>
+      <>
+        <Welcome
+          onChoose={() => void chooseVault()}
+          onOpen={(folder) => void openVault(folder)}
+          onError={(detail) => notify('error', translate('welcome.openFailed'), detail)}
+          onSettings={() => setSettings(true)}
+        />
         {settingsModal}
         {toastLayer}
-      </div>
+      </>
     );
   }
 
@@ -897,52 +911,29 @@ export default function App() {
               }
             />
           ) : (
-            <div className="stagger flex h-full flex-col items-center justify-center px-6 text-center">
-              <Mark size={40} className="opacity-80" />
-              <p className="mt-5 font-display text-[22px] font-semibold tracking-tight text-frost-100">
-                {t('empty.title')}
-              </p>
-              <p className="mt-1.5 text-[13px] text-frost-500">{t('empty.hint')}</p>
-              <dl className="mt-7 grid grid-cols-[auto_auto] items-center gap-x-5 gap-y-2.5 text-left text-[13px] text-frost-300">
-                <dt className="flex items-center gap-2.5">
-                  <SearchIcon className="text-frost-500" />
-                  {t('empty.search')}
-                </dt>
-                <dd className="justify-self-end">
-                  <Kbd>Ctrl P</Kbd>
-                </dd>
-                <dt className="flex items-center gap-2.5">
-                  <NewPageIcon className="text-frost-500" />
-                  {t('empty.create')}
-                </dt>
-                <dd className="justify-self-end">
-                  <Kbd>Ctrl N</Kbd>
-                </dd>
-                <dt className="flex items-center gap-2.5">
-                  <GraphIcon className="text-frost-500" />
-                  {t('empty.graph')}
-                </dt>
-                <dd className="justify-self-end">
-                  <Kbd>Ctrl G</Kbd>
-                </dd>
-              </dl>
-              {recentNotes.length > 0 && (
-                <div className="mt-7 w-64 max-w-full border-t border-(--hairline) pt-4 text-left">
-                  <p className="section-label px-2 pb-1.5">{t('recents.title')}</p>
-                  {recentNotes.slice(0, MAX_EMPTY_RECENTS).map((note) => (
-                    <button
-                      key={note.path}
-                      className="row w-full px-2 text-left text-[13px]"
-                      title={note.path}
-                      onClick={(event) => open(note.path, event.ctrlKey || event.metaKey)}
-                    >
-                      <PageIcon size={14} className="row-icon" />
-                      <span className="truncate">{note.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Home
+              notes={notes}
+              contents={contents}
+              tagCount={tags.length}
+              favorites={favoriteNotes}
+              recents={recentNotes}
+              actions={{
+                search: () => setSwitcher({}),
+                create: menu['new-note'],
+                daily: menu['daily-note'],
+                graph: menu.graph,
+                tasks: menu.tasks,
+                whiteboards: menu.whiteboards,
+                random: openRandom,
+                template: () => pickTemplate('new'),
+              }}
+              onOpen={open}
+              onRemoveRecent={(path) => updatePins((current) => removeRecent(current, path))}
+              onClearRecents={() => updatePins(clearRecents)}
+              onStarter={() => void createStarter()}
+              showTips={prefs.tips}
+              onHideTips={() => setPrefs({ tips: false })}
+            />
           )}
         </Stage>
       </main>
@@ -975,7 +966,8 @@ export default function App() {
           initialQuery={switcher?.query}
           picker={switcher?.picker}
           onOpen={(path, newTab) => open(path, newTab)}
-          onCreate={(name) => void createAndOpen(name)}
+          // Nome sem pasta vai para a pasta padrão das páginas novas; "pasta/nome" é respeitado.
+          onCreate={(name) => void createAndOpen(name, name.includes('/') ? '' : newNoteFolder)}
           onClose={() => setSwitcher(null)}
         />
       </Presence>
