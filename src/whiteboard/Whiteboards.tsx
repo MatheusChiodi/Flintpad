@@ -174,9 +174,9 @@ export default function Whiteboards({ notes = [], onOpenNote }: WhiteboardsProps
     <div className="relative flex h-full min-h-0 text-[13px]">
       <aside className="flex w-60 shrink-0 flex-col border-r border-[var(--hairline)] max-[1100px]:w-52 max-[820px]:w-44">
         <div className="flex items-center gap-1 px-3 pb-2 pt-3">
-          <h1 className="min-w-0 truncate font-display text-[17px] font-semibold tracking-tight text-frost-100">{t('title')}</h1>
+          <h1 className="min-w-0 truncate font-display text-[17px] font-semibold max-[820px]:text-[15px] tracking-tight text-frost-100">{t('title')}</h1>
           {boards && boards.length > 0 && (
-            <span className="board-count" aria-hidden="true">
+            <span className="board-count max-[820px]:hidden" aria-hidden="true">
               {boards.length}
             </span>
           )}
