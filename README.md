@@ -15,7 +15,7 @@ npm run dist    # portable Windows executable in release/
 
 On Windows you can also double-click `gerar-exe.bat` to build the executable.
 
-On first launch, pick the vault folder. It can be an existing Obsidian vault: files stay plain `.md` and YAML frontmatter is preserved.
+On first launch, pick the vault folder (or drag a folder onto the window). It can be an existing Obsidian vault: files stay plain `.md` and YAML frontmatter is preserved. An empty vault offers a few example pages to start from.
 
 ## Features
 
@@ -155,7 +155,7 @@ Pages open in tabs with their own back/forward history, next to a collapsible pa
 
 **Tabs**: right-click a tab to pin it, duplicate it, copy its link or close it, the others or the ones to its right. A pinned tab stays at the left, ignores `Ctrl+W` and opens links in a new tab. Drag tabs to reorder them (`Shift+←/→` on a focused tab). The open tabs, their history and pins come back the next time the vault is opened.
 
-Star a page to pin it in a Favorites section above the page tree: from the links panel, the star beside the title in smaller windows, the page tree, or `Ctrl+Shift+F`. The last 20 pages you opened come first in quick search while the field is empty, and the five most recent are listed when no page is open. Both lists are kept per vault.
+Star a page to pin it in a Favorites section above the page tree: from the links panel, the star beside the title in smaller windows, the page tree, or `Ctrl+Shift+F`. The last 20 pages you opened come first in quick search while the field is empty, and the most recent ones are listed on the home screen when no page is open. Both lists are kept per vault.
 
 | Action | Shortcut |
 |---|---|
@@ -242,11 +242,23 @@ ObNotion reads the extensions already installed in your VS Code (the built-in on
 - There is no extensions view: what the installed extensions contribute just works. Extensions that run their own code in the VS Code extension host (ESLint, Prettier, debuggers, Git, assistants) do not run here.
 - AI features of editors like Cursor (chat, inline edits, completions from a model) are not included: they need an online service, and the app stays local and offline.
 
-### Languages
+### Welcome, home screen and settings
 
 <img src="docs/languages.svg" alt="Settings with the language choice" width="640">
 
-The interface is available in English and Brazilian Portuguese. Change it in Settings (`Ctrl+,`); it applies right away, including the menu.
+**Welcome** (no vault open): choose a folder (`Ctrl+O`), drag one onto the window, or reopen one of the last eight vaults; missing folders are marked and can be removed from the list. If the last vault's folder is gone (unplugged drive, moved folder) the screen says so, with *Try again* and *Forget*. The language can be switched right there, before choosing anything.
+
+**Home screen** (no page open): a greeting with today's date, the vault's numbers (pages, folders, open tasks, tags, words; the task count opens the Tasks tab), start tiles for search, new page, today's note, graph, tasks, whiteboards, new from template and a random page, then favorites and recent pages (remove one, or clear the list) and a tip of the day (*Another tip*, or hide them). An empty vault gets **Create example pages**: a start page, a shortcuts page, an ideas page and a daily-note template in the templates folder; nothing is overwritten.
+
+**Settings** (`Ctrl+,`) has sections (General, Appearance, Editor, Vault, Shortcuts, About) and a search field that filters every setting and shortcut by name, description or keys, ignoring case and accents (`Esc` clears the search, then closes).
+- General: interface language (English or Brazilian Portuguese, applied at once, menu included); what opens on startup (last session's tabs, those plus today's note, or the home screen); the folder where `Ctrl+N` and quick search create pages (per vault); tip of the day; restore defaults.
+- Appearance: accent color (five presets) and animations (follow the system, reduced or full).
+- Editor: page text size (13 to 22 px, separate from window zoom) and spell check (the system dictionary).
+- Vault: the folder with *Show in file explorer* and *Switch vault*, its numbers, and the other recent vaults.
+- Shortcuts: every keyboard shortcut, searchable.
+- About: version, Electron, Chromium, Node and OS (copyable), and the app data folder.
+
+Preferences are saved in the app's `config.json` and checked field by field when read (`src/lib/prefs.ts`); the recent-vault list lives there too (`electron/vaults.cjs`). Tests: `tests/home.test.mjs`.
 
 ## Known limits
 
@@ -254,7 +266,7 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - Obsidian-only syntax (callouts `> [!note]`, embeds `![[...]]`, Dataview, canvas) shows as plain text.
 - No Notion databases, no sync, no plugins.
 - Files and folders starting with `.` are ignored.
-- Favorites, recent pages, the tab session and full-width pages are stored in the app, keyed by the vault's folder path, not in the vault: moving or renaming the vault folder resets them.
+- Favorites, recent pages, the tab session, full-width pages and the folder for new pages are stored in the app, keyed by the vault's folder path, not in the vault: moving or renaming the vault folder resets them.
 - The daily-note and template folders follow the interface language (`Daily`/`Templates` in English, `Diário`/`Modelos` in Portuguese).
 - Find in page searches the visible text of the editor; there is no replace.
 
@@ -263,11 +275,12 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - `electron/main.cjs`: window, menu, disk access restricted to the vault, HTTP requests, VS Code extension reader.
 - `electron/workspace.cjs`: the Code tab's open folder (file access limited to it, the vault and files picked in a dialog), its file watcher and search/replace in files (`electron/searchCore.mjs`, shared with the renderer).
 - `electron/terminal.cjs`, `electron/lsp.cjs`: terminal sessions and language server processes.
+- `electron/vaults.cjs`: recent vault list and stored preferences.
 - `electron/preload.cjs`: the `window.api` bridge.
 - `src/App.tsx`: state (tabs, link index).
 - `src/whiteboard/`: the whiteboard module (see Whiteboards above).
-- `src/components/`: `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, search, TODOs, problems, compare with saved, Markdown preview).
-- `src/lib/`: link parsing, graph logic (`graph.ts`), note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
+- `src/components/`: `Welcome` (no vault), `Home` (no page open), `Settings`, `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, search, TODOs, problems, compare with saved, Markdown preview).
+- `src/lib/`: preferences (`prefs.ts`, `prefsContext.tsx`), home screen logic (`home.ts`), settings search, link parsing, graph logic (`graph.ts`), note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
 - `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `OBNOTION_SHOT`/`OBNOTION_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, adds a pencil stroke, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
 - `docs/`: illustrations used in this file.
 
