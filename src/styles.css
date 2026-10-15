@@ -4012,98 +4012,359 @@ button.wb-status-item:active {
   --task-p-medium: var(--graph-5);
   --task-p-low: var(--graph-2);
   --task-p-lowest: var(--color-frost-500);
+  --task-field: color-mix(in srgb, var(--color-obsidian-950) 62%, transparent);
+  /* A largura da própria tela decide o arranjo (a barra lateral pode estar aberta ou não). */
+  container: tasks / inline-size;
 }
 
+/* Contadores do cabeçalho: pastilhas em mono, tingidas pelo que contam. */
+.task-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: var(--color-frost-300);
+  background: var(--hover);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  white-space: nowrap;
+}
+
+.task-pill[data-tone='sheen'] {
+  color: var(--color-sheen-300);
+  background: color-mix(in srgb, var(--color-sheen-400) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-sheen-400) 22%, transparent);
+}
+
+.task-pill[data-tone='danger'] {
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 9%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-danger) 24%, transparent);
+}
+
+.task-stat {
+  transition:
+    background-color 120ms var(--ease-out-quart),
+    scale 120ms var(--ease-out-quart);
+}
+
+.task-stat:hover {
+  background: var(--hover-strong);
+}
+
+.task-stat[data-tone='danger']:hover {
+  background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+}
+
+.task-stat:active {
+  scale: calc(1 - 0.04 * var(--motion));
+}
+
+.task-tool {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+.task-tool:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* Nova tarefa: um campo de vidro só; destino e botão ficam na ponta (ou descem na tela estreita). */
 .task-add {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 4px 0 10px;
-  border-radius: 8px;
-  background: rgb(5 7 11 / 0.6);
-  box-shadow: inset 0 0 0 1px var(--hairline-strong);
-  transition: box-shadow 140ms var(--ease-out-quart);
+  border-radius: 10px;
+  background: var(--task-field);
+  box-shadow:
+    inset 0 0 0 1px var(--hairline-strong),
+    0 10px 28px -18px rgb(0 0 0 / 0.8);
+  transition: box-shadow 160ms var(--ease-out-quart);
 }
 
 .task-add:focus-within {
-  box-shadow: inset 0 0 0 1px var(--color-sheen-400);
+  box-shadow:
+    inset 0 0 0 1px var(--color-sheen-400),
+    0 0 0 3px color-mix(in srgb, var(--color-sheen-400) 14%, transparent),
+    0 10px 28px -18px rgb(0 0 0 / 0.8);
+}
+
+.task-add-field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 0 4px 0 12px;
+}
+
+.task-add-tail {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  width: min(36%, 300px);
+  padding: 5px;
 }
 
 .task-add-button {
   flex: none;
-  padding: 4px 10px;
-  border-radius: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
   font-size: 12.5px;
+  font-weight: 600;
   color: var(--color-obsidian-950);
   background: var(--color-sheen-400);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
   transition:
-    opacity 120ms var(--ease-out-quart),
-    background-color 120ms var(--ease-out-quart);
+    background-color 120ms var(--ease-out-quart),
+    color 120ms var(--ease-out-quart),
+    scale 120ms var(--ease-out-quart);
 }
 
 .task-add-button:hover {
   background: var(--color-sheen-300);
 }
 
+.task-add-button:active {
+  scale: calc(1 - 0.05 * var(--motion));
+}
+
+/* Sem texto o botão vira vidro neutro: legível, mas claramente parado. */
 .task-add-button:disabled {
-  opacity: 0.35;
+  color: var(--color-frost-500);
+  background: var(--hover);
+  box-shadow: inset 0 0 0 1px var(--hairline);
   cursor: default;
+  scale: 1;
+}
+
+/* Lista suspensa com a seta do app. */
+.task-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .task-select {
+  width: 100%;
   min-width: 0;
-  border-radius: 5px;
-  padding: 3px 6px;
+  height: 26px;
+  padding: 0 24px 0 8px;
+  border-radius: 6px;
   font-size: 12px;
   color: var(--color-frost-100);
-  background: rgb(5 7 11 / 0.6);
+  background: var(--task-field);
   box-shadow: inset 0 0 0 1px var(--hairline-strong);
   text-overflow: ellipsis;
+  appearance: none;
+  cursor: pointer;
+  transition: box-shadow 120ms var(--ease-out-quart);
+}
+
+.task-select:hover {
+  box-shadow: inset 0 0 0 1px var(--color-obsidian-500);
 }
 
 .task-select:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 1px var(--color-sheen-400);
+  box-shadow:
+    inset 0 0 0 1px var(--color-sheen-400),
+    0 0 0 3px color-mix(in srgb, var(--color-sheen-400) 14%, transparent);
 }
 
+.task-select option {
+  color: var(--color-frost-100);
+  background: var(--color-obsidian-800);
+}
+
+.task-select-caret {
+  position: absolute;
+  right: 8px;
+  rotate: 90deg;
+  color: var(--color-frost-500);
+  pointer-events: none;
+}
+
+/* Visões e busca: presas no alto enquanto a lista rola, sobre vidro fosco. */
+.task-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  background: color-mix(in srgb, var(--color-obsidian-900) 84%, transparent);
+  backdrop-filter: blur(12px) saturate(1.2);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.task-bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.task-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--task-field);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.task-views button {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  color: var(--color-frost-500);
+  white-space: nowrap;
+  transition:
+    background-color 140ms var(--ease-out-quart),
+    color 140ms var(--ease-out-quart),
+    box-shadow 140ms var(--ease-out-quart);
+}
+
+.task-views button:hover {
+  color: var(--color-frost-100);
+  background: var(--hover);
+}
+
+.task-views button[aria-pressed='true'] {
+  color: var(--color-frost-100);
+  background: var(--color-obsidian-600);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    inset 0 -2px 0 var(--color-sheen-400);
+}
+
+.task-search {
+  display: flex;
+  flex: 1 1 200px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--task-field);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  cursor: text;
+  transition: box-shadow 140ms var(--ease-out-quart);
+}
+
+.task-search:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--color-sheen-400),
+    0 0 0 3px color-mix(in srgb, var(--color-sheen-400) 14%, transparent);
+}
+
+/* Caixa de seleção própria: o contorno leva a cor da prioridade, o preenchimento é o veio. */
 .task-check {
+  position: relative;
   flex: none;
-  width: 14px;
-  height: 14px;
-  accent-color: var(--color-sheen-400);
-  cursor: pointer;
-}
-
-.task-stat {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin: 0;
   border-radius: 4px;
-  text-decoration: underline transparent;
-  text-underline-offset: 3px;
-  transition: text-decoration-color 120ms var(--ease-out-quart);
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--color-frost-500);
+  appearance: none;
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--ease-out-quart),
+    box-shadow 140ms var(--ease-out-quart),
+    scale 120ms var(--ease-out-quart);
 }
 
-.task-stat:hover {
+.task-check::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  background: var(--color-obsidian-950);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.6l4.6-5.2' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  opacity: 0;
+  scale: calc(1 - 0.5 * var(--motion));
+  transition:
+    opacity 140ms var(--ease-out-quart),
+    scale 180ms var(--ease-out-expo);
+}
+
+.task-check:hover {
+  box-shadow: inset 0 0 0 1.5px var(--color-sheen-400);
+  background: color-mix(in srgb, var(--color-sheen-400) 12%, transparent);
+}
+
+.task-check:active {
+  scale: calc(1 - 0.12 * var(--motion));
+}
+
+.task-check:checked {
+  background: var(--color-sheen-400);
+  box-shadow: inset 0 0 0 1.5px var(--color-sheen-400);
+}
+
+.task-check:checked::after {
+  opacity: 1;
+  scale: 1;
+}
+
+.task-check:focus-visible {
+  outline: 2px solid var(--color-sheen-400);
+  outline-offset: 2px;
+}
+
+.task-check[data-priority='highest'] { box-shadow: inset 0 0 0 1.5px var(--task-p-highest); }
+.task-check[data-priority='high'] { box-shadow: inset 0 0 0 1.5px var(--task-p-high); }
+.task-check[data-priority='medium'] { box-shadow: inset 0 0 0 1.5px var(--task-p-medium); }
+.task-check[data-priority='low'] { box-shadow: inset 0 0 0 1.5px var(--task-p-low); }
+
+.task-link {
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--color-sheen-300);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-sheen-300) 45%, transparent);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.task-link:hover {
   text-decoration-color: currentColor;
 }
 
-.task-link {
-  color: var(--color-sheen-300);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.task-help {
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: var(--color-frost-300);
+  background: var(--task-field);
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  animation: pop-in 170ms var(--ease-out-expo) backwards;
 }
 
 .task-keys {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 6px 14px;
+  align-items: center;
+  gap: 7px 14px;
 }
 
-.task-help {
-  padding: 12px 14px;
-  border-radius: 8px;
-  font-size: 12px;
-  color: var(--color-frost-300);
-  background: rgb(5 7 11 / 0.5);
-  box-shadow: inset 0 0 0 1px var(--hairline);
+/* Com espaço, a lista de atalhos vira duas colunas. */
+@container tasks (min-width: 620px) {
+  .task-keys {
+    grid-template-columns: max-content 1fr max-content 1fr;
+    column-gap: 14px;
+  }
 }
 
 .task-keys dt {
@@ -4114,11 +4375,33 @@ button.wb-status-item:active {
   display: flex;
   align-items: center;
   gap: 2px;
-  min-height: 28px;
+  min-height: 30px;
+  padding-right: 4px;
+  border-radius: 7px;
+}
+
+.task-group-head .row {
+  min-height: 26px;
+}
+
+.task-group-head .row:hover {
+  background: var(--hover);
 }
 
 .task-group-head .chevron {
-  transition: rotate 160ms var(--ease-out-quart);
+  transition: rotate calc(160ms * var(--motion)) var(--ease-out-quart);
+}
+
+.task-count {
+  min-width: 22px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-frost-500);
+  background: var(--hover);
 }
 
 [data-bucket='overdue'] > .task-group-title,
@@ -4144,7 +4427,7 @@ svg[data-bucket='today'] {
 
 .task-progress-bar {
   position: relative;
-  width: 44px;
+  width: 48px;
   height: 4px;
   overflow: hidden;
   border-radius: 999px;
@@ -4155,18 +4438,21 @@ svg[data-bucket='today'] {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: inherit;
-  background: var(--color-sheen-400);
-  transition: width 240ms var(--ease-out-quart);
+  background: linear-gradient(90deg, var(--color-sheen-700), var(--color-sheen-400));
+  transition: width calc(240ms * var(--motion)) var(--ease-out-quart);
 }
 
 .task-row {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 5px 4px 5px 8px;
-  border-radius: 6px;
+  gap: 10px;
+  padding: 6px 4px 6px 8px;
+  border-radius: 7px;
   color: var(--color-frost-300);
-  transition: background-color 120ms var(--ease-out-quart);
+  transition:
+    background-color 120ms var(--ease-out-quart),
+    color 120ms var(--ease-out-quart);
 }
 
 .task-row:hover,
@@ -4175,14 +4461,24 @@ svg[data-bucket='today'] {
   color: var(--color-frost-100);
 }
 
+/* Linha com o foco do teclado: veio verde-água à esquerda. */
 .task-row:has(.task-check:focus-visible) {
+  background: var(--hover-strong);
   box-shadow: inset 2px 0 0 var(--color-sheen-400);
+}
+
+.task-row:has(.task-check:focus-visible) .task-check {
+  outline: none;
+}
+
+.task-row[data-done='true'] {
+  color: var(--color-frost-500);
 }
 
 .task-row[data-done='true'] .task-title {
   color: var(--color-frost-500);
   text-decoration: line-through;
-  text-decoration-color: rgb(127 138 155 / 0.6);
+  text-decoration-color: color-mix(in srgb, var(--color-frost-500) 60%, transparent);
 }
 
 .task-title {
@@ -4203,7 +4499,7 @@ svg[data-bucket='today'] {
 .task-wikilink {
   color: var(--color-sheen-300);
   text-decoration: underline;
-  text-decoration-color: rgb(134 217 205 / 0.35);
+  text-decoration-color: color-mix(in srgb, var(--color-sheen-300) 35%, transparent);
   text-underline-offset: 2px;
 }
 
@@ -4219,7 +4515,7 @@ svg[data-bucket='today'] {
 }
 
 .task-meta:not(:empty) {
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
 .task-chip {
@@ -4227,12 +4523,12 @@ svg[data-bucket='today'] {
   align-items: center;
   gap: 4px;
   max-width: 100%;
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px 7px;
+  border-radius: 5px;
   font-size: 11px;
   line-height: 16px;
   color: var(--color-frost-500);
-  background: rgb(170 200 230 / 0.05);
+  background: var(--hover);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4240,18 +4536,24 @@ svg[data-bucket='today'] {
 
 .task-chip[data-bucket='overdue'] {
   color: var(--color-danger);
-  background: rgb(240 144 141 / 0.1);
+  background: color-mix(in srgb, var(--color-danger) 10%, transparent);
 }
 
 .task-chip[data-bucket='today'] {
   color: var(--color-sheen-300);
-  background: rgb(79 191 180 / 0.12);
+  background: color-mix(in srgb, var(--color-sheen-400) 12%, transparent);
 }
 
 .task-chip[data-priority='highest'] { color: var(--task-p-highest); }
 .task-chip[data-priority='high'] { color: var(--task-p-high); }
 .task-chip[data-priority='medium'] { color: var(--task-p-medium); }
 .task-chip[data-priority='low'] { color: var(--task-p-low); }
+
+.task-source {
+  transition:
+    background-color 120ms var(--ease-out-quart),
+    color 120ms var(--ease-out-quart);
+}
 
 .task-source:hover {
   color: var(--color-frost-100);
@@ -4270,11 +4572,13 @@ svg[data-bucket='today'] {
 .task-edit,
 .task-date {
   width: 100%;
-  border-radius: 4px;
+  border-radius: 5px;
   padding: 1px 6px;
   color: var(--color-frost-100);
-  background: rgb(5 7 11 / 0.7);
-  box-shadow: inset 0 0 0 1px var(--color-sheen-400);
+  background: var(--task-field);
+  box-shadow:
+    inset 0 0 0 1px var(--color-sheen-400),
+    0 0 0 3px color-mix(in srgb, var(--color-sheen-400) 14%, transparent);
   outline: none;
   caret-color: var(--color-sheen-400);
 }
@@ -4282,4 +4586,85 @@ svg[data-bucket='today'] {
 .task-date {
   width: auto;
   color-scheme: dark;
+}
+
+/* Lista vazia: o selo do app e uma frase, no centro do que sobra. */
+.task-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 16px 24px;
+  text-align: center;
+  animation: content-in 320ms var(--ease-out-expo) backwards;
+}
+
+/* Aviso: preso ao pé da área visível, sem altura própria para não empurrar nada. */
+.task-toast-slot {
+  position: sticky;
+  bottom: 16px;
+  z-index: 6;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 0;
+  pointer-events: none;
+}
+
+.task-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(100%, 560px);
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--color-frost-100);
+  background: color-mix(in srgb, var(--color-obsidian-700) 94%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 0 0 1px var(--hairline-strong),
+    0 14px 34px -12px rgb(0 0 0 / 0.75);
+  pointer-events: auto;
+  animation: task-toast-in 220ms var(--ease-out-expo) backwards;
+}
+
+.task-toast[data-kind='error'] {
+  color: var(--color-danger);
+  box-shadow:
+    inset 3px 0 0 var(--color-danger),
+    0 0 0 1px color-mix(in srgb, var(--color-danger) 30%, transparent),
+    0 14px 34px -12px rgb(0 0 0 / 0.75);
+}
+
+@keyframes task-toast-in {
+  from {
+    opacity: 0;
+    translate: 0 calc(10px * var(--motion));
+  }
+}
+
+/* Tela estreita: destino e botão descem para uma segunda linha do campo; a busca ocupa a linha toda. */
+@container tasks (max-width: 600px) {
+  .task-add {
+    flex-wrap: wrap;
+  }
+
+  .task-add-field {
+    flex-basis: 100%;
+  }
+
+  .task-add-tail {
+    width: 100%;
+    border-top: 1px solid var(--hairline);
+  }
+}
+
+/* A busca desce para a própria linha antes que a dica do campo comece a ser cortada. */
+@container tasks (max-width: 660px) {
+  .task-search {
+    flex-basis: 100%;
+  }
 }

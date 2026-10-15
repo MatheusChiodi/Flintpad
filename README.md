@@ -66,6 +66,8 @@ The side panel (wide windows) has:
 - **Copy** the visible tasks as Markdown, each with a `[[link]]` to its note.
 - **Keyboard**: one Tab stop for the list; `↑`/`↓` or `J`/`K` move, `Space`/`X` complete, `T`/`M`/`W` due today/tomorrow/in a week, `D` pick a date, `1`–`4` priority and `0` normal, `Delete` delete, `←` collapse the group, `Shift+F10` menu. Outside the fields, `/` focuses search, `N` the quick-add field and `?` shows the shortcut list.
 
+- **Layout**: the header counts are tinted pills (open, overdue, due today); the views and search stay pinned at the top on frosted glass while the list scrolls; checkboxes are drawn by the app, with the outline tinted by the task's priority; messages (saved, undo, errors) float at the bottom of the visible area instead of pushing the list. Below roughly 660 px of width the search takes its own line, and below 600 px the target note and Add button drop under the quick-add field. While note contents are still loading the list shows placeholder rows, and an empty list shows the app seal with a hint. Motion follows the reduced-motion setting.
+
 Custom statuses such as `[/]` (in progress) or `[-]` (cancelled) are not supported: the block editor only knows `[ ]` and `[x]`, and would turn other markers into plain text the next time the note is edited.
 
 ### Whiteboards

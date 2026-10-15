@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 import { Trans, useLanguage, useT, type Key } from '../lib/i18n';
 import { isoDate } from '../lib/notes';
@@ -50,7 +50,18 @@ import {
   PlusIcon,
   RepeatIcon,
   SearchIcon,
+  TasksIcon,
 } from './Icons';
+
+/** Lista suspensa no vidro: a seta nativa dá lugar à do app, que segue os tokens. */
+function Select({ className = '', ...props }: ComponentProps<'select'>) {
+  return (
+    <span className={`task-select-wrap ${className}`}>
+      <select className="task-select" {...props} />
+      <ChevronIcon size={11} className="task-select-caret" aria-hidden="true" />
+    </span>
+  );
+}
 
 /** O que o App precisa para abrir a nota já na tarefa. */
 export type TaskJump = { path: string; index: number; text: string };
@@ -408,48 +419,51 @@ export function Tasks({ notes, contents, onOpen, onOpenTask, onOpenTarget, onEns
     return <Trans k="tasks.emptyAll" values={slash} />;
   };
 
-  const select = 'task-select';
   const anyCollapsed = groups.some((group) => collapsed.has(groupId(group)));
+  // Notas listadas mas conteúdo ainda não lido: mostra linhas-fantasma em vez de "nenhuma tarefa".
+  const loading = notes.length > 0 && notes.every((note) => !(note.path in contents));
 
   return (
     <div className="tasks-screen mx-auto w-full max-w-[820px] px-4 pb-24 pt-8 text-[13px] sm:px-6 sm:pt-10" onKeyDown={onScreenKey}>
       <header className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <h1 className="font-display text-[26px] font-semibold tracking-tight text-frost-100">{t('nav.tasks')}</h1>
-        <p className="flex flex-wrap items-baseline gap-x-3 font-mono text-[12px] tabular-nums">
-          <span className="text-sheen-300">{t('tasks.openCount', { count: stats.open })}</span>
+        <p className="flex flex-wrap items-center gap-1.5 font-mono text-[11.5px] tabular-nums">
+          <span className="task-pill" data-tone="sheen">
+            {t('tasks.openCount', { count: stats.open })}
+          </span>
           {stats.overdue > 0 && (
-            <button className="task-stat text-danger" onClick={() => update({ view: 'today' })}>
+            <button className="task-pill task-stat" data-tone="danger" onClick={() => update({ view: 'today' })}>
               {t('tasks.stats.overdue', { count: stats.overdue })}
             </button>
           )}
           {stats.dueToday > 0 && (
-            <button className="task-stat text-frost-300" onClick={() => update({ view: 'today' })}>
+            <button className="task-pill task-stat" onClick={() => update({ view: 'today' })}>
               {t('tasks.stats.today', { count: stats.dueToday })}
             </button>
           )}
         </p>
         <div className="ml-auto flex items-center gap-1">
-          <button className="icon-button" title={t('tasks.copy')} aria-label={t('tasks.copy')} disabled={!visible.length} onClick={copyVisible}>
-            <CopyIcon size={14} />
+          <button className="icon-button task-tool" title={t('tasks.copy')} aria-label={t('tasks.copy')} disabled={!visible.length} onClick={copyVisible}>
+            <CopyIcon size={15} />
           </button>
           {prefs.groupBy !== 'none' &&
             (anyCollapsed ? (
-              <button className="icon-button" title={t('tasks.expandAll')} aria-label={t('tasks.expandAll')} onClick={() => setAllCollapsed(false)}>
-                <ExpandAllIcon size={14} />
+              <button className="icon-button task-tool" title={t('tasks.expandAll')} aria-label={t('tasks.expandAll')} onClick={() => setAllCollapsed(false)}>
+                <ExpandAllIcon size={15} />
               </button>
             ) : (
               <button
-                className="icon-button"
+                className="icon-button task-tool"
                 title={t('tasks.collapseAll')}
                 aria-label={t('tasks.collapseAll')}
                 disabled={!groups.length}
                 onClick={() => setAllCollapsed(true)}
               >
-                <CollapseAllIcon size={14} />
+                <CollapseAllIcon size={15} />
               </button>
             ))}
           <button
-            className="icon-button"
+            className="icon-button task-tool"
             title={`${t('tasks.help')} (?)`}
             aria-label={t('tasks.help')}
             aria-expanded={help}
@@ -457,7 +471,7 @@ export function Tasks({ notes, contents, onOpen, onOpenTask, onOpenTarget, onEns
             data-on={help}
             onClick={() => setHelp((open) => !open)}
           >
-            <HelpIcon size={14} />
+            <HelpIcon size={15} />
           </button>
         </div>
       </header>
@@ -465,139 +479,125 @@ export function Tasks({ notes, contents, onOpen, onOpenTask, onOpenTarget, onEns
       {help && (
         <div id="tasks-help" className="task-help mt-3">
           <dl className="task-keys" aria-label={t('tasks.help')}>
-          {(
-            [
-              ['↑ ↓ / J K', 'tasks.keys.move'],
-              ['Space / X', 'tasks.keys.toggle'],
-              ['Enter', 'tasks.keys.open'],
-              ['F2 / E', 'tasks.keys.edit'],
-              ['T / M / W', 'tasks.keys.due'],
-              ['D', 'tasks.keys.pick'],
-              ['1–4 / 0', 'tasks.keys.priority'],
-              ['Del', 'tasks.keys.delete'],
-              ['U', 'tasks.keys.undo'],
-              ['←', 'tasks.keys.collapse'],
-              ['Shift F10', 'tasks.keys.menu'],
-              ['/', 'tasks.keys.search'],
-              ['N', 'tasks.keys.add'],
-            ] as [string, Key][]
-          ).map(([keys, label]) => (
-            <div key={label} className="contents">
-              <dt>
-                <Kbd>{keys}</Kbd>
-              </dt>
-              <dd>{t(label)}</dd>
-            </div>
-          ))}
+            {(
+              [
+                ['↑ ↓ / J K', 'tasks.keys.move'],
+                ['Space / X', 'tasks.keys.toggle'],
+                ['Enter', 'tasks.keys.open'],
+                ['F2 / E', 'tasks.keys.edit'],
+                ['T / M / W', 'tasks.keys.due'],
+                ['D', 'tasks.keys.pick'],
+                ['1–4 / 0', 'tasks.keys.priority'],
+                ['Del', 'tasks.keys.delete'],
+                ['U', 'tasks.keys.undo'],
+                ['←', 'tasks.keys.collapse'],
+                ['Shift F10', 'tasks.keys.menu'],
+                ['/', 'tasks.keys.search'],
+                ['N', 'tasks.keys.add'],
+              ] as [string, Key][]
+            ).map(([keys, label]) => (
+              <div key={label} className="contents">
+                <dt>
+                  <Kbd>{keys}</Kbd>
+                </dt>
+                <dd>{t(label)}</dd>
+              </div>
+            ))}
           </dl>
-          <p className="mt-2.5 leading-relaxed text-frost-500">{t('tasks.queryHelp')}</p>
+          <p className="mt-3 border-t border-(--hairline) pt-2.5 leading-relaxed text-frost-500">{t('tasks.queryHelp')}</p>
         </div>
       )}
 
       <form className="task-add mt-5" onSubmit={add}>
-        <PlusIcon size={14} className="shrink-0 text-frost-500" />
-        <input
-          ref={addRef}
-          className="min-w-0 flex-1 bg-transparent py-2 text-[13px] text-frost-100 caret-sheen-400 outline-none placeholder:text-frost-500"
-          placeholder={t('tasks.add.placeholder')}
-          aria-label={t('tasks.add.label')}
-          value={draft}
-          spellCheck={false}
-          maxLength={2000}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => event.key === 'Escape' && (setDraft(''), event.currentTarget.blur())}
-        />
-        <select className={`${select} max-w-[38%]`} aria-label={t('tasks.add.target')} title={t('tasks.add.target')} value={target} onChange={(event) => update({ target: event.target.value })}>
-          <option value="">{t('tasks.add.daily')}</option>
-          {[...notes]
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((note) => (
-              <option key={note.path} value={note.path}>
-                {note.path.replace(/\.md$/i, '')}
-              </option>
-            ))}
-        </select>
-        <button type="submit" className="task-add-button" disabled={!draft.trim()}>
-          {t('tasks.add.button')}
-        </button>
+        <span className="task-add-field">
+          <PlusIcon size={14} className="shrink-0 text-sheen-400" />
+          <input
+            ref={addRef}
+            className="min-w-0 flex-1 bg-transparent py-2.5 text-[13px] text-frost-100 caret-sheen-400 outline-none placeholder:text-frost-500"
+            placeholder={t('tasks.add.placeholder')}
+            aria-label={t('tasks.add.label')}
+            value={draft}
+            spellCheck={false}
+            maxLength={2000}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => event.key === 'Escape' && (setDraft(''), event.currentTarget.blur())}
+          />
+        </span>
+        <span className="task-add-tail">
+          <Select className="min-w-0 flex-1" aria-label={t('tasks.add.target')} title={t('tasks.add.target')} value={target} onChange={(event) => update({ target: event.target.value })}>
+            <option value="">{t('tasks.add.daily')}</option>
+            {[...notes]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((note) => (
+                <option key={note.path} value={note.path}>
+                  {note.path.replace(/\.md$/i, '')}
+                </option>
+              ))}
+          </Select>
+          <button type="submit" className="task-add-button" disabled={!draft.trim()}>
+            {t('tasks.add.button')}
+          </button>
+        </span>
       </form>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex flex-wrap gap-1" role="group" aria-label={t('tasks.filter')}>
-          {VIEWS.map((key) => (
-            <button
-              key={key}
-              className={`rounded-md px-2.5 py-1 text-[12.5px] transition-colors ${
-                key === prefs.view ? 'bg-[var(--hover-strong)] text-frost-100' : 'text-frost-500 hover:bg-[var(--hover)] hover:text-frost-300'
-              }`}
-              aria-pressed={key === prefs.view}
-              onClick={() => update({ view: key })}
-            >
-              {t(`tasks.filter.${key}`)}
-            </button>
-          ))}
-        </div>
-        <label className="flex min-w-48 flex-1 items-center gap-2 rounded-md bg-obsidian-950/60 px-2.5 ring-1 ring-[var(--hairline-strong)] focus-within:ring-sheen-400">
-          <SearchIcon size={14} className="shrink-0 text-frost-500" />
-          <input
-            ref={searchRef}
-            className="w-full bg-transparent py-1.5 text-[12.5px] text-frost-100 caret-sheen-400 outline-none placeholder:text-frost-500"
-            placeholder={t('tasks.searchPlaceholder')}
-            aria-label={t('tasks.searchLabel')}
-            value={query}
-            spellCheck={false}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape' && query) {
-                event.stopPropagation();
-                setQuery('');
-              } else if (event.key === 'ArrowDown' && rows.length) {
-                event.preventDefault();
-                focusRow(0);
-              }
-            }}
-          />
-        </label>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-frost-500">
-        <label className="flex items-center gap-1.5">
-          {t('tasks.groupBy')}
-          <select className={select} value={prefs.groupBy} onChange={(event) => update({ groupBy: event.target.value as GroupBy })}>
-            {GROUPS.map((key) => (
-              <option key={key} value={key}>
-                {t(`tasks.group.${key}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-1.5">
-          {t('tasks.sortBy')}
-          <select className={select} value={prefs.sortBy} onChange={(event) => update({ sortBy: event.target.value as SortBy })}>
-            {SORTS.map((key) => (
-              <option key={key} value={key}>
-                {t(`tasks.sort.${key}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-1.5">
-          <input type="checkbox" className="task-check" checked={prefs.stampDone} onChange={(event) => update({ stampDone: event.target.checked })} />
-          {t('tasks.stampDone')}
-        </label>
-      </div>
-
-      <div className="mt-3 flex min-h-[22px] items-center gap-2 text-[12.5px]" role="status" aria-live="polite">
-        {status && (
-          <>
-            <span className={status.error ? 'text-danger' : 'text-frost-500'}>{status.text}</span>
-            {status.undo && lastChange.current && (
-              <button className="task-link" onClick={undo}>
-                {t('tasks.undo')}
+      <div className="task-bar -mx-4 mt-4 px-4 sm:-mx-6 sm:px-6">
+        <div className="task-bar-row">
+          <div className="task-views" role="group" aria-label={t('tasks.filter')}>
+            {VIEWS.map((key) => (
+              <button key={key} aria-pressed={key === prefs.view} onClick={() => update({ view: key })}>
+                {t(`tasks.filter.${key}`)}
               </button>
-            )}
-          </>
-        )}
+            ))}
+          </div>
+          <label className="task-search">
+            <SearchIcon size={14} className="shrink-0 text-frost-500" />
+            <input
+              ref={searchRef}
+              className="w-full min-w-0 bg-transparent py-1.5 text-[12.5px] text-frost-100 caret-sheen-400 outline-none placeholder:text-frost-500"
+              placeholder={t('tasks.searchPlaceholder')}
+              aria-label={t('tasks.searchLabel')}
+              value={query}
+              spellCheck={false}
+              onChange={(event) => setQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape' && query) {
+                  event.stopPropagation();
+                  setQuery('');
+                } else if (event.key === 'ArrowDown' && rows.length) {
+                  event.preventDefault();
+                  focusRow(0);
+                }
+              }}
+            />
+          </label>
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px] text-frost-500">
+          <label className="flex items-center gap-1.5">
+            {t('tasks.groupBy')}
+            <Select value={prefs.groupBy} onChange={(event) => update({ groupBy: event.target.value as GroupBy })}>
+              {GROUPS.map((key) => (
+                <option key={key} value={key}>
+                  {t(`tasks.group.${key}`)}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex items-center gap-1.5">
+            {t('tasks.sortBy')}
+            <Select value={prefs.sortBy} onChange={(event) => update({ sortBy: event.target.value as SortBy })}>
+              {SORTS.map((key) => (
+                <option key={key} value={key}>
+                  {t(`tasks.sort.${key}`)}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex cursor-pointer items-center gap-1.5 hover:text-frost-300">
+            <input type="checkbox" className="task-check" checked={prefs.stampDone} onChange={(event) => update({ stampDone: event.target.checked })} />
+            {t('tasks.stampDone')}
+          </label>
+        </div>
       </div>
 
       <div ref={list} aria-label={t('tasks.list')} role="region">
@@ -649,7 +649,7 @@ export function Tasks({ notes, contents, onOpen, onOpenTask, onOpenTarget, onEns
                       <span className="sr-only">{t('tasks.progress', { done: stat.done, total: stat.total })}</span>
                     </span>
                   )}
-                  <span className="section-label tabular-nums" aria-hidden={Boolean(stat)}>
+                  <span className="task-count" aria-hidden={Boolean(stat)}>
                     {group.tasks.length}
                   </span>
                 </h2>
@@ -671,8 +671,9 @@ export function Tasks({ notes, contents, onOpen, onOpenTask, onOpenTarget, onEns
                       >
                         <input
                           type="checkbox"
-                          className="task-check mt-[3px]"
+                          className="task-check mt-[2px]"
                           data-row={id}
+                          data-priority={task.done ? undefined : task.priority}
                           tabIndex={tabbable ? 0 : -1}
                           checked={task.done}
                           aria-label={plainTitle(task.title) || task.text}
@@ -813,7 +814,39 @@ export function Tasks({ notes, contents, onOpen, onOpenTask, onOpenTarget, onEns
         })}
       </div>
 
-      {!groups.length && <p className="mt-6 px-2 leading-relaxed text-frost-500">{emptyText()}</p>}
+      {loading ? (
+        <div className="mt-6 flex flex-col gap-3 px-2" aria-hidden="true">
+          {[72, 54, 64].map((width) => (
+            <span key={width} className="flex items-center gap-2.5">
+              <span className="board-skeleton w-[15px] shrink-0" />
+              <span className="board-skeleton" style={{ width: `${width}%` }} />
+            </span>
+          ))}
+        </div>
+      ) : (
+        !groups.length && (
+          <div className="task-empty">
+            <span className="board-seal" aria-hidden="true">
+              <TasksIcon size={24} />
+            </span>
+            <p className="max-w-80 text-balance leading-relaxed text-frost-300">{emptyText()}</p>
+          </div>
+        )
+      )}
+
+      {/* Aviso flutuante: preso ao pé da área visível, perto de onde se clicou, sem empurrar a lista. */}
+      <div className="task-toast-slot" role="status" aria-live="polite">
+        {status && (
+          <div key={status.text} className="task-toast" data-kind={status.error ? 'error' : undefined}>
+            <span className="min-w-0">{status.text}</span>
+            {status.undo && lastChange.current && (
+              <button className="task-link" onClick={undo}>
+                {t('tasks.undo')}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {menu && <ContextMenu request={menu} onClose={() => setMenu(null)} />}
     </div>
