@@ -2062,6 +2062,33 @@ button {
 .wb-crumbs .wb-crumb-sep {
   opacity: 0.45;
 }
+.wb-crumb {
+  border-radius: 4px;
+  padding: 1px 3px;
+  transition:
+    background-color var(--wb-fast) ease,
+    color var(--wb-fast) ease;
+}
+.wb-crumb:hover {
+  background: var(--wb-hover);
+  color: var(--vsc-editor-foreground);
+}
+
+/* Comparar com o salvo: cobre a área do editor */
+.wb-diff {
+  background: var(--vsc-editor-background);
+  animation: wb-fade var(--wb-fast) ease both;
+}
+.wb-diff-head {
+  display: flex;
+  height: 32px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--vsc-editorGroup-border, var(--wb-guide));
+  font-size: 12px;
+}
 
 /* Divisórias arrastáveis: invisíveis até o mouse chegar, então o veio acende. */
 .wb-sash {

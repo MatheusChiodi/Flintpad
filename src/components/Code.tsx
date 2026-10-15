@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 
 import { buildMatcher, replaceInText } from '../../electron/searchCore.mjs';
 import { setCodeMenuHandler } from '../lib/codeBridge';
-import { duplicateName, parseSavedEditors, pushClosed, sortPinned, tabsToClose, workspaceKey, type CloseKind } from '../lib/codeTools';
+import { duplicateName, NavHistory, type Location, needsFinalNewline, parseQuickOpen, parseSavedEditors, trailingWhitespace, pushClosed, sortPinned, tabsToClose, workspaceKey, type CloseKind } from '../lib/codeTools';
 import { fuzzyFilter, fuzzyMatch } from '../lib/fuzzy';
 import { useT, type Key } from '../lib/i18n';
 import { loadIconTheme, type IconTheme } from '../lib/iconTheme';
@@ -24,6 +24,7 @@ import { QuickInput, type QuickItem } from './code/QuickInput';
 import { SearchView, type SearchHost, type SearchRequest } from './code/SearchView';
 import { TerminalPanel, type TerminalCommand } from './code/TerminalPanel';
 import { TodoView } from './code/TodoView';
+import { DiffView } from './code/DiffView';
 import { problemCounts, ProblemsPanel } from './code/ProblemsPanel';
 import { ContextMenu, isMenuKey, menuPosition, type MenuItem, type MenuRequest } from './ContextMenu';
 import { Vein } from './code/Vein';
@@ -47,6 +48,7 @@ for (const defaults of [monaco.typescript.typescriptDefaults, monaco.typescript.
 if (window.api.debug) (window as unknown as { __monaco: typeof monaco }).__monaco = monaco;
 
 const AUTO_SAVE_DELAY_MS = 1000;
+const NAV_SETTLE_MS = 180;
 const STORAGE = {
   colorTheme: 'obnotion:code-theme',
   iconTheme: 'obnotion:code-icon-theme',
@@ -79,11 +81,23 @@ type EditorTab = { path: string; preview: boolean; pinned?: boolean };
 type SideView = 'explorer' | 'search' | 'todo';
 type PanelView = 'terminal' | 'problems';
 type Layout = { sidebar: boolean; sidebarWidth: number; panel: boolean; panelHeight: number; panelMax: boolean; view: SideView; panelView: PanelView };
-type EditorPrefs = { minimap: boolean; wordWrap: boolean; fontSize: number; autoSave: boolean };
+type LineNumbers = 'on' | 'relative' | 'off';
+type EditorPrefs = {
+  minimap: boolean;
+  wordWrap: boolean;
+  fontSize: number;
+  autoSave: boolean;
+  formatOnSave: boolean;
+  trimWhitespace: boolean;
+  finalNewline: boolean;
+  renderWhitespace: boolean;
+  lineNumbers: LineNumbers;
+  stickyScroll: boolean;
+};
 
 const DEFAULT_LAYOUT: Layout = { sidebar: true, sidebarWidth: 260, panel: false, panelHeight: 260, panelMax: false, view: 'explorer', panelView: 'terminal' };
 const SIDE_VIEWS: SideView[] = ['explorer', 'search', 'todo'];
-const DEFAULT_PREFS: EditorPrefs = { minimap: true, wordWrap: false, fontSize: 13, autoSave: true };
+const DEFAULT_PREFS: EditorPrefs = { minimap: true, wordWrap: false, fontSize: 13, autoSave: true, formatOnSave: false, trimWhitespace: false, finalNewline: false, renderWhitespace: false, lineNumbers: 'on', stickyScroll: true };
 
 // O que sobrevive à troca de aba: abas do editor, posição de cada arquivo e versão salva de cada modelo.
 const session = {
@@ -97,6 +111,8 @@ const session = {
   // Guias fechadas (Reabrir editor fechado) e se as guias salvas do workspace já foram restauradas.
   closed: [] as string[],
   restored: false,
+  // Voltar/avançar (Alt+← / Alt+→) entre posições do editor.
+  nav: new NavHistory(),
 };
 
 // Mensagem do erro sem o prefixo que o IPC do Electron acrescenta.
@@ -174,20 +190,31 @@ export default function Code() {
     const stored = readStorage(STORAGE.layout, DEFAULT_LAYOUT);
     return { ...stored, view: SIDE_VIEWS.includes(stored.view) ? stored.view : DEFAULT_LAYOUT.view, panelView: stored.panelView === 'problems' ? 'problems' : 'terminal' };
   });
-  const [prefs, setPrefsState] = useState<EditorPrefs>(() => readStorage(STORAGE.editor, DEFAULT_PREFS));
+  const [prefs, setPrefsState] = useState<EditorPrefs>(() => {
+    const stored = readStorage(STORAGE.editor, DEFAULT_PREFS);
+    return { ...stored, lineNumbers: (['on', 'relative', 'off'] as const).includes(stored.lineNumbers) ? stored.lineNumbers : 'on' };
+  });
   const [themePath, setThemePath] = useState(() => localStorage.getItem(STORAGE.colorTheme) ?? '');
   const [iconThemePath, setIconThemePath] = useState<string | null>(() => localStorage.getItem(STORAGE.iconTheme));
   const [colors, setColors] = useState<WorkbenchColors>(() => workbenchColors(OBNOTION_THEME, 'dark'));
   const [kind, setKind] = useState<ThemeKind>('dark');
   const [iconTheme, setIconTheme] = useState<IconTheme | null>(null);
   const [quick, setQuick] = useState<Quick | null>(null);
-  const [cursor, setCursor] = useState({ line: 1, column: 1, selected: 0 });
+  const [cursor, setCursor] = useState({ line: 1, column: 1, selected: 0, lines: 1 });
+  const navTimer = useRef(0);
+  const pendingNav = useRef<Location | null>(null);
+  const flushNav = () => {
+    window.clearTimeout(navTimer.current);
+    if (pendingNav.current) session.nav.record(pendingNav.current);
+    pendingNav.current = null;
+  };
   const [markers, setMarkers] = useState(() => problemCounts());
   const [markerVersion, setMarkerVersion] = useState(0);
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
   const [terminalCommand, setTerminalCommand] = useState<TerminalCommand | null>(null);
   const [collapseSignal, setCollapseSignal] = useState(0);
   const [searchRequest, setSearchRequest] = useState<SearchRequest | null>(null);
+  const [diff, setDiff] = useState<{ path: string; saved: string } | null>(null);
   const [, setLspVersion] = useState(0);
 
   const root = workspace?.root ?? null;
@@ -287,11 +314,40 @@ export default function Code() {
     );
   };
 
-  const save = async (path: string | null = session.active) => {
+  // Ao salvar pelo usuário (Ctrl+S, Salvar tudo): formatar, tirar espaços do fim das linhas e garantir a quebra
+  // final, conforme as preferências. O salvamento automático não mexe no texto (apagaria o espaço recém-digitado).
+  const runSaveParticipants = async (model: monaco.editor.ITextModel, path: string) => {
+    const options = prefsRef.current;
+    const editor = editorRef.current;
+    if (options.formatOnSave && editor?.getModel() === model) {
+      try {
+        await editor.getAction('editor.action.formatDocument')?.run();
+      } catch {
+        // sem formatador para a linguagem: salva como está
+      }
+    }
+    if (model.isDisposed()) return;
+    const markdown = /^(markdown|mdx)$/.test(model.getLanguageId()) || /\.mdx?$/i.test(path);
+    const edits: monaco.editor.IIdentifiedSingleEditOperation[] = [];
+    // Em Markdown, dois espaços no fim são quebra de linha: ficam.
+    if (options.trimWhitespace && !markdown) {
+      for (const range of trailingWhitespace(model.getLinesContent())) edits.push({ range: new monaco.Range(range.line, range.startColumn, range.line, range.endColumn), text: '' });
+    }
+    if (options.finalNewline && needsFinalNewline(model.getValue())) {
+      const last = model.getLineCount();
+      const column = model.getLineMaxColumn(last);
+      edits.push({ range: new monaco.Range(last, column, last, column), text: model.getEOL() });
+    }
+    if (edits.length) model.pushEditOperations(editor?.getModel() === model ? editor.getSelections() : [], edits, (inverse) => (editor?.getModel() === model ? editor.getSelections() : null) ?? inverse.map((edit) => new monaco.Selection(edit.range.startLineNumber, edit.range.startColumn, edit.range.startLineNumber, edit.range.startColumn)));
+  };
+
+  const save = async (path: string | null = session.active, options: { participants?: boolean } = {}) => {
     if (!path) return;
     const model = modelFor(path);
     if (!model) return;
     window.clearTimeout(autoSaveTimers.current.get(keyOf(path)));
+    if (options.participants) await runSaveParticipants(model, path);
+    if (model.isDisposed()) return;
     const version = model.getAlternativeVersionId();
     try {
       await window.api.ws.write(path, model.getValue());
@@ -481,6 +537,16 @@ export default function Code() {
       { label: t('code.cmd.closeAll'), run: () => closeTabs('all') },
       { kind: 'separator' },
       { label: tab.pinned ? t('code.tabs.unpin') : t('code.tabs.pin'), run: () => togglePin(tab.path) },
+      {
+        label: t('code.cmd.compareWithSaved'),
+        keys: 'Ctrl+K D',
+        disabled: !isDirty(tab.path),
+        run: () => {
+          activate(tab.path);
+          // Depois da troca de guia (que fecha comparações abertas).
+          requestAnimationFrame(() => void compareWithSaved(tab.path));
+        },
+      },
       { kind: 'separator' },
       { label: t('code.explorer.copyPath'), run: () => void navigator.clipboard.writeText(tab.path) },
       { label: t('code.explorer.copyRelativePath'), run: () => void navigator.clipboard.writeText(relativePath(rootOf(tab.path), tab.path)) },
@@ -539,7 +605,9 @@ export default function Code() {
       smoothScrolling: true,
       tabSize: 2,
       bracketPairColorization: { enabled: true },
-      stickyScroll: { enabled: true },
+      stickyScroll: { enabled: prefsRef.current.stickyScroll },
+      renderWhitespace: prefsRef.current.renderWhitespace ? 'all' : 'selection',
+      lineNumbers: prefsRef.current.lineNumbers,
       // O realce semântico do servidor repintaria por cima das cores TextMate do tema.
       'semanticHighlighting.enabled': false,
       fixedOverflowWidgets: true,
@@ -550,7 +618,14 @@ export default function Code() {
     const subscriptions: monaco.IDisposable[] = [
       editor.onDidChangeCursorSelection((event) => {
         const model = editor.getModel();
-        setCursor({ line: event.selection.positionLineNumber, column: event.selection.positionColumn, selected: model ? model.getValueInRange(event.selection).length : 0 });
+        setCursor({ line: event.selection.positionLineNumber, column: event.selection.positionColumn, selected: model ? model.getValueInRange(event.selection).length : 0, lines: event.selection.endLineNumber - event.selection.startLineNumber + 1 });
+        // A posição entra no histórico quando o cursor para (trocar de arquivo passa por posições intermediárias).
+        const path = session.active;
+        if (!path || !model) return;
+        const location = { path, line: event.selection.positionLineNumber, column: event.selection.positionColumn };
+        window.clearTimeout(navTimer.current);
+        pendingNav.current = location;
+        navTimer.current = window.setTimeout(flushNav, NAV_SETTLE_MS);
       }),
       editor.onDidChangeModelContent(() => {
         const path = session.active;
@@ -574,12 +649,14 @@ export default function Code() {
         },
       }),
     ];
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveRef.current());
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveRef.current(session.active, { participants: true }));
     const chord = (second: monaco.KeyCode, id: string) =>
       editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, monaco.KeyMod.CtrlCmd | second), () => runCommandRef.current(id));
     chord(monaco.KeyCode.KeyT, 'workbench.action.selectTheme');
     chord(monaco.KeyCode.KeyO, 'workbench.action.files.openFolder');
-    editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, monaco.KeyCode.KeyM), () => runCommandRef.current('workbench.action.editor.changeLanguageMode'));
+    const plainChord = (second: monaco.KeyCode, id: string) => editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, second), () => runCommandRef.current(id));
+    plainChord(monaco.KeyCode.KeyM, 'workbench.action.editor.changeLanguageMode');
+    plainChord(monaco.KeyCode.KeyD, 'workbench.files.action.compareWithSaved');
 
     let alive = true;
     void (async () => {
@@ -619,7 +696,15 @@ export default function Code() {
   }, []);
 
   useEffect(() => {
-    editorRef.current?.updateOptions({ minimap: { enabled: prefs.minimap }, wordWrap: prefs.wordWrap ? 'on' : 'off', fontSize: prefs.fontSize, lineHeight: Math.round(prefs.fontSize * 1.6) });
+    editorRef.current?.updateOptions({
+      minimap: { enabled: prefs.minimap },
+      wordWrap: prefs.wordWrap ? 'on' : 'off',
+      fontSize: prefs.fontSize,
+      lineHeight: Math.round(prefs.fontSize * 1.6),
+      stickyScroll: { enabled: prefs.stickyScroll },
+      renderWhitespace: prefs.renderWhitespace ? 'all' : 'selection',
+      lineNumbers: prefs.lineNumbers,
+    });
   }, [prefs]);
 
   // Arquivo alterado fora do editor (git, outro programa): recarrega se não houver edição pendente.
@@ -952,6 +1037,66 @@ export default function Code() {
     setTerminalCommand({ kind: 'new', serial: Date.now() });
   };
 
+  // Trilha: clicar numa pasta lista o que há nela (pastas entram, arquivos abrem).
+  const pickInFolder = async (dir: string) => {
+    let entries: DirEntry[];
+    try {
+      entries = await window.api.ws.readDir(dir);
+    } catch (error) {
+      flash(errorText(error), true);
+      return;
+    }
+    setQuick({
+      kind: 'pick',
+      placeholder: t('code.crumbs.pick', { name: baseName(dir) }),
+      activeId: session.active ?? undefined,
+      items: entries.map((entry) => ({
+        id: entry.path,
+        label: entry.name,
+        description: entry.dir ? '/' : undefined,
+        icon: <FileIconView icon={iconTheme ? (entry.dir ? iconTheme.forFolder(entry.path, false) : iconTheme.forFile(entry.path, languageForFile(entry.path))) : null} dir={entry.dir} />,
+      })),
+      onPick: (item) => {
+        const entry = entries.find((candidate) => candidate.path === item.id);
+        if (entry?.dir) void pickInFolder(entry.path);
+        else if (entry) void openPath(entry.path, { pinned: true });
+      },
+    });
+  };
+
+  const compareWithSaved = async (path = session.active) => {
+    if (!path || !modelFor(path)) return;
+    try {
+      setDiff({ path, saved: await window.api.ws.read(path) });
+    } catch (error) {
+      flash(`${t('code.readError', { path: baseName(path) })} ${errorText(error)}`, true);
+    }
+  };
+  const closeDiff = () => {
+    setDiff(null);
+    requestAnimationFrame(() => editorRef.current?.focus());
+  };
+  // Trocar de guia fecha a comparação.
+  useEffect(() => {
+    setDiff((current) => (current && (!active || !samePath(current.path, active)) ? null : current));
+  }, [active]);
+
+  const navigate = (direction: -1 | 1) => {
+    flushNav();
+    const target = direction < 0 ? session.nav.back() : session.nav.forward();
+    if (!target) return;
+    void openPath(target.path, { selection: { lineNumber: target.line, column: target.column } });
+  };
+
+  const pickLineNumbers = () =>
+    setQuick({
+      kind: 'pick',
+      placeholder: t('code.lineNumbers.pick'),
+      activeId: prefs.lineNumbers,
+      items: (['on', 'relative', 'off'] as LineNumbers[]).map((value) => ({ id: value, label: t(`code.lineNumbers.${value}` as Key) })),
+      onPick: (item) => setPrefs({ lineNumbers: item.id as LineNumbers }),
+    });
+
   const cycleEditor = (delta: number) => {
     const index = tabs.findIndex((tab) => active && samePath(tab.path, active));
     const next = tabs[(index + delta + tabs.length) % tabs.length];
@@ -968,7 +1113,7 @@ export default function Code() {
     { id: 'workbench.action.files.openFolder', label: t('code.cmd.openFolder'), run: () => void openFolder() },
     { id: 'workbench.action.addRootFolder', label: t('code.cmd.addFolder'), run: () => void addFolder() },
     { id: 'workbench.action.openRecent', label: t('code.cmd.openRecent'), run: pickRecent },
-    { id: 'workbench.action.files.save', label: t('code.cmd.save'), keybinding: 'Ctrl+S', run: () => void save() },
+    { id: 'workbench.action.files.save', label: t('code.cmd.save'), keybinding: 'Ctrl+S', run: () => void save(session.active, { participants: true }) },
     {
       id: 'workbench.action.files.saveAs',
       label: t('code.cmd.saveAs'),
@@ -985,7 +1130,7 @@ export default function Code() {
           .catch((error) => flash(t('code.writeFailed', { name: baseName(session.active ?? ''), reason: errorText(error) }), true));
       },
     },
-    { id: 'workbench.action.files.saveAll', label: t('code.cmd.saveAll'), run: () => session.tabs.filter((tab) => isDirty(tab.path)).forEach((tab) => void save(tab.path)) },
+    { id: 'workbench.action.files.saveAll', label: t('code.cmd.saveAll'), run: () => session.tabs.filter((tab) => isDirty(tab.path)).forEach((tab) => void save(tab.path, { participants: true })) },
     { id: 'workbench.action.files.revert', label: t('code.cmd.revert'), run: () => session.active && void revert(session.active) },
     { id: 'workbench.action.closeActiveEditor', label: t('code.cmd.closeEditor'), keybinding: 'Ctrl+W', run: () => session.active && closeTab(session.active) },
     { id: 'workbench.action.closeAllEditors', label: t('code.cmd.closeAll'), run: () => closeMany(session.tabs.map((tab) => tab.path)) },
@@ -1020,6 +1165,15 @@ export default function Code() {
     { id: 'editor.action.fontZoomIn', label: t('code.cmd.zoomIn'), run: () => setPrefs({ fontSize: Math.min(32, prefs.fontSize + 1) }) },
     { id: 'editor.action.fontZoomOut', label: t('code.cmd.zoomOut'), run: () => setPrefs({ fontSize: Math.max(8, prefs.fontSize - 1) }) },
     { id: 'editor.action.fontZoomReset', label: t('code.cmd.zoomReset'), run: () => setPrefs({ fontSize: DEFAULT_PREFS.fontSize }) },
+    { id: 'workbench.action.navigateBack', label: t('code.cmd.navigateBack'), keybinding: 'Alt+←', run: () => navigate(-1) },
+    { id: 'workbench.action.navigateForward', label: t('code.cmd.navigateForward'), keybinding: 'Alt+→', run: () => navigate(1) },
+    { id: 'workbench.files.action.compareWithSaved', label: t('code.cmd.compareWithSaved'), keybinding: 'Ctrl+K D', run: () => void compareWithSaved() },
+    { id: 'editor.action.toggleFormatOnSave', label: t(prefs.formatOnSave ? 'code.cmd.formatOnSaveOff' : 'code.cmd.formatOnSaveOn'), run: () => setPrefs({ formatOnSave: !prefs.formatOnSave }) },
+    { id: 'files.toggleTrimTrailingWhitespace', label: t(prefs.trimWhitespace ? 'code.cmd.trimOff' : 'code.cmd.trimOn'), run: () => setPrefs({ trimWhitespace: !prefs.trimWhitespace }) },
+    { id: 'files.toggleInsertFinalNewline', label: t(prefs.finalNewline ? 'code.cmd.finalNewlineOff' : 'code.cmd.finalNewlineOn'), run: () => setPrefs({ finalNewline: !prefs.finalNewline }) },
+    { id: 'editor.action.toggleRenderWhitespace', label: t('code.cmd.toggleWhitespace'), run: () => setPrefs({ renderWhitespace: !prefs.renderWhitespace }) },
+    { id: 'editor.action.toggleStickyScroll', label: t('code.cmd.toggleStickyScroll'), run: () => setPrefs({ stickyScroll: !prefs.stickyScroll }) },
+    { id: 'editor.action.lineNumbers', label: t('code.cmd.lineNumbers'), run: pickLineNumbers },
     { id: 'revealFileInOS', label: t('code.cmd.revealInOs'), run: () => session.active && void window.api.ws.reveal(session.active) },
     { id: 'copyFilePath', label: t('code.cmd.copyPath'), run: () => session.active && void navigator.clipboard.writeText(session.active) },
     { id: 'copyRelativeFilePath', label: t('code.cmd.copyRelativePath'), run: () => session.active && void navigator.clipboard.writeText(relativePath(rootOf(session.active), session.active)) },
@@ -1101,6 +1255,7 @@ export default function Code() {
         if (key === 't') id = 'workbench.action.selectTheme';
         else if (key === 'm') id = 'workbench.action.editor.changeLanguageMode';
         else if (key === 'o') id = 'workbench.action.files.openFolder';
+        else if (key === 'd') id = 'workbench.files.action.compareWithSaved';
       } else if (event.key === 'F1') id = 'workbench.action.showCommands';
       else if (key === 'k' && !event.shiftKey && !event.altKey) {
         chord = true;
@@ -1126,6 +1281,12 @@ export default function Code() {
       if (event.altKey && !event.ctrlKey && event.key.toLowerCase() === 'z') {
         event.preventDefault();
         runCommandRef.current('editor.action.toggleWordWrap');
+      }
+      // Alt+← / Alt+→: voltar e avançar entre posições (no terminal, as teclas são do shell).
+      if (event.altKey && !event.ctrlKey && !event.shiftKey && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+        if (event.target instanceof Element && event.target.closest('.xterm')) return;
+        event.preventDefault();
+        runCommandRef.current(event.key === 'ArrowLeft' ? 'workbench.action.navigateBack' : 'workbench.action.navigateForward');
       }
     };
     window.addEventListener('keydown', onKey, true);
@@ -1203,8 +1364,10 @@ export default function Code() {
         ],
       };
     }
-    // Quick Open: arquivos recentes primeiro (sem consulta) ou os que casam com a consulta.
-    const query = value.trim();
+    // Quick Open: arquivos recentes primeiro (sem consulta) ou os que casam com a consulta; "nome:linha:coluna" vai direto à posição.
+    const parsed = parseQuickOpen(value);
+    const query = parsed.query;
+    const lineMessage = parsed.line ? t('code.quick.openAtLine', { line: parsed.line }) : undefined;
     if (!root) return { items: [], placeholder: t('code.quick.filesPlaceholder'), message: t('code.quick.noFolder') };
     const toItem = (path: string, positions: number[] = []): QuickItem => ({
       id: `file:${path}`,
@@ -1221,7 +1384,7 @@ export default function Code() {
       const nameMatch = fuzzyMatch(query, baseName(item));
       return toItem(item, nameMatch?.positions);
     });
-    return { items: scored, placeholder: t('code.quick.filesPlaceholder') };
+    return { items: scored, placeholder: t('code.quick.filesPlaceholder'), message: lineMessage };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quick, quickValue, files, root, roots, iconTheme, t, cursor.line]);
 
@@ -1269,7 +1432,10 @@ export default function Code() {
       return;
     }
     setQuick(null);
-    if (item.id.startsWith('file:')) void openPath(item.id.slice(5), { pinned: true });
+    if (item.id.startsWith('file:')) {
+      const { line, column } = parseQuickOpen(value);
+      void openPath(item.id.slice(5), { pinned: true, selection: line ? { lineNumber: line, column: column ?? 1 } : undefined });
+    }
     else runCommand(item.id);
   };
 
@@ -1532,19 +1698,34 @@ export default function Code() {
               </div>
             )}
             {model && root && (
-              <div className="wb-crumbs">
+              <nav className="wb-crumbs" aria-label={t('code.crumbs.label')}>
                 {relativePath(rootOf(active!), active!)
                   .split(/[\\/]/)
-                  .map((part, index, parts) => (
-                    <span key={index} className="flex shrink-0 items-center gap-1.5">
-                      <span className={index === parts.length - 1 ? 'wb-crumb-last' : undefined}>{part}</span>
-                      {index < parts.length - 1 && <span className="wb-crumb-sep">/</span>}
-                    </span>
-                  ))}
-              </div>
+                  .filter(Boolean)
+                  .map((part, index, parts) => {
+                    const last = index === parts.length - 1;
+                    // Pasta do segmento: sobe do arquivo tantos níveis quantos faltam até o fim da trilha.
+                    let dir = active!;
+                    for (let up = parts.length - 1 - index; up > 0; up--) dir = dirName(dir);
+                    return (
+                      <span key={index} className="flex shrink-0 items-center gap-1">
+                        <button
+                          type="button"
+                          className={`wb-crumb ${last ? 'wb-crumb-last' : ''}`}
+                          title={last ? t('code.cmd.gotoSymbol') : t('code.crumbs.pick', { name: part })}
+                          onClick={() => (last ? runEditorAction('editor.action.quickOutline') : pickInFolder(dir))}
+                        >
+                          {part}
+                        </button>
+                        {!last && <span className="wb-crumb-sep" aria-hidden>/</span>}
+                      </span>
+                    );
+                  })}
+              </nav>
             )}
             <div className="relative min-h-0 flex-1">
               <div ref={host} className={`absolute inset-0 ${model ? '' : 'invisible'}`} />
+              {diff && model && <DiffView key={diff.path} path={diff.path} saved={diff.saved} fontSize={prefs.fontSize} onClose={closeDiff} />}
               {!model && (
                 <Welcome
                   t={t}
