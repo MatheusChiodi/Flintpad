@@ -463,7 +463,8 @@ export function Tasks({ notes, contents, onOpen, onOpenTask, onOpenTarget, onEns
       </header>
 
       {help && (
-        <dl id="tasks-help" className="task-help mt-3" aria-label={t('tasks.help')}>
+        <div id="tasks-help" className="task-help mt-3">
+          <dl className="task-keys" aria-label={t('tasks.help')}>
           {(
             [
               ['↑ ↓ / J K', 'tasks.keys.move'],
@@ -488,7 +489,9 @@ export function Tasks({ notes, contents, onOpen, onOpenTask, onOpenTarget, onEns
               <dd>{t(label)}</dd>
             </div>
           ))}
-        </dl>
+          </dl>
+          <p className="mt-2.5 leading-relaxed text-frost-500">{t('tasks.queryHelp')}</p>
+        </div>
       )}
 
       <form className="task-add mt-5" onSubmit={add}>

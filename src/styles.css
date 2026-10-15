@@ -2969,10 +2969,13 @@ button.wb-status-item:hover {
   text-underline-offset: 3px;
 }
 
-.task-help {
+.task-keys {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 6px 14px;
+}
+
+.task-help {
   padding: 12px 14px;
   border-radius: 8px;
   font-size: 12px;
@@ -2981,7 +2984,7 @@ button.wb-status-item:hover {
   box-shadow: inset 0 0 0 1px var(--hairline);
 }
 
-.task-help dt {
+.task-keys dt {
   justify-self: start;
 }
 

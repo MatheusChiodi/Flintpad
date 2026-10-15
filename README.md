@@ -54,7 +54,19 @@ The side panel (wide windows) has:
 
 <img src="docs/tasks.svg" alt="Tasks tab listing to-do items grouped by page, with filters and search" width="640">
 
-`Ctrl+Shift+J` opens the Tasks tab, which gathers the to-do items (`- [ ]` and `- [x]`) from every note in the vault, grouped by page. Filter by open, done or all, search by text, and click a page name to jump to it. Ticking a box rewrites only that line in the note's file.
+`Ctrl+Shift+J` opens the Tasks tab, which gathers the to-do items (`- [ ]` and `- [x]`) from every note in the vault (front matter and fenced code are skipped). Every change rewrites only that task's line in the note's file, after checking the line is still the same task; if the note changed in the meantime the list refreshes and nothing is written.
+
+- **Metadata in the text**, in the emoji format used by Obsidian task plugins, so notes stay portable: `📅 2026-10-20` due, `⏳` scheduled, `🛫` start, `✅` done date, `➕` created, `🔁 every week` recurrence, `🔺 ⏫ 🔼 🔽 ⏬` priority. They show as chips (relative dates such as "tomorrow" or "3 days ago", overdue in red, due today highlighted) instead of raw emoji; `#tags` and `[[links]]` in a task are clickable (a tag filters the list, a link opens the page).
+- **Views**: Open, Today (due today or overdue), Next 7 days, Done and All. The header counts open, overdue and due-today tasks; the last two jump to the Today view.
+- **Group** by note (with a progress bar of done/total and nested subtasks indented), folder, due date (Overdue, Today, Tomorrow, Next 7 days, Later, No due date), priority, tag or nothing; **sort** by note order, due date, priority or A–Z. Groups collapse one by one or all at once. View, grouping, sorting, collapsed groups and the quick-add target are remembered.
+- **Search** with a small query language: plain words (text or path), `#tag`, `path:`, `due:today|overdue|tomorrow|week|later|none|YYYY-MM-DD|before2026-12-01|after…`, `priority:high` or `priority:high+`, `is:open|done|recurring|overdue|subtask`, quoted phrases, and `-` to negate any term.
+- **Quick add**: type a task and press Enter; it is appended to today's note (created from the daily template if needed) or to a chosen note. Words like `today`/`hoje`, `tomorrow`/`amanhã`, `next week`/`próxima semana`, a weekday (`friday`, `sexta`) or a `YYYY-MM-DD` date become the due date, and `!1`–`!4` set the priority.
+- **Completing** a task can record `✅ <date>` (on by default; reopening removes it). Completing a recurring task (`every day|week|month|year`, `every 3 days`, `every weekday`, or Portuguese forms like `a cada 2 semanas`, `todo mês`) inserts the next occurrence above it with its dates moved forward.
+- **Edit** a task's text in place (double-click or `F2`), set or pick a due date, change the priority, copy or delete it from the right-click menu, and **undo** the last change (`U` or the Undo link). The locate button (or `Enter`) opens the note with the cursor on that task; `Ctrl+Enter` opens it in a new tab.
+- **Copy** the visible tasks as Markdown, each with a `[[link]]` to its note.
+- **Keyboard**: one Tab stop for the list; `↑`/`↓` or `J`/`K` move, `Space`/`X` complete, `T`/`M`/`W` due today/tomorrow/in a week, `D` pick a date, `1`–`4` priority and `0` normal, `Delete` delete, `←` collapse the group, `Shift+F10` menu. Outside the fields, `/` focuses search, `N` the quick-add field and `?` shows the shortcut list.
+
+Custom statuses such as `[/]` (in progress) or `[-]` (cancelled) are not supported: the block editor only knows `[ ]` and `[x]`, and would turn other markers into plain text the next time the note is edited.
 
 ### Whiteboards
 

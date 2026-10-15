@@ -125,6 +125,7 @@ const ptBR = {
   'tasks.keys.menu': 'Menu da tarefa',
   'tasks.keys.collapse': 'Recolher ou expandir o grupo',
   'tasks.list': 'Lista de tarefas',
+  'tasks.queryHelp': 'Na busca: #tag, path:pasta, due:today|overdue|week|none|AAAA-MM-DD|before2026-12-01, priority:high|high+, is:open|done|recurring|overdue|subtask; "-" antes nega.',
 
   'note.untitled': 'Sem título',
   'editor.titleLabel': 'Título da página',
@@ -924,6 +925,7 @@ const en: Record<Key, Entry> = {
   'tasks.keys.menu': 'Task menu',
   'tasks.keys.collapse': 'Collapse or expand the group',
   'tasks.list': 'Task list',
+  'tasks.queryHelp': 'In search: #tag, path:folder, due:today|overdue|week|none|YYYY-MM-DD|before2026-12-01, priority:high|high+, is:open|done|recurring|overdue|subtask; a leading "-" negates.',
 
   'note.untitled': 'Untitled',
   'editor.titleLabel': 'Page title',
