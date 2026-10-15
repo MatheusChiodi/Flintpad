@@ -120,6 +120,17 @@ The rest of the app only knows the `::whiteboards` tab, the sidebar entry and th
 
 `Ctrl+G` opens the graph. It follows the same rules as the Obsidian graph: d3-force physics, node size by number of links, wheel zoom towards the cursor, draggable nodes, neighbours highlighted on hover, and labels that fade as you zoom out. The settings panel has filters, display options and the four force sliders.
 
+- **Filter query**: terms must all match, `OR` separates alternatives, `-` excludes, quotes group words, and `path:`, `file:`, `tag:` and `content:` pick the field (`path:Projects -tag:archive`). An active filter shows as a chip with a clear button; when nothing matches, the graph says so and offers to clear it.
+- **More nodes**: optional tag nodes (clicking one filters by that tag) and nodes for links whose page does not exist yet (dashed; click or Enter creates the page).
+- **Color**: color groups (each a query plus one of eight palette colors, first match wins) and an optional color per folder. Node size can follow all links, incoming links only, or be the same for every node.
+- **Local graph**: from the node menu or `L`, show only the neighbourhood of a node, with a depth from 1 to 5.
+- **Nodes**: right-click (or `Shift+F10`) opens the node menu: open, open in a new tab, copy link, local graph, pin position, hide. `Ctrl+click` and middle click open in a new tab. Pinned nodes stay where they are dropped; hidden nodes come back with "Show all".
+- **Camera**: zoom buttons, fit everything (`0`, or double-click on empty space), automatic fit once the layout settles, pause/resume the simulation (`Space`), and "Go to page" (`/` or `Ctrl+F` inside the graph) to center a page.
+- **Keyboard**: the canvas is focusable; arrows move to the nearest node in that direction, `Enter` opens, `Ctrl+Enter` opens in a new tab, `P` pins, `H` hides, `Esc` clears the selection, `?` lists every shortcut. The selected node is announced to screen readers and shown in a card with its incoming and outgoing links.
+- **Panel**: saved views (filters, groups, display and forces under a name), statistics (pages, unlinked pages, links without a page, tags, most connected pages) and PNG export with the app background.
+
+Settings and saved views live in `localStorage` and are validated when read. The graph logic (query, local graph, statistics, keyboard navigation, fitting) is in `src/lib/graph.ts`, tested in `tests/graph.test.mjs`. Not there yet, compared to Obsidian: the timelapse animation (notes carry no creation date here) and attachments as nodes.
+
 ### Tabs and shortcuts
 
 <img src="docs/tabs.svg" alt="Tab bar, page tree and keyboard shortcuts" width="640">
@@ -244,7 +255,7 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - `src/App.tsx`: state (tabs, link index).
 - `src/whiteboard/`: the whiteboard module (see Whiteboards above).
 - `src/components/`: `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, search, TODOs, problems, compare with saved, Markdown preview).
-- `src/lib/`: link parsing, note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
+- `src/lib/`: link parsing, graph logic (`graph.ts`), note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
 - `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `OBNOTION_SHOT`/`OBNOTION_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, adds a pencil stroke, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
 - `docs/`: illustrations used in this file.
 
