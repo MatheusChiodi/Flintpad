@@ -62,23 +62,35 @@ The side panel (wide windows) has:
 
 `Ctrl+Shift+B` (or **Whiteboards** in the sidebar) opens a whiteboard tab: a list of boards on the left and the canvas on the right.
 
-- **Shapes**: rectangle, ellipse, diamond and free text, each with a label. Drag to move, pull a corner handle to resize, double-click (or `Enter`) to edit the text, pick stroke and fill colors in the panel that appears with a selection.
+- **Shapes**: rectangle, ellipse, diamond and free text, each with a label. Drag to move, pull a corner handle to resize (`Shift` keeps the proportions), double-click (or `Enter`) to edit the text.
+- **Pencil, line and images**: the pencil draws freehand strokes (they scale when resized); the line tool draws a connector without an arrowhead. Raster images (PNG, JPEG, WebP, GIF) can be pasted, dropped on the canvas or inserted with `I`; large ones are scaled down to 1600 px and re-compressed so the board file stays small. SVG images are refused (they can carry scripts).
+- **Style panel** (appears with a selection): stroke and fill colors, stroke width, solid/dashed/dotted, opacity, arrowheads (end, both, none), text size and a monospace font for code. Everything reaches the SVG/PNG export.
+- **Arrange**: layers (`PageUp`/`PageDown`, with `Shift` to front/back), group/ungroup (a click selects the whole group), lock (locked elements can be selected and copied but not moved, edited or deleted), align (left, center, right, top, middle, bottom) and distribute with equal gaps.
+- **Links**: `Ctrl+K` links an element to a vault note (path or name, `[[Note]]` works, with suggestions) or to an `http(s)` address. A badge marks linked elements; click it, use **Open link** in the panel, or `Ctrl+click` the element. Notes open in the app, sites in the system browser; any other scheme is rejected.
+- **Find**: `Ctrl+F` searches element text and links (case- and accent-insensitive), with next/previous and the match brought into view.
+- **Context menu**: right-click, `Shift+F10` or the menu key. Clipboard, layers, group, lock, link, copy as PNG, export the selection, zoom to selection, delete; fully keyboard-navigable.
+- **Drawing helpers**: eraser (`E`, drag across elements), hand (`H`), keep the current tool after drawing (`Q`), `Shift` for squares / 15° angles / one-axis moves, `Alt`+drag to drag a copy, drag an arrow's end handle to reattach it to another shape or leave it loose, snap to grid (`Ctrl+'`), and a dark canvas (screen only; files and exports stay light). Grid, dark canvas and the export background are remembered on this computer.
 - **Connectors**: the arrow tool draws from one shape to another; both ends stay attached and follow the shapes when they move. Select two shapes and press `C` to connect them without the mouse. Deleting a shape leaves its arrows in place with a loose end.
-- **Boards**: create, rename (double-click in the list or edit the title), open and delete (to the system trash, like notes). **Create sample** adds a small, clearly labelled sample board with a banner and a one-click delete.
+- **Boards**: create, rename (double-click or `F2` in the list, or edit the title), duplicate, open and delete (to the system trash, like notes); a filter appears when there are more than five boards. **Create sample** adds a small, clearly labelled sample board with a banner and a one-click delete.
 - **Autosave**: every change is written to disk a moment later; the header shows *Saving…* / *Saved*, or an error with a retry button.
-- **Import / export**: **JSON** (the full board, re-importable), **SVG** and **PNG** (2× resolution, white background). Import takes a `.whiteboard.json` file; the file is validated first (see Limits).
+- **Import / export**: **JSON** (the full board, re-importable), **SVG** and **PNG** (2× resolution, white or transparent background), the whole board or only the selection; **Copy as PNG** (`Shift+Alt+C`) puts an image on the clipboard. Import takes a `.whiteboard.json` file; the file is validated first (see Limits).
 - **Keyboard**: the canvas is focusable. `Tab` walks through the elements (each is announced with its kind and text), arrows nudge the selection (`Shift` for 10 px), `?` lists every shortcut.
 
 | Action | Shortcut |
 |---|---|
 | Select / Rectangle / Ellipse / Diamond / Arrow / Text | `V` `R` `O` `D` `A` `T` (or `1`–`6`) |
+| Pencil / Line / Eraser / Hand / Image / Keep tool | `P` (`7`) / `L` (`8`) / `E` / `H` / `I` / `Q` |
+| Layer up / down (to front / back) | `PageUp` / `PageDown` (with `Shift`) |
+| Group / Ungroup / Lock | `Ctrl+Shift+G` / `Ctrl+Shift+U` / `Ctrl+Shift+L` |
+| Link / Find / Snap to grid | `Ctrl+K` / `Ctrl+F` / `Ctrl+'` |
+| Context menu / Copy as PNG | `Shift+F10` / `Shift+Alt+C` |
 | Delete / Duplicate / Select all | `Delete` / `Ctrl+D` / `Ctrl+A` |
 | Copy / Cut / Paste (plain text becomes a text element) | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` |
 | Undo / Redo | `Ctrl+Z` / `Ctrl+Shift+Z` or `Ctrl+Y` |
-| Zoom / 100% / Fit everything | `Ctrl`+wheel or `+` `-` / `0` / `Shift+1` |
+| Zoom / 100% / Fit everything / Fit selection | `Ctrl`+wheel or `+` `-` / `0` / `Shift+1` / `Shift+2` |
 | Pan | wheel, `Space`+drag or middle button |
 
-**Data location and backup.** Each board is a file `Whiteboards/<name>.whiteboard.json` inside the vault (boards in other vault folders are listed too). Backing up the vault backs up the boards; the files are plain, versioned JSON (`"format": "obnotion-whiteboard", "version": 1`), so they can be diffed, synced or edited by hand. Nothing leaves the computer: no account, no network calls, no telemetry, no secrets (so there is nothing to add to a `.env`).
+**Data location and backup.** Each board is a file `Whiteboards/<name>.whiteboard.json` inside the vault (boards in other vault folders are listed too). Backing up the vault backs up the boards; the files are plain, versioned JSON (`"format": "obnotion-whiteboard", "version": 2`; version 1 files are upgraded on read, and older app builds refuse version 2 files instead of dropping what they do not know), so they can be diffed, synced or edited by hand. Nothing leaves the computer: no account, no network calls, no telemetry, no secrets (so there is nothing to add to a `.env`).
 
 **Permissions.** None beyond what the app already has: boards are read and written through the same vault-restricted bridge as notes. Exporting opens the system *Save as* dialog.
 
@@ -87,14 +99,16 @@ The side panel (wide windows) has:
 - `model.ts`: file format, migration chain (files without `version`, from development builds, are upgraded on read; files from a newer version are refused, never overwritten), validation and pure editing operations (add, move, resize, connect, delete, duplicate, paste).
 - `render.ts`: turns elements into drawing primitives; both the canvas and the SVG export draw from them, so exports match the screen.
 - `storage.ts`: listing, reading, writing and the debounced autosave queue on top of `window.api`; PNG rasterization and downloads.
-- `BoardEditor.tsx` (canvas, SVG + pointer events), `Whiteboards.tsx` (list and states), `files.ts`, `sample.ts`, `i18n.ts`, `icons.tsx`.
+- `BoardEditor.tsx` (canvas, SVG + pointer events), `StylePanel.tsx` (selection panel), `Menu.tsx` (context menu), `Whiteboards.tsx` (list and states), `files.ts`, `sample.ts`, `i18n.ts`, `icons.tsx`.
+
+The tab takes two optional props from the app, `notes` and `onOpenNote`, used only by element links. No new dependency was added.
 
 The rest of the app only knows the `::whiteboards` tab, the sidebar entry and the menu item; removing the folder and those lines removes the feature.
 
 **Limits.**
 
 - Imported files over 5 MB or with more than 5000 elements are refused; unknown element types, invalid numbers or colors and arrows pointing at missing shapes are skipped (the board says how many). Text is limited to 2000 characters per element, and only `#rrggbb` colors reach the SVG.
-- Shapes are rectangles, ellipses, diamonds, text and straight arrows. No freehand drawing, images, curved or elbow connectors, rotation, grouping, layers, templates or locking.
+- Images are embedded in the board file, which stays limited to 5 MB: an image that would push it past that is refused with a message. No curved or elbow connectors, rotation, frames, templates or shape libraries; the hand-drawn look of Excalidraw is not reproduced.
 - Text does not wrap; shape labels are centered lines.
 - No real-time collaboration or sharing; one window edits a board at a time. A board edited elsewhere (for example in the Code tab) while it is open is overwritten by the next change.
 - Undo history is kept per open board and is lost when the board is closed or renamed.
@@ -231,7 +245,7 @@ The interface is available in English and Brazilian Portuguese. Change it in Set
 - `src/whiteboard/`: the whiteboard module (see Whiteboards above).
 - `src/components/`: `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, search, TODOs, problems, compare with saved, Markdown preview).
 - `src/lib/`: link parsing, note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
-- `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `OBNOTION_SHOT`/`OBNOTION_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
+- `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `OBNOTION_SHOT`/`OBNOTION_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, adds a pencil stroke, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
 - `docs/`: illustrations used in this file.
 
 ## Credits
