@@ -24,6 +24,8 @@
   --color-sheen-300: #86d9cd;
   --color-sheen-400: #4fbfb4;
   --color-sheen-700: #0c6c64;
+  /* Veio apagado: link para página que ainda não existe (AA sobre a folha). */
+  --color-sheen-muted: #3f7470;
 
   /* Folha e tinta. */
   --color-paper: #f6f7f5;
@@ -268,6 +270,47 @@ button {
 
 .tab[data-active='true'][data-sheet='true'] .row-icon {
   color: var(--color-sheen-700);
+}
+
+/* Guias têm piso de largura: com muitas abertas a faixa rola, e o nome da ativa nunca some. */
+.tab:not([data-pinned='true']) {
+  min-width: 96px;
+}
+
+.tab[data-active='true']:not([data-pinned='true']) {
+  min-width: 148px;
+}
+
+.tab:focus-visible {
+  outline-offset: -2px;
+  border-radius: 8px 8px 0 0;
+}
+
+.tab-strip {
+  scroll-padding-inline: 8px;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.tab-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* Borda esmaecida onde há guias escondidas. */
+.tab-strip[data-fade-start='true'],
+.tab-strip[data-fade-end='true'] {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+}
+
+.tab-strip[data-fade-start='true'] {
+  --fade-start: 28px;
+}
+
+.tab-strip[data-fade-end='true'] {
+  --fade-end: 28px;
 }
 
 /* Cantos invertidos: a aba se funde com a folha logo abaixo. */
@@ -517,8 +560,17 @@ button {
   background-size: 100% 100%;
 }
 
+/* Página que ainda não existe: tom apagado e sublinhado pontilhado, sem perder contraste. */
 .wikilink[data-missing='true'] {
-  opacity: 0.6;
+  color: var(--color-sheen-muted);
+  font-weight: 500;
+  background-size: 0 0;
+  text-decoration: underline dotted 1.5px color-mix(in srgb, var(--color-sheen-400) 75%, transparent);
+  text-underline-offset: 3px;
+}
+
+.wikilink[data-missing='true']:hover {
+  background-size: 100% 100%;
 }
 
 /* Link para request: o método vai num selo de mono, na cor do método (a mesma da aba Requests). */
@@ -3072,6 +3124,70 @@ button.wb-status-item:hover {
   font-size: 11px;
   color: var(--wb-quiet);
   text-align: right;
+}
+
+/* Linhas da moldura: o anel de foco acompanha o canto e fica por dentro (listas roláveis cortariam o de fora). */
+.row:focus-visible,
+.context-menu-item:focus-visible {
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+/* Janela média: barra lateral e painel de links cedem espaço para a folha. */
+@media (min-width: 901px) and (max-width: 1279px) {
+  .sidebar[data-rail='false'] {
+    width: 232px;
+  }
+
+  .links-panel {
+    width: 220px;
+  }
+}
+
+/* Folha estreita (janela pequena ou painéis abertos): margens e título encolhem com ela. */
+.note-shell {
+  container-type: inline-size;
+}
+
+@container (max-width: 620px) {
+  .note-page:not(.max-w-none) {
+    padding-inline: 12px;
+  }
+
+  .note-page .bn-editor {
+    padding-inline: 40px;
+  }
+
+  .note-page .title-input {
+    padding-inline: 40px;
+    font-size: 34px;
+  }
+
+  .note-page .daily-nav {
+    margin-left: 34px;
+  }
+}
+
+@container (max-width: 440px) {
+  .note-page .bn-editor,
+  .note-page .title-input {
+    padding-inline: 30px;
+  }
+
+  .note-page .title-input {
+    font-size: 29px;
+  }
+
+  .note-page .daily-nav {
+    margin-left: 24px;
+  }
+}
+
+/* Janela baixa: o título sobe e sobra mais folha para o texto. */
+@media (max-height: 600px) {
+  .note-page {
+    padding-top: 2.25rem;
+  }
 }
 
 /* Trilho de ícones: pedido pelo botão da barra (data-rail) ou forçado pela janela estreita. */

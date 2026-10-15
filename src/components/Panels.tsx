@@ -44,6 +44,31 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onPin, onClos
   const [menu, setMenu] = useState<MenuRequest | null>(null);
   const [dropAt, setDropAt] = useState<number | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  const strip = useRef<HTMLDivElement>(null);
+  const [fade, setFade] = useState({ start: false, end: false });
+
+  // Esmaece a borda que esconde guias, para mostrar que há mais para rolar.
+  const measure = useCallback(() => {
+    const element = strip.current;
+    if (!element) return;
+    const start = element.scrollLeft > 4;
+    const end = element.scrollLeft + element.clientWidth < element.scrollWidth - 4;
+    setFade((current) => (current.start === start && current.end === end ? current : { start, end }));
+  }, []);
+
+  useEffect(() => {
+    const element = strip.current;
+    if (!element) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [measure]);
+
+  // A guia ativa (e a recém-aberta) sempre à vista.
+  useEffect(() => {
+    strip.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    measure();
+  }, [activeId, tabs.length, measure]);
 
   const openMenu = (tab: Tab, event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>) => {
     event.preventDefault();
@@ -63,19 +88,33 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onPin, onClos
   };
 
   return (
-    <div className="flex h-11 shrink-0 items-end gap-1 pl-[18px] pr-3" role="tablist" aria-label={t('tabs.label')}>
+    <div className="flex h-11 shrink-0 items-end pl-2.5 pr-3">
       {onShowSidebar && (
-        <button className="icon-button mb-1.5 mr-1 h-7 w-7 shrink-0" title={`${t('sidebar.show')} (Ctrl+\\)`} aria-label={t('sidebar.show')} onClick={onShowSidebar}>
+        <button className="icon-button mb-1.5 ml-1 h-7 w-7 shrink-0" title={`${t('sidebar.show')} (Ctrl+\\)`} aria-label={t('sidebar.show')} onClick={onShowSidebar}>
           <SidebarIcon size={16} />
         </button>
       )}
+      {/* Faixa das guias: com muitas abertas, rola na horizontal (a roda do mouse também) em vez de espremer os nomes. */}
+      <div
+        ref={strip}
+        className="tab-strip flex h-full min-w-0 items-end gap-1 overflow-x-auto px-2"
+        data-fade-start={fade.start}
+        data-fade-end={fade.end}
+        role="tablist"
+        aria-label={t('tabs.label')}
+        onScroll={measure}
+        onWheel={(event) => {
+          if (!event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+          event.currentTarget.scrollLeft += event.deltaY;
+        }}
+      >
       {tabs.map((tab, index) => {
         const path = currentPath(tab);
         const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path === TASKS ? TasksIcon : path === WHITEBOARDS ? WhiteboardIcon : path ? PageIcon : PlusIcon;
         return (
           <div
             key={tab.id}
-            className={`tab group flex h-[34px] min-w-0 cursor-pointer items-center gap-2 rounded-t-lg pl-3 pr-1.5 text-[13px] ${tab.pinned ? 'max-w-40 shrink-0' : 'max-w-52 flex-1'}`}
+            className={`tab group flex h-[34px] cursor-pointer items-center gap-2 rounded-t-lg pl-3 pr-1.5 text-[13px] ${tab.pinned ? 'max-w-40 shrink-0' : 'max-w-52 flex-1'}`}
             data-active={tab.id === activeId}
             data-sheet={Boolean(path) && !isSpecialPath(path)}
             data-pinned={tab.pinned ?? false}
@@ -156,7 +195,8 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onPin, onClos
           </div>
         );
       })}
-      <button className="icon-button mb-1.5 ml-1 h-6 w-6" title={t('tabs.new')} aria-label={t('tabs.new')} onClick={onNew}>
+      </div>
+      <button className="icon-button mb-1.5 ml-0.5 h-6 w-6 shrink-0" title={t('tabs.new')} aria-label={t('tabs.new')} onClick={onNew}>
         <PlusIcon size={15} />
       </button>
       {menu && <ContextMenu request={menu} onClose={closeMenu} />}
@@ -218,7 +258,7 @@ export function LinksPanel({ backlinks, outgoing, headings, onHeading, findMenti
     });
 
   return (
-    <aside className="pane hidden w-60 shrink-0 overflow-y-auto pb-4 lg:block" aria-label={t('links.panel')}>
+    <aside className="links-panel pane hidden w-60 shrink-0 overflow-y-auto pb-4 lg:block" aria-label={t('links.panel')}>
       <div className="px-2 pt-3">
         <button
           className={row}
@@ -455,7 +495,7 @@ export function QuickSwitcher({ notes, contents, recents, commands, initialQuery
   return (
     <div className="scrim fixed inset-0 z-50 flex items-start justify-center px-4 pt-[12vh]" onMouseDown={onClose}>
       <div
-        className="palette w-[580px] max-w-full overflow-hidden rounded-xl"
+        className="palette w-[600px] max-w-full overflow-hidden rounded-xl"
         role="dialog"
         aria-modal="true"
         aria-label={placeholder}
@@ -495,6 +535,10 @@ export function QuickSwitcher({ notes, contents, recents, commands, initialQuery
               event.preventDefault();
             }}
           />
+          {/* Esc mora junto do campo: o rodapé de dicas cabe numa linha mesmo em inglês. */}
+          <span className="flex shrink-0 items-center gap-1.5 text-[11px] text-frost-500">
+            <Kbd>Esc</Kbd> {t('switcher.close')}
+          </span>
         </div>
         <div ref={list} id="switcher-list" className="max-h-[min(22rem,55vh)] overflow-y-auto p-1.5" role="listbox" aria-label={t('switcher.results')}>
           {rows.map((row, i) => (
@@ -562,7 +606,7 @@ export function QuickSwitcher({ notes, contents, recents, commands, initialQuery
             </p>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-(--hairline) px-4 py-2 text-[11px] text-frost-500">
+        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-(--hairline) px-4 py-2 text-[11px] text-frost-500">
           <span className="flex items-center gap-1.5">
             <Kbd>↑</Kbd>
             <Kbd>↓</Kbd> {t('switcher.navigate')}
@@ -584,9 +628,6 @@ export function QuickSwitcher({ notes, contents, recents, commands, initialQuery
               </span>
             </>
           )}
-          <span className="ml-auto flex items-center gap-1.5">
-            <Kbd>Esc</Kbd> {t('switcher.close')}
-          </span>
         </div>
       </div>
     </div>
