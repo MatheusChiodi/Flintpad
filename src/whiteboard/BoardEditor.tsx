@@ -125,6 +125,8 @@ type Props = {
 
 const sameView = (a: View, b: View) => a.x === b.x && a.y === b.y && a.zoom === b.zoom;
 const isTyping = (target: EventTarget | null) => target instanceof HTMLElement && (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT');
+// Botões dentro do quadro (ferramentas, cores, zoom) precisam de Espaço e Enter para funcionar pelo teclado.
+const isControl = (target: EventTarget | null) => target instanceof HTMLElement && (target.tagName === 'BUTTON' || target.tagName === 'SELECT');
 
 export function BoardEditor({ path, name, initial, t, saver, banner, onRename }: Props) {
   const [doc, setDoc] = useState<Doc>({ board: initial, past: [], future: [] });
@@ -432,6 +434,7 @@ export function BoardEditor({ path, name, initial, t, saver, banner, onRename }:
     if (isTyping(event.target)) return;
     const ctrl = event.ctrlKey || event.metaKey;
     const key = event.key.toLowerCase();
+    if (!ctrl && (key === ' ' || key === 'enter') && isControl(event.target)) return;
     const handled = () => {
       event.preventDefault();
       event.stopPropagation();
@@ -945,7 +948,7 @@ export function BoardEditor({ path, name, initial, t, saver, banner, onRename }:
             className="absolute left-3 top-14 flex w-[164px] flex-col gap-2.5 rounded-lg bg-paper-raised p-2.5 text-[11.5px] text-ink-soft shadow-[0_0_0_1px_var(--color-paper-line),0_6px_18px_-8px_rgb(0_0_0_/_0.35)]"
           >
             <Swatches label={t('stroke')} colors={STROKES} t={t} onPick={(stroke) => restyle({ stroke })} current={single?.stroke} />
-            {selection.some((id) => findShape(board, id)) && (
+            {selection.some((id) => { const shape = findShape(board, id); return shape && shape.kind !== 'text'; }) && (
               <Swatches label={t('fill')} colors={FILLS} t={t} onPick={(fill) => restyle({ fill })} current={single && isShape(single) ? single.fill : undefined} />
             )}
             <div className="flex gap-1 border-t border-paper-line pt-2">

@@ -205,6 +205,12 @@ export default function Whiteboards() {
                     aria-current={entry.path === selected ? 'page' : undefined}
                     onClick={() => void open(entry.path)}
                     onDoubleClick={() => setRenaming(entry.path)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'F2') {
+                        event.preventDefault();
+                        setRenaming(entry.path);
+                      }
+                    }}
                   >
                     <WhiteboardGlyph />
                     <span className="truncate">{entry.name}</span>
