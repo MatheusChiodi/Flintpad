@@ -97,6 +97,14 @@ export const CodeIcon = (props: IconProps) => (
   </Icon>
 );
 
+// Navegador: um globo com meridiano e paralelo.
+export const BrowserIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="8" cy="8" r="5.75" />
+    <path d="M2.25 8h11.5M8 2.25c1.9 2.1 1.9 9.4 0 11.5M8 2.25c-1.9 2.1-1.9 9.4 0 11.5" />
+  </Icon>
+);
+
 export const RequestIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M2.5 5.25h9.5m-2.5-2.5 2.5 2.5-2.5 2.5M13.5 10.75H4m2.5-2.5-2.5 2.5 2.5 2.5" />

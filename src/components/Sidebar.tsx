@@ -9,6 +9,7 @@ import {
   CalendarIcon,
   ChevronIcon,
   CloseIcon,
+  BrowserIcon,
   CodeIcon,
   CollapseAllIcon,
   ExpandAllIcon,
@@ -100,6 +101,7 @@ type Props = {
   onWhiteboards: () => void;
   onRequests: () => void;
   onCode: () => void;
+  onBrowser: () => void;
   onSearch: () => void;
   onSettings: () => void;
   /** Tags do vault (com as páginas de cada uma) e o que fazer ao escolher uma. */
@@ -112,7 +114,7 @@ type Props = {
 
 export function Sidebar(props: Props) {
   const { vault, notes, activePath, favorites, onToggleFavorite, onOpen, onNew, onDelete, onRename, onDuplicate, onMove, onMoveTo, onCopyLink } = props;
-  const { onGraph, onDaily, onTasks, onWhiteboards, onRequests, onCode, onSearch, onSettings, tags, onTag, rail, onToggleRail } = props;
+  const { onGraph, onDaily, onTasks, onWhiteboards, onRequests, onCode, onBrowser, onSearch, onSettings, tags, onTag, rail, onToggleRail } = props;
   const t = useT();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState('');
@@ -384,6 +386,7 @@ export function Sidebar(props: Props) {
         {navButton(t('nav.graph'), 'Ctrl G', GraphIcon, onGraph)}
         {navButton(t('nav.requests'), 'Ctrl Shift E', RequestIcon, onRequests)}
         {navButton(t('nav.code'), 'Ctrl Shift K', CodeIcon, onCode)}
+        {navButton(t('nav.browser'), 'Ctrl Shift Y', BrowserIcon, onBrowser)}
       </nav>
       {favoriteNotes.length > 0 && (
         <>

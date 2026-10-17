@@ -13,6 +13,7 @@ import { Sidebar } from './components/Sidebar';
 import { Tasks } from './components/Tasks';
 import { Toast, type ToastMessage } from './components/Toast';
 import { Welcome } from './components/Welcome';
+import { handleBrowserMenu } from './lib/browserBridge';
 import { handleCodeMenu } from './lib/codeBridge';
 import { translate, useLanguage, useT, type Key } from './lib/i18n';
 import { sanitizeFolder } from './lib/prefs';
@@ -20,15 +21,16 @@ import { usePrefs } from './lib/prefsContext';
 import { baseName, dirName, isRequestTarget, outgoingTargets, resolveLink, resolveRequestTarget, retargetLinks, splitFrontmatter } from './lib/links';
 import { focusRequest, getRequestIndex, loadRequestIndex } from './lib/requestIndex';
 import { gotoHeading } from './lib/noteBridge';
-import { applyTemplate, dailyNeighbors, extractHeadings, folderList, isDailyNote, isoDate, linkContexts, templatesIn, linkMentions, parseLinkTarget, sanitizeNotePath, tagIndex, unlinkedMentions } from './lib/notes';
+import { applyTemplate, dailyNeighbors, extractHeadings, noteToText, folderList, isDailyNote, isoDate, linkContexts, templatesIn, linkMentions, parseLinkTarget, sanitizeNotePath, tagIndex, unlinkedMentions } from './lib/notes';
 import { clearRecents, emptyPins, loadPins, prunePins, removePath, removeRecent, renamePath, savePins, toggleFavorite, touchRecent, type Pins } from './lib/pins';
 import { closeOthers, closeToRight, loadSession, moveTab, restoreSession, saveSession, togglePin } from './lib/tabs';
-import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
+import { BROWSER, CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type MenuAction, type Note, type Tab } from './types';
 
 // O editor de código é pesado (Monaco): só é baixado quando a guia abre.
 const Code = lazy(() => import('./components/Code'));
 // Quadro branco: módulo isolado em src/whiteboard, também baixado só quando a guia abre.
 const Whiteboards = lazy(() => import('./whiteboard'));
+const Browser = lazy(() => import('./components/Browser'));
 
 const RAIL_STORAGE_KEY = 'obnotion:sidebar-rail';
 const currentPath = (tab?: Tab) => tab?.stack[tab.idx] ?? '';
@@ -448,6 +450,25 @@ export default function App() {
     }
   };
 
+  // Texto puro: grava o que o editor ainda tem pendente e exporta o arquivo do disco, sem a sintaxe Markdown.
+  const exportTxt = async () => {
+    const { tabs, activeId, notes } = latest.current;
+    const note = notes.find((n) => n.path === currentPath(tabs.find((t) => t.id === activeId)));
+    if (!note || exporting.current) return;
+    exporting.current = true;
+    try {
+      flushNote(note.path);
+      await pendingWrite(note.path);
+      const result = await window.api.exportText(note.name, noteToText(await window.api.read(note.path), note.name));
+      if (result?.path) notify('ok', translate('export.savedText'), result.path);
+      else if (result) notify('error', translate('export.failedText'), result.error);
+    } catch (error) {
+      notify('error', translate('export.failedText'), reason(error));
+    } finally {
+      exporting.current = false;
+    }
+  };
+
   // Requests, Código, Tarefas e Quadros são guias únicas: se já existem, só recebem o foco.
   const openSingleton = (path: string) => {
     const existing = latest.current.tabs.find((t) => currentPath(t) === path);
@@ -458,6 +479,7 @@ export default function App() {
   const openCode = () => openSingleton(CODE);
   const openTasks = () => openSingleton(TASKS);
   const openWhiteboards = () => openSingleton(WHITEBOARDS);
+  const openBrowser = () => openSingleton(BROWSER);
   const saved = (path: string, content: string) => setContents((prev) => ({ ...prev, [path]: content }));
 
   // Nota de hoje: uma página por dia numa pasta própria, criada na primeira vez que é aberta.
@@ -547,6 +569,7 @@ export default function App() {
       setSettings(true);
     },
     'export-pdf': () => void exportPdf(),
+    'export-txt': () => void exportTxt(),
     'copy-link': () => copyActive((n) => `[[${n.name}]]`),
     'copy-name': () => copyActive((n) => n.name),
     'toggle-favorite': toggleActiveFavorite,
@@ -560,6 +583,14 @@ export default function App() {
     code: () => openCode(),
     tasks: () => openTasks(),
     whiteboards: () => openWhiteboards(),
+    browser: () => openBrowser(),
+    // Fora do navegador embutido, recarregar, zoom e DevTools valem para a janela do app (como antes).
+    reload: () => void window.api.windowAction('reload'),
+    'force-reload': () => void window.api.windowAction('force-reload'),
+    devtools: () => void window.api.windowAction('devtools'),
+    'zoom-in': () => void window.api.windowAction('zoom-in'),
+    'zoom-out': () => void window.api.windowAction('zoom-out'),
+    'zoom-reset': () => void window.api.windowAction('zoom-reset'),
     'toggle-sidebar': () => setSidebar((visible) => !visible),
     'toggle-rail': () => {
       setSidebar(true);
@@ -625,11 +656,13 @@ export default function App() {
     ['copy-link', 'cmd.copyLink', 'Ctrl L', menu['copy-link'], isNote],
     ['copy-name', 'cmd.copyName', 'Ctrl Alt L', menu['copy-name'], isNote],
     ['export-pdf', 'cmd.exportPdf', 'Ctrl Shift P', menu['export-pdf'], isNote],
+    ['export-txt', 'cmd.exportText', undefined, menu['export-txt'], isNote],
     ['graph', 'cmd.graph', 'Ctrl G', menu.graph],
     ['tasks', 'cmd.tasks', 'Ctrl Shift J', menu.tasks],
     ['whiteboards', 'cmd.whiteboards', 'Ctrl Shift B', menu.whiteboards],
     ['requests', 'cmd.requests', 'Ctrl Shift E', menu.requests],
     ['code', 'cmd.code', 'Ctrl Shift K', menu.code],
+    ['browser', 'cmd.browser', 'Ctrl Shift Y', menu.browser],
     ['new-tab', 'cmd.newTab', 'Ctrl T', menu['new-tab']],
     ['close-tab', 'cmd.closeTab', 'Ctrl W', menu['close-tab'], tabs.length > 0],
     ['reopen-tab', 'cmd.reopenTab', 'Ctrl Shift T', menu['reopen-tab'], closed.length > 0],
@@ -689,6 +722,7 @@ export default function App() {
       // Na aba Código, atalhos como Ctrl+P e Ctrl+Shift+P seguem o VS Code.
       const active = latest.current.tabs.find((tab) => tab.id === latest.current.activeId);
       if (active && currentPath(active) === CODE && handleCodeMenu(action)) return;
+      if (active && currentPath(active) === BROWSER && handleBrowserMenu(action)) return;
       menuRef.current[action]?.();
     });
     const onLink = (event: Event) => void openTargetRef.current((event as CustomEvent<string>).detail);
@@ -807,6 +841,8 @@ export default function App() {
     );
   }
 
+  const browserOpen = tabs.some((tab) => currentPath(tab) === BROWSER);
+
   return (
     <div className="frame flex h-full">
       <Presence when={sidebar} name="sidebar">
@@ -830,6 +866,7 @@ export default function App() {
           onWhiteboards={openWhiteboards}
           onRequests={openRequests}
           onCode={openCode}
+          onBrowser={openBrowser}
           onSearch={() => setSwitcher({})}
           tags={tags}
           onTag={(tag) => setSwitcher({ query: `tag:${tag} ` })}
@@ -856,12 +893,19 @@ export default function App() {
         />
         {/* Só na impressão: o título da tela é um campo de uma linha, que cortaria nomes longos no PDF. */}
         {isNote && <h1 className="print-title">{baseName(activePath)}</h1>}
+        {/* O navegador fica montado (escondido) enquanto a guia existe: trocar de guia não recarrega as páginas. */}
+        <div className="relative flex min-h-0 flex-1 flex-col">
+        {browserOpen && (
+          <Suspense fallback={null}>
+            <Browser visible={activePath === BROWSER} />
+          </Suspense>
+        )}
         <Stage
           swapKey={`${activeId}:${activePath}`}
           material={isNote ? 'sheet' : 'well'}
           className={`min-h-0 flex-1 overflow-y-auto ${isNote ? 'mx-2 mb-2' : ''}`}
         >
-          {activePath === REQUESTS ? (
+          {activePath === BROWSER ? null : activePath === REQUESTS ? (
             <Requests notes={notes} contents={contents} onOpenNote={(path) => open(path)} onCreateNote={createNoteWith} />
           ) : activePath === CODE ? (
             <Suspense fallback={<p className="p-5 text-frost-500">{t('code.loading')}</p>}>
@@ -900,6 +944,7 @@ export default function App() {
               onSaveError={(error) => notify('error', translate('notes.error.save'), reason(error))}
               wide={widePaths.has(activePath)}
               onToggleWide={() => toggleWide(activePath)}
+              onExport={(format) => void (format === 'pdf' ? exportPdf() : exportTxt())}
               header={
                 isDailyNote(activePath, t('daily.folder')) ? (
                   <DailyNav
@@ -937,6 +982,7 @@ export default function App() {
             />
           )}
         </Stage>
+        </div>
       </main>
 
       <Presence when={isNote} name="links">

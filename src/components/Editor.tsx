@@ -10,7 +10,8 @@ import { gotoHeadingEvent, previewLink, setNoteIndex, takeHeading, useResolvedLi
 import { detailedLinkRegex, extractHeadings, headingKey, linkMarkdown, sanitizeNoteName, textStats, type TextStats } from '../lib/notes';
 import { getRequestIndex, useRequestSummary } from '../lib/requestIndex';
 import type { Note } from '../types';
-import { StarIcon } from './Icons';
+import { ContextMenu, type MenuRequest } from './ContextMenu';
+import { DownloadIcon, StarIcon } from './Icons';
 import { FindBar, StatusBar, type SaveState } from './NoteTools';
 
 const SAVE_DELAY_MS = 400;
@@ -181,9 +182,11 @@ type Props = {
   /** Largura cheia em vez da coluna de leitura. */
   wide?: boolean;
   onToggleWide: () => void;
+  /** Baixar a página (PDF ou texto puro). */
+  onExport: (format: 'pdf' | 'txt') => void;
 };
 
-export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSaved, onRename, onSaveError, header, wide, onToggleWide }: Props) {
+export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSaved, onRename, onSaveError, header, wide, onToggleWide, onExport }: Props) {
   const t = useT();
   // O dicionário só é lido na criação: a troca de língua remonta o componente (key em App).
   const { language } = useLanguage();
@@ -192,6 +195,7 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [stats, setStats] = useState<TextStats>({ words: 0, characters: 0, minutes: 0 });
   const [finding, setFinding] = useState(false);
+  const [exportMenu, setExportMenu] = useState<MenuRequest | null>(null);
   const [version, setVersion] = useState(0);
   const content = useRef<HTMLDivElement>(null);
   const session = useRef({ front: '', saved: '', latest: '', ready: false, failed: false, timer: 0 });
@@ -419,7 +423,7 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
         {header}
         <div className="relative mb-5">
           <input
-            className="title-input block w-full bg-transparent px-[54px] outline-none"
+            className="title-input block w-full bg-transparent px-[54px] pr-[78px] outline-none"
             value={title}
             placeholder={t('note.untitled')}
             aria-label={t('editor.titleLabel')}
@@ -438,19 +442,43 @@ export function Editor({ path, notes, contents, favorite, onToggleFavorite, onSa
               editor.focus();
             }}
           />
-          {/* Com o painel de links oculto (janela menor), a estrela fica na margem do título. */}
-          <div className="absolute right-3.5 top-3 lg:hidden">
+          {/* Baixar fica sempre à vista; com o painel de links oculto (janela menor), a estrela também vem para cá. */}
+          <div className="absolute right-3.5 top-3 flex items-center gap-1">
             <button
               className="icon-button sheet-button"
-              data-on={favorite}
-              title={t(favorite ? 'favorites.remove' : 'favorites.add')}
-              aria-label={t(favorite ? 'favorites.remove' : 'favorites.add')}
-              aria-pressed={favorite}
-              onClick={onToggleFavorite}
+              title={t('note.download')}
+              aria-label={t('note.download')}
+              aria-haspopup="menu"
+              aria-expanded={exportMenu !== null}
+              onClick={(event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setExportMenu({
+                  x: rect.right - 200,
+                  y: rect.bottom + 4,
+                  label: t('note.download'),
+                  items: [
+                    { label: t('note.downloadPdf'), keys: 'Ctrl Shift P', run: () => onExport('pdf') },
+                    { label: t('note.downloadTxt'), run: () => onExport('txt') },
+                  ],
+                });
+              }}
             >
-              <StarIcon size={15} filled={favorite} />
+              <DownloadIcon size={15} />
             </button>
+            <span className="flex lg:hidden">
+              <button
+                className="icon-button sheet-button"
+                data-on={favorite}
+                title={t(favorite ? 'favorites.remove' : 'favorites.add')}
+                aria-label={t(favorite ? 'favorites.remove' : 'favorites.add')}
+                aria-pressed={favorite}
+                onClick={onToggleFavorite}
+              >
+                <StarIcon size={15} filled={favorite} />
+              </button>
+            </span>
           </div>
+          {exportMenu && <ContextMenu request={exportMenu} onClose={() => setExportMenu(null)} />}
         </div>
         <BlockNoteView editor={editor} theme="light" onChange={handleChange}>
           <SuggestionMenuController triggerCharacter="[" getItems={suggestNotes} />

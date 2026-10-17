@@ -11,6 +11,7 @@ const { LANGUAGES, translator } = require('./i18n.cjs');
 const { registerWorkspaceIpc } = require('./workspace.cjs');
 const { registerTerminalIpc } = require('./terminal.cjs');
 const { registerLspIpc } = require('./lsp.cjs');
+const { registerBrowserIpc } = require('./browser.cjs');
 const { pushRecentVault, forgetRecentVault, sanitizeStoredPrefs } = require('./vaults.cjs');
 
 // Os ganchos de teste só existem em desenvolvimento: no app empacotado as variáveis são descartadas
@@ -40,6 +41,7 @@ let win = null;
 let workspace = null;
 let terminals = null;
 let languageServers = null;
+let browser = null;
 let vault = process.env.FLINTPAD_VAULT || null;
 let language = 'pt-BR';
 let t = translator(language);
@@ -268,6 +270,29 @@ function registerIpc() {
     }
   });
 
+  // Exporta a página como texto puro: o texto já vem pronto do renderer; aqui só o diálogo e a gravação.
+  ipcMain.handle('page:exportText', async (_e, name, text) => {
+    let target = process.env.FLINTPAD_EXPORT_TO;
+    try {
+      if (!target) {
+        const safeName = String(name ?? '').replace(/[\\/:*?"<>|]/g, '').trim() || 'Flintpad';
+        const result = await dialog.showSaveDialog(win, {
+          title: t('dialog.exportText'),
+          defaultPath: path.join(app.getPath('documents'), `${safeName}.txt`),
+          filters: [{ name: t('dialog.textFiles'), extensions: ['txt'] }],
+        });
+        if (result.canceled || !result.filePath) return null;
+        target = result.filePath;
+      }
+      // BOM: editores antigos (o Bloco de Notas de antes do Windows 10) reconhecem os acentos como UTF-8.
+      await fsp.writeFile(target, `\uFEFF${String(text ?? '').replace(/\r?\n/g, '\r\n')}`, 'utf8');
+      if (!process.env.FLINTPAD_EXPORT_TO) shell.showItemInFolder(target);
+      return { path: target };
+    } catch (error) {
+      return { error: error.message };
+    }
+  });
+
   registerRequestIpc();
   registerCodeIpc();
 }
@@ -423,6 +448,20 @@ function registerCodeIpc() {
   });
   terminals = registerTerminalIpc({ getWin: () => win, getCwd: () => workspace.currentRoot() });
   languageServers = registerLspIpc({ getWin: () => win });
+  browser = registerBrowserIpc({ getWin: () => win, getT: () => t });
+
+  // Recarregar, zoom e DevTools passam pelo renderer (no navegador embutido valem para a página aberta);
+  // fora dele, voltam para cá e agem na janela do app.
+  ipcMain.handle('app:window', (_e, action) => {
+    const contents = win?.webContents;
+    if (!contents) return;
+    if (action === 'reload') contents.reload();
+    else if (action === 'force-reload') contents.reloadIgnoringCache();
+    else if (action === 'devtools') contents.toggleDevTools();
+    else if (action === 'zoom-in') contents.setZoomLevel(contents.getZoomLevel() + 0.5);
+    else if (action === 'zoom-out') contents.setZoomLevel(contents.getZoomLevel() - 0.5);
+    else if (action === 'zoom-reset') contents.setZoomLevel(0);
+  });
 }
 
 const isEnvFile = (rel) => rel.split('/').slice(-2, -1)[0] === ENV_DIR;
@@ -561,6 +600,7 @@ function buildMenu(lang) {
         item(t('menu.settings'), 'CmdOrCtrl+,', 'settings'),
         { type: 'separator' },
         item(t('menu.exportPdf'), 'CmdOrCtrl+Shift+P', 'export-pdf'),
+        item(t('menu.exportText'), undefined, 'export-txt'),
         { type: 'separator' },
         { role: 'quit', label: t('menu.quit'), accelerator: 'CmdOrCtrl+Shift+Q' },
       ],
@@ -592,16 +632,17 @@ function buildMenu(lang) {
         item(t('menu.graph'), 'CmdOrCtrl+G', 'graph'),
         item(t('menu.requests'), 'CmdOrCtrl+Shift+E', 'requests'),
         item(t('menu.code'), 'CmdOrCtrl+Shift+K', 'code'),
+        item(t('menu.browser'), 'CmdOrCtrl+Shift+Y', 'browser'),
         item(t('menu.toggleSidebar'), 'CmdOrCtrl+\\', 'toggle-sidebar'),
         item(t('menu.toggleRail'), 'CmdOrCtrl+Shift+\\', 'toggle-rail'),
         { type: 'separator' },
-        { role: 'reload', label: t('menu.reload') },
-        { role: 'forceReload', label: t('menu.forceReload') },
-        { role: 'toggleDevTools', label: t('menu.devTools') },
+        item(t('menu.reload'), 'CmdOrCtrl+R', 'reload'),
+        item(t('menu.forceReload'), 'CmdOrCtrl+Shift+R', 'force-reload'),
+        item(t('menu.devTools'), 'CmdOrCtrl+Shift+I', 'devtools'),
         { type: 'separator' },
-        { role: 'zoomIn', label: t('menu.zoomIn'), accelerator: 'CmdOrCtrl+=' },
-        { role: 'zoomOut', label: t('menu.zoomOut') },
-        { role: 'resetZoom', label: t('menu.resetZoom') },
+        item(t('menu.zoomIn'), 'CmdOrCtrl+=', 'zoom-in'),
+        item(t('menu.zoomOut'), 'CmdOrCtrl+-', 'zoom-out'),
+        item(t('menu.resetZoom'), 'CmdOrCtrl+0', 'zoom-reset'),
         { role: 'togglefullscreen', label: t('menu.fullscreen') },
       ],
     },
@@ -637,6 +678,8 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
+      // A guia Navegador mostra sites em <webview>; browser.cjs restringe a sessão e tira preload e Node.
+      webviewTag: true,
       offscreen: Boolean(process.env.FLINTPAD_SHOT),
       nodeIntegration: false,
     },
@@ -714,6 +757,7 @@ app.on('will-quit', () => {
   terminals?.disposeAll();
   languageServers?.disposeAll();
   workspace?.dispose();
+  void browser?.flush();
 });
 
 app.on('window-all-closed', () => app.quit());

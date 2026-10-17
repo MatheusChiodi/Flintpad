@@ -6,7 +6,7 @@
 
 **Your whole workspace. Your files. Your machine.**
 
-Notes, graph, tasks, whiteboards, an API client and a code editor in one local-first desktop app.<br>
+Notes, graph, tasks, whiteboards, an API client, a code editor and a web browser in one local-first desktop app.<br>
 Everything is a plain file in a folder you own. No account, no cloud, no telemetry.
 
 [![CI](https://github.com/MatheusChiodi/Flintpad/actions/workflows/ci.yml/badge.svg)](https://github.com/MatheusChiodi/Flintpad/actions/workflows/ci.yml)
@@ -14,7 +14,7 @@ Everything is a plain file in a folder you own. No account, no cloud, no telemet
 [![License: MIT](https://img.shields.io/badge/license-MIT-4fbfb4.svg)](LICENSE)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-2d3648.svg)
 
-[Download](https://github.com/MatheusChiodi/Flintpad/releases/latest) · [Features](#features) · [Contributing](CONTRIBUTING.md) · [Usage policy](USAGE_POLICY.md)
+[Download](https://github.com/MatheusChiodi/Flintpad/releases/latest) · [Features](#features) · [Contributing](CONTRIBUTING.md) · [Usage policy](USAGE_POLICY.md) · [License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 <img src="docs/screenshot.png" alt="Flintpad with a note open: page tree on the left, block editor in the middle, outline and backlinks on the right" width="900" />
 
@@ -23,11 +23,11 @@ Everything is a plain file in a folder you own. No account, no cloud, no telemet
 ## Why Flintpad
 
 - **Notes like Obsidian, editing like Notion.** Markdown files with `[[wikilinks]]`, backlinks, tags and a graph, edited as blocks with a `/` menu. Open an existing Obsidian vault and it just works.
-- **One folder, every tool.** Tasks gathered from all your notes, Excalidraw-style whiteboards, a Bruno-compatible API client and a VS Code-style code workbench, side by side in tabs.
+- **One folder, every tool.** Tasks gathered from all your notes, Excalidraw-style whiteboards, a Bruno-compatible API client, a VS Code-style code workbench (with SQL validation and Claude Code) and a Chromium web browser, side by side in tabs.
 - **Yours, offline.** Plain `.md`, `.bru` and `.whiteboard.json` files you can sync, version or edit anywhere. Nothing leaves your computer unless you send it.
 - **Keyboard first.** Quick search, command palette and shortcuts for everything, in English and Brazilian Portuguese.
 
-Everything is original code. Nothing was copied from Obsidian, Notion, Bruno, Excalidraw or VS Code; their behavior was studied and reimplemented with open-source libraries.
+Everything is original code. Nothing was copied from Obsidian, Notion, Bruno, Excalidraw, VS Code or Google Chrome; their behavior was studied and reimplemented with open-source libraries.
 
 ## Getting started
 
@@ -62,7 +62,12 @@ Each note is a light page set into the dark frame. Type `/` to insert headings, 
 - **Templates**: pages inside the `Templates` folder (`Modelos` in Portuguese) can start a new page or be inserted at the cursor, from the command palette. `{{title}}`, `{{date}}`, `{{time}}` and `{{date:DD/MM/YYYY}}` (tokens `YYYY MM DD HH mm`) are filled in. A template named after the daily folder (`Templates/Daily`) becomes the starting text of each new daily note.
 - **Daily notes** show the full date above the title, with buttons to the previous and next existing daily note and back to today.
 
-`Ctrl+Shift+P` (File → Export as PDF…) saves the open page as an A4 PDF: title and content only, black on white, without the sidebar, tabs or links panel. The file is then shown in its folder.
+**Download a page**: the download button next to the page title offers **PDF** and **plain text (.txt)** (also in *File* and the command palette).
+
+- **PDF** (`Ctrl+Shift+P`): an A4 page with the title and content only, black on white, without the sidebar, tabs or links panel.
+- **Text (.txt)**: the page without Markdown syntax, ready to read anywhere: the title on top, `•` bullets, `[ ]`/`[x]` tasks, links written as `text (address)`, wikilinks as their alias and code blocks kept as they are. Saved as UTF-8 with Windows line endings.
+
+Either way the file is then shown in its folder.
 
 ### Wikilinks and backlinks
 
@@ -212,6 +217,7 @@ Star a page to pin it in a Favorites section above the page tree: from the links
 | Tasks | `Ctrl+Shift+J` |
 | Whiteboards | `Ctrl+Shift+B` |
 | Graph / Requests / Code | `Ctrl+G` / `Ctrl+Shift+E` / `Ctrl+Shift+K` |
+| Browser | `Ctrl+Shift+Y` |
 | Open another vault | `Ctrl+O` |
 | Quit | `Ctrl+Shift+Q` |
 
@@ -252,7 +258,7 @@ Not there yet, compared to Bruno: pre/post-request scripts and `tests` blocks in
 `Ctrl+Shift+K` opens a workbench laid out like VS Code, built on Monaco (the editor inside VS Code):
 
 - **Explorer** for any folder on disk (the vault by default; `Open folder…`, `Open file…` and recent folders from the buttons above it). `Add folder to workspace…` opens several projects side by side, as a VS Code multi-root workspace, with new file/folder, rename, **duplicate**, **drag and drop to move** (open tabs follow), delete to trash, copy absolute or relative path, reveal in File Explorer and live refresh when files change on disk. The tree works from the keyboard (arrows, `Home`/`End`, `F2`, `Delete`, `Shift+F10` for the context menu) and says when a folder is loading or can't be read.
-- **Search** (`Ctrl+Shift+F`, the selection becomes the query): every file in the open folders, with match case, whole word (accent-aware) and regular expression (`Alt+C`/`Alt+W`/`Alt+R`), files to include/exclude as globs (`src, *.ts` / `dist, *.min.js`), results grouped by file with the match highlighted. **Replace** (`Ctrl+Shift+H`) previews each change and replaces in one file or everywhere; files open in the editor change in place (undo with `Ctrl+Z`), the rest on disk. **Find in folder…** in the explorer's context menu scopes the search to a folder.
+- **Search** (`Ctrl+Shift+F`, the selection becomes the query): **files whose name matches** come first (accent- and case-insensitive: `acao` finds `Ação.ts`), then every match inside the files in the open folders, with match case, whole word (accent-aware) and regular expression (`Alt+C`/`Alt+W`/`Alt+R`), files to include/exclude as globs (`src, *.ts` / `dist, *.min.js`), results grouped by file with the match highlighted. **Replace** (`Ctrl+Shift+H`) previews each change and replaces in one file or everywhere; files open in the editor change in place (undo with `Ctrl+Z`), the rest on disk. **Find in folder…** in the explorer's context menu scopes the search to a folder.
 - **TODOs** view: every `TODO`, `FIXME`, `HACK`, `XXX`, `BUG` and `NOTE` comment in the workspace, filterable by tag and refreshed when files change.
 - **Editor tabs** with preview tabs (single click, italic), dirty markers, auto save (toggle in the status bar) and `Ctrl+S`. Right-click (or `Shift+F10`) a tab to close others / to the right / saved / all, **pin** it (pinned tabs stay on the left and survive "close others"), compare with saved, copy its path or reveal it. `Ctrl+Shift+T` **reopens the last closed editor**, and the open tabs of each workspace **come back when the app restarts**. Arrow keys move between tabs and `Delete` closes one.
 - **Breadcrumbs** you can click: a folder lists its contents (folders drill down, files open); the file name opens its symbols.
@@ -260,7 +266,9 @@ Not there yet, compared to Bruno: pre/post-request scripts and `tests` blocks in
 - **Compare with saved** (`Ctrl+K D`): the file on disk next to your unsaved edits, side by side or inline, with a change count.
 - **Markdown preview** to the side (`Ctrl+K V`): headings, task lists, quotes, tables, highlighted code, front matter and `[[wikilinks]]`. It follows the cursor, double-clicking a block moves the cursor there, relative links open the file and web links open in the browser. The preview is built from a syntax tree (no HTML from the file is rendered) and does not load images.
 - **Problems** panel (`Ctrl+Shift+M`, or click the error/warning counts in the status bar): diagnostics grouped by file with a filter; it shares the bottom panel with the terminal.
-- **Integrated terminal** (`` Ctrl+` ``, new with `` Ctrl+Shift+` ``): real PowerShell sessions through a pseudo-terminal, several at once, kept alive when you switch tabs. **Run active file** (`Ctrl+Alt+N`) saves and runs it with the language's runner (`node`, `node --experimental-strip-types` for TypeScript, `python`, `ruby`, `go run`, `bash`, PowerShell…); **Run selected text** sends the selection (or the current line).
+- **Integrated terminal** (`` Ctrl+` ``, new with `` Ctrl+Shift+` ``): real PowerShell sessions through a pseudo-terminal, several at once, kept alive when you switch tabs. It prefers PowerShell 7 (skipping the Microsoft Store alias, which closes right away), falls back to Windows PowerShell and then `cmd`, and when a shell can't start or exits at once the panel says why, with *Try again*, instead of staying blank. **Run active file** (`Ctrl+Alt+N`) saves and runs it with the language's runner (`node`, `node --experimental-strip-types` for TypeScript, `python`, `ruby`, `go run`, `bash`, PowerShell…); **Run selected text** sends the selection (or the current line).
+- **SQL validation**: `.sql` files are checked as you type (errors underlined and listed in Problems) or on demand with *SQL: Validate script* (`Ctrl+Shift+V`, also in the editor's right-click menu). The dialect is picked from the status bar: MySQL (default), MariaDB, PostgreSQL, SQL Server (T-SQL, `GO` batches understood), SQLite, BigQuery, Snowflake, Redshift, Db2, Hive, Trino and Athena. The script is split into statements so each one reports its own error. It checks syntax only, with [node-sql-parser](https://github.com/taozhi8833998/node-sql-parser); valid but unusual code (complex stored procedures, vendor extensions) may be flagged.
+- **Claude Code**: if the [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI is installed, *Claude Code: Open in terminal* (status bar, terminal panel or palette) starts it in its own terminal tab in the workspace folder, and `Ctrl+Alt+K` (*Mention file/selection*, also in the right-click menu) types `@path#L10-20` for the current file and selection into it, without sending, so you finish the question. Flintpad only runs the CLI; Claude Code itself talks to Anthropic under your own account.
 - **On save** (only when you save, never on auto save): format document, trim trailing whitespace (Markdown is left alone, where two spaces mean a line break) and insert a final newline, each toggled from the palette.
 - **View options** from the palette: render whitespace, line numbers (absolute, relative, hidden), sticky scroll, minimap, word wrap (`Alt+Z`), font size. **Zen mode** (`Ctrl+K Z`) hides everything but the tabs and the editor.
 - **Copy as Markdown block**: the selection (or the whole file) as a fenced block headed by its relative path and line numbers, ready to paste into a page.
@@ -277,7 +285,29 @@ Flintpad reads the extensions already installed in your VS Code (the built-in on
 - **File icon themes** (Seti by default, Minimal, Modern or any installed one) in the explorer, tabs and Quick Open.
 - **Languages and language configuration** (file associations, comments, brackets, indentation rules) and **snippets**.
 - There is no extensions view: what the installed extensions contribute just works. Extensions that run their own code in the VS Code extension host (ESLint, Prettier, debuggers, Git, assistants) do not run here.
-- AI features of editors like Cursor (chat, inline edits, completions from a model) are not included: they need an online service, and the app stays local and offline.
+- Built-in AI features of editors like Cursor (inline edits, completions from a model) are not included; for an assistant, use the Claude Code integration above, which runs only when you open it.
+
+### Browser
+
+`Ctrl+Shift+Y` (or **Browser** in the sidebar) opens a web browser tab running on Chromium, the open-source engine behind Google Chrome (shipped with Electron, so pages render as they do in Chrome). The tab stays loaded in the background: switching to another app tab and back does not reload the pages.
+
+- **Tabs**: open, close, reopen the last closed (`Ctrl+Shift+T`), drag to reorder, middle-click to close, duplicate, mute a site, close others / to the right, and `Ctrl+1`…`Ctrl+9`. Links that open a new window become tabs; sign-in and payment pop-ups open in their own window so they keep working. Normal tabs come back when the app restarts.
+- **Address bar**: type an address or a search (Google by default; Bing, DuckDuckGo, Ecosia or Yahoo in settings), with suggestions from bookmarks and history; `Alt+Enter` opens in a new tab. A lock shows HTTPS, *Not secure* marks HTTP, and clicking it shows the site's saved permissions.
+- **Navigation**: back, forward, reload, stop and home; error and crashed-page screens with a reload button; the address of a hovered link at the bottom left.
+- **Bookmarks**: star a page (`Ctrl+D`), a bookmarks bar (`Ctrl+Shift+B`) and a manager (`Ctrl+Shift+O`) to rename, reorder and remove.
+- **History** (`Ctrl+H`): grouped by day, searchable, remove one entry or clear it all. **New tab** shows a search box and your most visited sites.
+- **Downloads** (`Ctrl+J`): saved to your Downloads folder (or ask where, in settings), with progress, pause, resume, cancel, retry, open and show in folder.
+- **Page tools**: find in page (`Ctrl+F`, `F3`), per-site zoom (`Ctrl+=`/`Ctrl+-`/`Ctrl+0`), print (`Ctrl+P`), save as PDF, save page as HTML or MHTML (`Ctrl+S`), view source (`Ctrl+U`), open a local file (`Ctrl+O`), developer tools (`F12`) and *Open in the system browser*.
+- **Incognito tabs** (`Ctrl+Shift+N`): a separate session whose cookies, cache and history are deleted when the last incognito tab closes.
+- **Permissions**: camera, microphone, location, notifications, screen sharing, clipboard, MIDI, USB and the rest are asked in a bar above the page (allow or block, optionally remembered per site), and can be reviewed and reset in *Browser settings*, which also clears browsing data (history, downloads list, cookies, cache, permissions).
+- **Right-click menu**: open link in a new or incognito tab, save and copy links, images and media, spell-check suggestions, cut/copy/paste, search the selection, save, print, view source and inspect.
+- **Keyboard**: inside the Browser tab, Chrome's shortcuts win over the app's (`Ctrl+T`, `Ctrl+W`, `Ctrl+L`, `Ctrl+R`, `Ctrl+D`, `Ctrl+P`, `Alt+←`…), also while the focus is inside the page; elsewhere the app keeps its own.
+
+**Security.** Pages run sandboxed, without Node.js or any access to the app, in their own sessions (`persist:flintpad-browser` and an in-memory incognito session); the app window accepts no other embedded page. The user agent is the same as Chrome's, so sites that refuse unknown browsers still work.
+
+**Data.** History, bookmarks, the download list, site permissions and browser settings live in the app's data folder (`browser/` under *Settings → About*), never in the vault. Bookmark and top-site icons are fetched from Google's public favicon service.
+
+**Not included**, because they are part of Google's own Chrome and not of the open-source engine: Google account sign-in and sync, the Chrome Web Store and extensions, the password manager, autofill and translation.
 
 ### Welcome, home screen and settings
 
@@ -313,18 +343,20 @@ Preferences are saved in the app's `config.json` and checked field by field when
 - Favorites, recent pages, the tab session, full-width pages and the folder for new pages are stored in the app, keyed by the vault's folder path, not in the vault: moving or renaming the vault folder resets them.
 - The daily-note and template folders follow the interface language (`Daily`/`Templates` in English, `Diário`/`Modelos` in Portuguese).
 - Find in page searches the visible text of the editor; there is no replace.
+- The Browser tab is not a full replacement for Google Chrome: no Google sync, extensions, password manager, autofill or translation (see Browser above).
 
 ## Project layout
 
 - `electron/main.cjs`: window, menu, disk access restricted to the vault, HTTP requests, VS Code extension reader.
 - `electron/workspace.cjs`: the Code tab's open folder (file access limited to it, the vault and files picked in a dialog), its file watcher and search/replace in files (`electron/searchCore.mjs`, shared with the renderer).
-- `electron/terminal.cjs`, `electron/lsp.cjs`: terminal sessions and language server processes.
+- `electron/terminal.cjs`, `electron/lsp.cjs`: terminal sessions (with shell fallback and Claude Code launch) and language server processes.
+- `electron/browser.cjs`: the Browser tab's sessions, downloads, site permissions, right-click menu, in-page shortcuts, pop-ups, history and bookmarks.
 - `electron/vaults.cjs`: recent vault list and stored preferences.
 - `electron/preload.cjs`: the `window.api` bridge.
 - `src/App.tsx`: state (tabs, link index).
 - `src/whiteboard/`: the whiteboard module (see Whiteboards above).
-- `src/components/`: `Welcome` (no vault), `Home` (no page open), `Settings`, `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, search, TODOs, problems, compare with saved, Markdown preview).
-- `src/lib/`: preferences (`prefs.ts`, `prefsContext.tsx`), home screen logic (`home.ts`), settings search, link parsing, graph logic (`graph.ts`), note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`).
+- `src/components/`: `Welcome` (no vault), `Home` (no page open), `Settings`, `Editor` (BlockNote + wikilinks), `NoteTools` (find bar, status bar), `LinkPreview`, `DailyNav`, `ContextMenu`, `Sidebar`, `Panels` (tabs, links panel, quick search and command palette), `Graph`, `Tasks`, `Requests` and its parts in `requests/` (response panel, code dialog, folder runner), `Code` and its parts in `code/` (explorer, quick input, terminal, search, TODOs, problems, compare with saved, Markdown preview), `Browser` (tabs, address bar, bookmarks, history, downloads and settings pages; styles in `src/browser.css`).
+- `src/lib/`: preferences (`prefs.ts`, `prefsContext.tsx`), home screen logic (`home.ts`), settings search, link parsing, graph logic (`graph.ts`), note logic (`notes.ts`: tags, headings, word counts, mentions, search, templates), tabs and session (`tabs.ts`), task extraction, `.bru` request model and request tools (`requestTools.ts`: cURL, code generation, assertions, JSON filter), VS Code themes and snippets, TextMate grammars (`textmate.ts`), icon themes, workbench colors, the LSP bridge (`lsp.ts`), SQL validation (`sqlLint.ts`) and the browser's address, suggestion and shortcut rules (`browser.ts`).
 - `tests/`: unit tests for `src/lib` and `src/whiteboard`, run with `npm test` (Node's built-in test runner). `npm run test:e2e` builds the app and runs `tests/e2e/whiteboard.e2e.mjs`: it starts the real Electron app off-screen with a temporary vault (through the existing `FLINTPAD_SHOT`/`FLINTPAD_EVAL` test hooks, no extra dependency), creates a board, draws, moves and connects shapes, adds a pencil stroke, exports SVG and PNG, then relaunches the app and checks that autosave kept everything.
 - `docs/`: illustrations used in this file.
 
@@ -334,10 +366,10 @@ Bug reports, ideas and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIB
 
 ## License and usage
 
-Flintpad is free software under the [MIT License](LICENSE). The [usage policy](USAGE_POLICY.md) explains in plain words what you can do with it, how forks should be named, and what the app does with your data (in short: nothing leaves your computer).
+Flintpad is free software under the [MIT License](LICENSE), © 2026 Matheus Chiodi. The [usage policy](USAGE_POLICY.md) explains in plain words what you can do with it, how forks should be named, and what the app does with your data (in short: nothing leaves your computer unless you ask). The libraries it bundles keep their own licenses, listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Obsidian, Notion, Bruno, Visual Studio Code, Cursor and Excalidraw are trademarks of their respective owners; Flintpad is not affiliated with or endorsed by them.
+Obsidian, Notion, Bruno, Visual Studio Code, Cursor, Excalidraw, Google Chrome, Chromium, Claude and Claude Code are trademarks of their respective owners; Flintpad is not affiliated with or endorsed by them.
 
 ## Credits
 
-Built on [Electron](https://www.electronjs.org/), [React](https://react.dev/), [BlockNote](https://www.blocknotejs.org/), [d3-force](https://d3js.org/d3-force), [Monaco Editor](https://microsoft.github.io/monaco-editor/), [vscode-textmate](https://github.com/microsoft/vscode-textmate), [xterm.js](https://xtermjs.org/), [node-pty](https://github.com/microsoft/node-pty), [vscode-langservers-extracted](https://github.com/hrsh7th/vscode-langservers-extracted) and [`@usebruno/lang`](https://www.npmjs.com/package/@usebruno/lang).
+Built on [Electron](https://www.electronjs.org/), [React](https://react.dev/), [BlockNote](https://www.blocknotejs.org/), [d3-force](https://d3js.org/d3-force), [Monaco Editor](https://microsoft.github.io/monaco-editor/), [vscode-textmate](https://github.com/microsoft/vscode-textmate), [xterm.js](https://xtermjs.org/), [node-pty](https://github.com/microsoft/node-pty), [vscode-langservers-extracted](https://github.com/hrsh7th/vscode-langservers-extracted), [`@usebruno/lang`](https://www.npmjs.com/package/@usebruno/lang) and [node-sql-parser](https://github.com/taozhi8833998/node-sql-parser). The browser engine is [Chromium](https://www.chromium.org/), through Electron.

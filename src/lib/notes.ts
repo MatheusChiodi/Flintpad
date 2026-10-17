@@ -71,6 +71,41 @@ export function plainText(markdown: string): string {
     .replace(/<[^>]+>/g, '');
 }
 
+/**
+ * Página → arquivo .txt para ler fora do app: título no topo, listas com marcadores, tarefas com [ ]/[x],
+ * links com o endereço entre parênteses e o código dos blocos preservado (só as cercas saem).
+ */
+export function noteToText(markdown: string, title: string): string {
+  const [, body] = splitFrontmatter(markdown);
+  let fenced = false;
+  const lines = body.replace(/\r\n/g, '\n').split('\n').flatMap((line) => {
+    if (/^\s*(```|~~~)/.test(line)) {
+      fenced = !fenced;
+      return [];
+    }
+    if (fenced) return [line];
+    if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) return ['----------'];
+    return [
+      line
+        .replace(detailedLinkRegex(), (_all, target: string, _section, alias?: string) => (alias ?? target).trim())
+        .replace(/!\[([^\]]*)\]\(([^)\s]*)[^)]*\)/g, (_all, alt: string, url: string) => (alt ? `${alt} (${url})` : url))
+        .replace(/\[([^\]]*)\]\(([^)\s]*)[^)]*\)/g, (_all, text: string, url: string) => (!text || text === url ? url : `${text} (${url})`))
+        .replace(/^(\s*)#{1,6}\s+/, '$1')
+        .replace(/^(\s*)>\s?/, '$1')
+        .replace(/^(\s*)[-*+]\s+\[([ xX])\]\s+/, (_all, indent: string, mark: string) => `${indent}[${mark.trim() ? 'x' : ' '}] `)
+        .replace(/^(\s*)[-*+]\s+/, '$1• ')
+        .replace(/(\*\*|__)(?=\S)([\s\S]*?\S)\1/g, '$2')
+        .replace(/(^|[^\w*])([*_])(?=\S)([^*_]*?\S)\2(?![\w*])/g, '$1$3')
+        .replace(/~~(?=\S)([\s\S]*?\S)~~/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/<\/?[a-zA-Z][^>]*>/g, ''),
+    ];
+  });
+  const text = lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  const heading = title.trim();
+  return `${heading && !text.startsWith(heading) ? `${heading}\n${'='.repeat(Math.min(heading.length, 60))}\n\n` : ''}${text}\n`;
+}
+
 export type TextStats = { words: number; characters: number; minutes: number };
 
 const WORDS_PER_MINUTE = 200;

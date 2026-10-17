@@ -14,6 +14,7 @@ import { useT, type Key } from '../lib/i18n';
 import { loadIconTheme, type IconTheme } from '../lib/iconTheme';
 import { configureServers, ensureServer, onServerStatus, restartServers, SERVER_LABELS, SERVER_LANGUAGES, serverForLanguage, serverStatus, setModelOpener, type ServerKind } from '../lib/lsp';
 import { baseName, dirName, isInside, joinPath, relativePath, samePath } from '../lib/paths';
+import { dialectLabel, isSqlDialect, lintSql, loadSqlParser, SQL_DIALECTS, type SqlDialect, type SqlProblem } from '../lib/sqlLint';
 import { allLanguages, applyTokenTheme, fileLanguage, installExtensions, languageForFile } from '../lib/textmate';
 import { toMonacoTheme, toSnippetEntries, type SnippetEntry, type VsExtension, type VsTheme } from '../lib/vscode';
 import { cssVariables, FLINTPAD_THEME, themeKind, workbenchColors, type ThemeKind, type WorkbenchColors } from '../lib/workbenchTheme';
@@ -22,7 +23,7 @@ import { Explorer } from './code/Explorer';
 import { FileIconView } from './code/FileIconView';
 import { QuickInput, type QuickItem } from './code/QuickInput';
 import { SearchView, type SearchHost, type SearchRequest } from './code/SearchView';
-import { TerminalPanel, type TerminalCommand } from './code/TerminalPanel';
+import { ClaudeIcon, TerminalPanel, type TerminalCommand } from './code/TerminalPanel';
 import { TodoView } from './code/TodoView';
 import { DiffView } from './code/DiffView';
 import { MarkdownPreview } from './code/MarkdownPreview';
@@ -94,11 +95,16 @@ type EditorPrefs = {
   renderWhitespace: boolean;
   lineNumbers: LineNumbers;
   stickyScroll: boolean;
+  /** Dialeto usado para validar arquivos .sql. */
+  sqlDialect: SqlDialect;
 };
 
 const DEFAULT_LAYOUT: Layout = { sidebar: true, sidebarWidth: 260, panel: false, panelHeight: 260, panelMax: false, view: 'explorer', panelView: 'terminal', preview: false, previewWidth: 520, zen: false };
 const SIDE_VIEWS: SideView[] = ['explorer', 'search', 'todo'];
-const DEFAULT_PREFS: EditorPrefs = { minimap: true, wordWrap: false, fontSize: 13, autoSave: true, formatOnSave: false, trimWhitespace: false, finalNewline: false, renderWhitespace: false, lineNumbers: 'on', stickyScroll: true };
+const DEFAULT_PREFS: EditorPrefs = { minimap: true, wordWrap: false, fontSize: 13, autoSave: true, formatOnSave: false, trimWhitespace: false, finalNewline: false, renderWhitespace: false, lineNumbers: 'on', stickyScroll: true, sqlDialect: 'mysql' };
+const SQL_MARKER_OWNER = 'flintpad-sql';
+const SQL_LINT_DELAY_MS = 600;
+const isSqlModel = (model: monaco.editor.ITextModel) => /^(sql|mysql|pgsql|tsql|plsql)$/.test(model.getLanguageId()) || /\.sql$/i.test(model.uri.path);
 
 // O que sobrevive à troca de aba: abas do editor, posição de cada arquivo e versão salva de cada modelo.
 const session = {
@@ -193,7 +199,7 @@ export default function Code() {
   });
   const [prefs, setPrefsState] = useState<EditorPrefs>(() => {
     const stored = readStorage(STORAGE.editor, DEFAULT_PREFS);
-    return { ...stored, lineNumbers: (['on', 'relative', 'off'] as const).includes(stored.lineNumbers) ? stored.lineNumbers : 'on' };
+    return { ...stored, lineNumbers: (['on', 'relative', 'off'] as const).includes(stored.lineNumbers) ? stored.lineNumbers : 'on', sqlDialect: isSqlDialect(stored.sqlDialect) ? stored.sqlDialect : DEFAULT_PREFS.sqlDialect };
   });
   const [themePath, setThemePath] = useState(() => localStorage.getItem(STORAGE.colorTheme) ?? '');
   const [iconThemePath, setIconThemePath] = useState<string | null>(() => localStorage.getItem(STORAGE.iconTheme));
@@ -362,6 +368,8 @@ export default function Code() {
   saveRef.current = save;
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
+  const tRef = useRef(t);
+  tRef.current = t;
 
   const activate = (path: string | null, focusEditor = true) => {
     const editor = editorRef.current;
@@ -634,9 +642,15 @@ export default function Code() {
         // Editar fixa a aba de visualização.
         if (session.tabs.some((tab) => tab.preview && samePath(tab.path, path))) setTabs(session.tabs.map((tab) => (samePath(tab.path, path) ? { ...tab, preview: false } : tab)));
         if (prefsRef.current.autoSave) scheduleAutoSave(path);
+        window.clearTimeout(sqlTimer.current);
+        sqlTimer.current = window.setTimeout(() => void lintSqlRef.current(), SQL_LINT_DELAY_MS);
         forceUpdate();
       }),
-      editor.onDidChangeModel(() => forceUpdate()),
+      editor.onDidChangeModel(() => {
+        forceUpdate();
+        void lintSqlRef.current();
+      }),
+      editor.onDidChangeModelLanguage(() => void lintSqlRef.current()),
       monaco.editor.onDidChangeMarkers(() => {
         setMarkers(problemCounts());
         setMarkerVersion((n) => n + 1);
@@ -651,6 +665,24 @@ export default function Code() {
       }),
     ];
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => void saveRef.current(session.active, { participants: true }));
+    // Menu de contexto do editor: Claude Code e SQL, com os comandos da paleta.
+    subscriptions.push(
+      editor.addAction({
+        id: 'claude.mention',
+        label: tRef.current('code.cmd.claudeMention'),
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyK],
+        contextMenuGroupId: 'claude',
+        run: () => runCommandRef.current('claude.mention'),
+      }),
+      editor.addAction({
+        id: 'sql.validate',
+        label: tRef.current('code.cmd.sqlValidate'),
+        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV],
+        contextMenuGroupId: 'sql',
+        precondition: 'resourceExtname == .sql',
+        run: () => runCommandRef.current('sql.validate'),
+      }),
+    );
     const chord = (second: monaco.KeyCode, id: string) =>
       editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, monaco.KeyMod.CtrlCmd | second), () => runCommandRef.current(id));
     chord(monaco.KeyCode.KeyT, 'workbench.action.selectTheme');
@@ -806,6 +838,8 @@ export default function Code() {
     void openPath(path, { pinned: true, selection: { startLineNumber: line, startColumn: column, endLineNumber: line, endColumn: column + length } });
 
   const searchHost: SearchHost = {
+    openFile: (path) => void openPath(path, { pinned: true }),
+    listFiles,
     iconTheme,
     displayPath,
     open: openAt,
@@ -1111,6 +1145,112 @@ export default function Code() {
     );
   };
 
+  // ---------- SQL ----------
+
+  const sqlTimer = useRef(0);
+  const sqlMessage = (problem: SqlProblem) =>
+    [
+      problem.found === null ? t('code.sql.unexpectedEnd') : t('code.sql.unexpected', { found: problem.found }),
+      problem.expected.length ? t('code.sql.expected', { list: problem.expected.join(', ') }) : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+  // Valida o .sql ativo e põe os erros no editor e no painel Problemas; arquivos de outra linguagem perdem as marcas.
+  const lintActiveSql = async (): Promise<SqlProblem[] | null> => {
+    const model = editorRef.current?.getModel();
+    if (!model) return null;
+    if (!isSqlModel(model)) {
+      if (monaco.editor.getModelMarkers({ resource: model.uri, owner: SQL_MARKER_OWNER }).length) monaco.editor.setModelMarkers(model, SQL_MARKER_OWNER, []);
+      return null;
+    }
+    const dialect = prefsRef.current.sqlDialect;
+    const version = model.getVersionId();
+    const problems = lintSql(model.getValue(), dialect, await loadSqlParser(dialect));
+    if (model.isDisposed() || model.getVersionId() !== version) return problems;
+    monaco.editor.setModelMarkers(
+      model,
+      SQL_MARKER_OWNER,
+      problems.map((problem) => {
+        // O analisador aponta um caractere; a marca cobre a palavra inteira, quando há uma.
+        const word = model.getWordAtPosition({ lineNumber: problem.line, column: problem.column });
+        return {
+          severity: monaco.MarkerSeverity.Error,
+          message: sqlMessage(problem),
+          source: `SQL · ${dialectLabel(dialect)}`,
+          startLineNumber: problem.line,
+          startColumn: word?.startColumn ?? problem.column,
+          endLineNumber: word ? problem.line : problem.endLine,
+          endColumn: word?.endColumn ?? Math.max(problem.endColumn, problem.column + 1),
+        };
+      }),
+    );
+    return problems;
+  };
+  const lintSqlRef = useRef(lintActiveSql);
+  lintSqlRef.current = lintActiveSql;
+
+  const validateSql = async () => {
+    const model = activeModel();
+    if (!model || !isSqlModel(model)) {
+      flash(t('code.sql.onlySql'), true);
+      return;
+    }
+    const problems = await lintActiveSql().catch((error) => {
+      flash(errorText(error), true);
+      return null;
+    });
+    if (!problems) return;
+    const dialect = dialectLabel(prefsRef.current.sqlDialect);
+    if (!problems.length) {
+      flash(t('code.sql.valid', { dialect }));
+      return;
+    }
+    flash(t('code.sql.invalid', { count: problems.length, dialect }), true);
+    setLayout({ panel: true, panelView: 'problems' });
+    const editor = editorRef.current;
+    editor?.setPosition({ lineNumber: problems[0].line, column: problems[0].column });
+    editor?.revealLineInCenterIfOutsideViewport(problems[0].line);
+    editor?.focus();
+  };
+
+  const pickSqlDialect = () =>
+    setQuick({
+      kind: 'pick',
+      placeholder: t('code.sql.pickDialect'),
+      activeId: prefs.sqlDialect,
+      items: SQL_DIALECTS.map(([id, label]) => ({ id, label })),
+      onPick: (item) => {
+        if (!isSqlDialect(item.id)) return;
+        prefsRef.current = { ...prefsRef.current, sqlDialect: item.id };
+        setPrefs({ sqlDialect: item.id });
+        void lintActiveSql();
+      },
+    });
+
+  // ---------- Claude Code ----------
+
+  const openClaude = (text?: string) => {
+    setLayout({ panel: true, panelView: 'terminal' });
+    setTerminalCommand({ kind: 'claude', text, serial: Date.now() });
+  };
+  // Menciona o arquivo (e as linhas selecionadas) no Claude Code, no formato @caminho#L10-20 que ele entende.
+  const mentionInClaude = () => {
+    const editor = editorRef.current;
+    const path = session.active;
+    if (!editor || !path) {
+      openClaude();
+      return;
+    }
+    const rel = (relativePath(rootOf(path), path) || baseName(path)).replace(/\\/g, '/');
+    const selection = editor.getSelection();
+    let lines = '';
+    if (selection && !selection.isEmpty()) {
+      const endLine = selection.endColumn === 1 && selection.endLineNumber > selection.startLineNumber ? selection.endLineNumber - 1 : selection.endLineNumber;
+      lines = endLine > selection.startLineNumber ? `#L${selection.startLineNumber}-${endLine}` : `#L${selection.startLineNumber}`;
+    }
+    openClaude(`@${/\s/.test(rel) ? `"${rel}"` : rel}${lines} `);
+  };
+
   const toggleZen = () => setLayout({ zen: !layout.zen });
 
   // Trilha: clicar numa pasta lista o que há nela (pastas entram, arquivos abrem).
@@ -1230,6 +1370,10 @@ export default function Code() {
     { id: 'workbench.action.terminal.toggleTerminal', label: t('code.cmd.toggleTerminal'), keybinding: 'Ctrl+`', run: toggleTerminal },
     { id: 'workbench.action.terminal.new', label: t('code.cmd.newTerminal'), keybinding: 'Ctrl+Shift+`', run: newTerminal },
     { id: 'workbench.action.terminal.kill', label: t('code.cmd.killTerminal'), run: () => setTerminalCommand({ kind: 'kill', serial: Date.now() }) },
+    { id: 'claude.open', label: t('code.cmd.claudeOpen'), run: () => openClaude() },
+    { id: 'claude.mention', label: t('code.cmd.claudeMention'), keybinding: 'Ctrl+Alt+K', run: mentionInClaude },
+    { id: 'sql.validate', label: t('code.cmd.sqlValidate'), keybinding: 'Ctrl+Shift+V', run: () => void validateSql() },
+    { id: 'sql.selectDialect', label: t('code.cmd.sqlDialect'), run: pickSqlDialect },
     { id: 'workbench.action.selectTheme', label: t('code.cmd.selectTheme'), keybinding: 'Ctrl+K Ctrl+T', run: pickTheme },
     { id: 'workbench.action.selectIconTheme', label: t('code.cmd.selectIconTheme'), run: pickIconTheme },
     { id: 'workbench.action.editor.changeLanguageMode', label: t('code.cmd.changeLanguage'), keybinding: 'Ctrl+K M', run: pickLanguage },
@@ -1933,12 +2077,20 @@ export default function Code() {
             <button className="wb-status-item" data-prio="2" onClick={pickEol}>
               {model.getEOL() === '\n' ? 'LF' : 'CRLF'}
             </button>
+            {isSqlModel(model) && (
+              <button className="wb-status-item" data-prio="2" title={t('code.cmd.sqlDialect')} onClick={pickSqlDialect}>
+                {dialectLabel(prefs.sqlDialect)}
+              </button>
+            )}
             <button className="wb-status-item" onClick={pickLanguage} title={lspKind ? t(`code.lsp.${serverStatus(lspKind)}` as Key) : undefined}>
               {lspKind && <span className="wb-led" data-state={serverStatus(lspKind)} />}
               {languageLabel}
             </button>
           </>
         )}
+        <button className="wb-status-item" data-prio="1" title={t('code.cmd.claudeOpen')} aria-label={t('code.cmd.claudeOpen')} onClick={() => openClaude()}>
+          <ClaudeIcon size={12} /> Claude
+        </button>
         <button className="wb-status-item" data-prio="1" onClick={() => setPrefs({ autoSave: !prefs.autoSave })} title={t(prefs.autoSave ? 'code.cmd.autoSaveOff' : 'code.cmd.autoSaveOn')}>
           {prefs.autoSave ? t('code.status.autoSave') : t('code.status.manualSave')}
         </button>
