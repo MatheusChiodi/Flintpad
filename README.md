@@ -24,10 +24,23 @@ Everything is a plain file in a folder you own. No account, no cloud, no telemet
 
 - **Notes like Obsidian, editing like Notion.** Markdown files with `[[wikilinks]]`, backlinks, tags and a graph, edited as blocks with a `/` menu. Open an existing Obsidian vault and it just works.
 - **One folder, every tool.** Tasks gathered from all your notes, Excalidraw-style whiteboards, a Bruno-compatible API client, a VS Code-style code workbench (with SQL validation and Claude Code) and a Chromium web browser, side by side in tabs.
+- **A real browser inside.** A Browser tab on Chromium, the engine of Google Chrome: tabs, bookmarks, history, downloads, incognito, find in page, developer tools and Chrome's shortcuts, next to your notes and code. [More below](#browser).
 - **Yours, offline.** Plain `.md`, `.bru` and `.whiteboard.json` files you can sync, version or edit anywhere. Nothing leaves your computer unless you send it.
 - **Keyboard first.** Quick search, command palette and shortcuts for everything, in English and Brazilian Portuguese.
 
 Everything is original code. Nothing was copied from Obsidian, Notion, Bruno, Excalidraw, VS Code or Google Chrome; their behavior was studied and reimplemented with open-source libraries.
+
+## At a glance
+
+| Tab | Shortcut | What it is |
+|---|---|---|
+| [Notes](#block-editor) | `Ctrl+N` | Block editor over Markdown files, `[[wikilinks]]`, backlinks, tags, PDF and `.txt` export |
+| [Tasks](#tasks) | `Ctrl+Shift+J` | Every `- [ ]` in the vault, with due dates, priorities and recurrence |
+| [Whiteboards](#whiteboards) | `Ctrl+Shift+B` | Shapes, arrows, pencil and images, saved as JSON |
+| [Graph](#graph) | `Ctrl+G` | Force-directed map of how your notes link |
+| [Requests](#requests) | `Ctrl+Shift+E` | API client on Bruno-compatible `.bru` files |
+| [Code](#code) | `Ctrl+Shift+K` | VS Code-style editor with terminal, SQL validation and Claude Code |
+| [Browser](#browser) | `Ctrl+Shift+Y` | Chromium web browser with tabs, bookmarks, history, downloads and incognito |
 
 ## Getting started
 
@@ -288,6 +301,8 @@ Flintpad reads the extensions already installed in your VS Code (the built-in on
 - Built-in AI features of editors like Cursor (inline edits, completions from a model) are not included; for an assistant, use the Claude Code integration above, which runs only when you open it.
 
 ### Browser
+
+<img src="docs/browser.svg" alt="Browser tab with three tabs, an address bar with a lock and a bookmark star, a bookmarks bar and the find-in-page box" width="640">
 
 `Ctrl+Shift+Y` (or **Browser** in the sidebar) opens a web browser tab running on Chromium, the open-source engine behind Google Chrome (shipped with Electron, so pages render as they do in Chrome). The tab stays loaded in the background: switching to another app tab and back does not reload the pages.
 
