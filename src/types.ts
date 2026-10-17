@@ -26,9 +26,10 @@ export const REQUESTS = '::requests';
 export const CODE = '::code';
 export const TASKS = '::tasks';
 export const WHITEBOARDS = '::whiteboards';
+export const BROWSER = '::browser';
 
 // Guias que não são notas.
-export const isSpecialPath = (path: string) => path === GRAPH || path === REQUESTS || path === CODE || path === TASKS || path === WHITEBOARDS;
+export const isSpecialPath = (path: string) => path === GRAPH || path === REQUESTS || path === CODE || path === TASKS || path === WHITEBOARDS || path === BROWSER;
 
 export type MenuAction =
   | 'new-note'
@@ -38,6 +39,7 @@ export type MenuAction =
   | 'choose-vault'
   | 'settings'
   | 'export-pdf'
+  | 'export-txt'
   | 'copy-link'
   | 'copy-name'
   | 'toggle-favorite'
@@ -48,12 +50,52 @@ export type MenuAction =
   | 'code'
   | 'tasks'
   | 'whiteboards'
+  | 'browser'
+  | 'reload'
+  | 'force-reload'
+  | 'devtools'
+  | 'zoom-in'
+  | 'zoom-out'
+  | 'zoom-reset'
   | 'toggle-sidebar'
   | 'toggle-rail'
   | 'back'
   | 'forward'
   | 'next-tab'
   | 'prev-tab';
+
+// Navegador embutido (electron/browser.cjs).
+export type BrowserVisit = { url: string; title: string; time: number };
+export type BrowserBookmark = { id: string; url: string; title: string };
+export type BrowserDownload = { id: string; url: string; filename: string; path: string; received: number; total: number; state: 'progressing' | 'paused' | 'completed' | 'cancelled' | 'interrupted'; started: number; finished?: number; incognito?: boolean };
+export type BrowserPermissionRequest = { id: number; webContentsId: number; origin: string; permission: string };
+export type BrowserOpenRequest = { url: string; background: boolean; incognito: boolean; from: number };
+export type BrowserApi = {
+  history(): Promise<BrowserVisit[]>;
+  addVisit(visit: BrowserVisit): Promise<void>;
+  removeVisit(url: string, time?: number): Promise<void>;
+  clearHistory(): Promise<void>;
+  bookmarks(): Promise<BrowserBookmark[]>;
+  saveBookmarks(list: BrowserBookmark[]): Promise<void>;
+  downloads(): Promise<BrowserDownload[]>;
+  downloadAction(id: string, action: 'pause' | 'resume' | 'cancel' | 'open' | 'show' | 'remove' | 'retry'): Promise<string | null>;
+  clearDownloads(): Promise<void>;
+  replyPermission(id: number, allow: boolean, remember: boolean, origin: string, permission: string): Promise<void>;
+  permissions(): Promise<Record<string, Record<string, 'allow' | 'deny'>>>;
+  resetPermissions(origin?: string): Promise<void>;
+  settings(): Promise<{ askWhereToSave: boolean }>;
+  setSettings(patch: { askWhereToSave: boolean }): Promise<void>;
+  savePdf(webContentsId: number): Promise<string | null>;
+  savePage(webContentsId: number): Promise<string | null>;
+  openFile(): Promise<string | null>;
+  clearData(what: { history?: boolean; downloads?: boolean; cookies?: boolean; cache?: boolean; permissions?: boolean }): Promise<void>;
+  endIncognito(): Promise<void>;
+  onOpen(callback: (request: BrowserOpenRequest) => void): () => void;
+  onSearch(callback: (request: { text: string; incognito: boolean; from: number }) => void): () => void;
+  onShortcut(callback: (event: { webContentsId: number; combo: string }) => void): () => void;
+  onDownload(callback: (download: BrowserDownload) => void): () => void;
+  onPermission(callback: (request: BrowserPermissionRequest) => void): () => void;
+};
 
 declare global {
   interface Window {
@@ -80,6 +122,8 @@ declare global {
       remove(rel: string): Promise<void>;
       /** Devolve o caminho gravado, o motivo da falha ou null se o diálogo foi cancelado. */
       exportPdf(name: string): Promise<{ path?: string; error?: string } | null>;
+      /** Grava a página como texto puro (.txt), com o mesmo retorno do exportPdf. */
+      exportText(name: string, text: string): Promise<{ path?: string; error?: string } | null>;
       bruList(): Promise<{ requests: RequestSummary[]; environments: Environment[] }>;
       bruRead(rel: string): Promise<BruRequest>;
       bruWrite(rel: string, json: BruRequest): Promise<void>;
@@ -123,11 +167,14 @@ declare global {
         onChanged(callback: (paths: string[]) => void): () => void;
       };
       term: {
-        create(size: { cols: number; rows: number }): Promise<TerminalInfo>;
+        /** `run` é digitado no shell assim que ele abre (ex.: `claude`); `title` nomeia a guia. */
+        create(options: { cols: number; rows: number; run?: string; title?: string }): Promise<TerminalInfo>;
         list(): Promise<(TerminalInfo & { buffer: string })[]>;
         write(id: number, data: string): Promise<void>;
         resize(id: number, cols: number, rows: number): Promise<void>;
         kill(id: number): Promise<void>;
+        /** Caminho do Claude Code no PATH, ou null se não estiver instalado. */
+        claudePath(): Promise<string | null>;
         onData(callback: (id: number, data: string) => void): () => void;
         onExit(callback: (id: number, code: number) => void): () => void;
       };
@@ -140,6 +187,8 @@ declare global {
         onExit(callback: (kind: string, reason: string) => void): () => void;
       };
       onMenu(callback: (action: MenuAction) => void): () => void;
+      windowAction(action: 'reload' | 'force-reload' | 'devtools' | 'zoom-in' | 'zoom-out' | 'zoom-reset'): Promise<void>;
+      browser: BrowserApi;
     };
   }
 }

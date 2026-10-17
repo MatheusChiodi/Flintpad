@@ -2,7 +2,7 @@
   "name": "flintpad",
   "productName": "Flintpad",
   "version": "0.1.0",
-  "description": "Local-first workspace: Markdown notes, graph, tasks, whiteboards, an API client and a code editor, all as plain files on your machine.",
+  "description": "Local-first workspace: Markdown notes, graph, tasks, whiteboards, an API client, a code editor and a Chromium web browser, all as plain files on your machine.",
   "author": "Matheus Chiodi",
   "license": "MIT",
   "homepage": "https://github.com/MatheusChiodi/Flintpad#readme",
@@ -24,7 +24,10 @@
     "api-client",
     "bruno",
     "electron",
-    "desktop-app"
+    "desktop-app",
+    "browser",
+    "sql",
+    "claude-code"
   ],
   "private": true,
   "main": "electron/main.cjs",
@@ -54,7 +57,11 @@
     },
     "directories": {
       "output": "release"
-    }
+    },
+    "extraFiles": [
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md"
+    ]
   },
   "dependencies": {
     "@lydell/node-pty": "^1.2.0-beta.15",
@@ -86,6 +93,7 @@
     "electron": "^44.7.1",
     "electron-builder": "^26.15.3",
     "monaco-editor": "^0.57.0",
+    "node-sql-parser": "^5.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tailwindcss": "^4.3.3",

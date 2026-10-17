@@ -9,13 +9,38 @@ const path = require('node:path');
 
 const MAX_SCROLLBACK_CHARS = 256 * 1024;
 
-// O VS Code abre o PowerShell no Windows; o pwsh (PowerShell 7) vence quando está instalado.
-function defaultShell() {
-  if (process.platform !== 'win32') return process.env.SHELL || '/bin/bash';
+// Procura um executável no PATH. Os "aliases de execução" da Microsoft Store (pasta WindowsApps) ficam de fora:
+// existem no disco como arquivos vazios e, abertos pelo ConPTY, falham ou fecham na hora.
+function findInPath(names) {
   for (const dir of (process.env.PATH ?? '').split(path.delimiter)) {
-    if (dir && fs.existsSync(path.join(dir, 'pwsh.exe'))) return path.join(dir, 'pwsh.exe');
+    if (!dir || /[\/]WindowsApps[\/]?$/i.test(dir)) continue;
+    for (const name of names) {
+      const file = path.join(dir, name);
+      try {
+        if (fs.statSync(file).size > 0) return file;
+      } catch {
+        // não está nesta pasta
+      }
+    }
   }
-  return 'powershell.exe';
+  return null;
+}
+
+// O VS Code abre o PowerShell no Windows; o pwsh (PowerShell 7) vence quando está instalado.
+// Devolve a lista em ordem de preferência: se um não abrir, tenta o próximo.
+function shellCandidates() {
+  if (process.platform !== 'win32') return [process.env.SHELL || '/bin/bash', '/bin/sh'];
+  const system = process.env.SystemRoot || 'C:\Windows';
+  return [
+    findInPath(['pwsh.exe']),
+    path.join(system, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+    process.env.ComSpec || path.join(system, 'System32', 'cmd.exe'),
+  ].filter((shell, index, list) => shell && fs.existsSync(shell) && list.indexOf(shell) === index);
+}
+
+// Claude Code instalado? Procura no PATH o executável (instalador nativo) ou o atalho do npm.
+function findClaude() {
+  return findInPath(process.platform === 'win32' ? ['claude.exe', 'claude.cmd'] : ['claude']);
 }
 
 function registerTerminalIpc({ getWin, getCwd }) {
@@ -28,19 +53,39 @@ function registerTerminalIpc({ getWin, getCwd }) {
     if (win && !win.isDestroyed()) win.webContents.send(channel, ...args);
   };
 
-  ipcMain.handle('term:create', (_e, { cols, rows }) => {
+  // `run`: comando digitado no shell assim que ele mostra a primeira saída (o Claude Code, por exemplo).
+  ipcMain.handle('term:create', (_e, { cols, rows, run, title }) => {
     pty ??= require('@lydell/node-pty');
-    const shell = defaultShell();
-    const cwd = getCwd() && fs.existsSync(getCwd()) ? getCwd() : process.env.USERPROFILE || process.cwd();
+    const cwd = getCwd() && fs.existsSync(getCwd()) ? getCwd() : process.env.USERPROFILE || process.env.HOME || process.cwd();
     const env = { ...process.env, TERM_PROGRAM: 'Flintpad', COLORTERM: 'truecolor' };
     delete env.ELECTRON_RUN_AS_NODE;
-    const proc = pty.spawn(shell, [], { name: 'xterm-256color', cols: Math.max(2, cols | 0), rows: Math.max(1, rows | 0), cwd, env, useConpty: true });
+    // Flintpad aberto de dentro de uma sessão do Claude Code: as marcas dela não passam para o Claude daqui.
+    for (const key of ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'CLAUDE_CODE_CHILD_SESSION']) delete env[key];
+    const size = { cols: Math.max(2, cols | 0), rows: Math.max(1, rows | 0) };
+    let proc = null;
+    let shell = null;
+    const failures = [];
+    for (const candidate of shellCandidates()) {
+      try {
+        proc = pty.spawn(candidate, [], { name: 'xterm-256color', ...size, cwd, env, useConpty: true });
+        shell = candidate;
+        break;
+      } catch (error) {
+        failures.push(`${path.basename(candidate)}: ${error.message}`);
+      }
+    }
+    if (!proc) throw new Error(failures.join(' · ') || 'nenhum shell encontrado');
     const id = nextId++;
-    const terminal = { id, title: path.basename(shell, '.exe'), cwd, proc, buffer: '' };
+    const terminal = { id, title: title || path.basename(shell, '.exe'), cwd, proc, buffer: '' };
     terminals.set(id, terminal);
+    let pendingRun = typeof run === 'string' && run ? run : null;
     proc.onData((data) => {
       terminal.buffer = (terminal.buffer + data).slice(-MAX_SCROLLBACK_CHARS);
       send('term:data', id, data);
+      if (pendingRun) {
+        proc.write(`${pendingRun}\r`);
+        pendingRun = null;
+      }
     });
     proc.onExit(({ exitCode }) => {
       terminals.delete(id);
@@ -62,6 +107,8 @@ function registerTerminalIpc({ getWin, getCwd }) {
   });
 
   ipcMain.handle('term:kill', (_e, id) => terminals.get(id)?.proc.kill());
+
+  ipcMain.handle('term:claude', () => findClaude());
 
   return {
     disposeAll() {

@@ -4,9 +4,9 @@ import { Trans, useT, type Translate } from '../lib/i18n';
 import { baseName } from '../lib/links';
 import { fuzzyFilter } from '../lib/fuzzy';
 import { parseSearchQuery, searchNotes, type Excerpt, type Heading, type Mention } from '../lib/notes';
-import { CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type Note, type Tab } from '../types';
+import { BROWSER, CODE, GRAPH, isSpecialPath, REQUESTS, TASKS, WHITEBOARDS, type Note, type Tab } from '../types';
 import { ContextMenu, isMenuKey, menuPosition, type MenuItem, type MenuRequest } from './ContextMenu';
-import { BacklinkIcon, ChevronIcon, CloseIcon, PinIcon, GraphIcon, Kbd, SidebarIcon, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon, WhiteboardIcon } from './Icons';
+import { BacklinkIcon, BrowserIcon, ChevronIcon, CloseIcon, PinIcon, GraphIcon, Kbd, SidebarIcon, OutlinkIcon, PageIcon, PlusIcon, SearchIcon, RequestIcon, CodeIcon, StarIcon, TasksIcon, WhiteboardIcon } from './Icons';
 
 const currentPath = (tab: Tab) => tab.stack[tab.idx] ?? '';
 
@@ -17,6 +17,7 @@ export function tabTitle(tab: Tab, t: Translate) {
   if (path === CODE) return t('nav.code');
   if (path === TASKS) return t('nav.tasks');
   if (path === WHITEBOARDS) return t('nav.whiteboards');
+  if (path === BROWSER) return t('nav.browser');
   return path ? baseName(path) : t('tabs.new');
 }
 
@@ -110,7 +111,7 @@ export function TabBar({ tabs, activeId, onSelect, onClose, onNew, onPin, onClos
       >
       {tabs.map((tab, index) => {
         const path = currentPath(tab);
-        const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path === TASKS ? TasksIcon : path === WHITEBOARDS ? WhiteboardIcon : path ? PageIcon : PlusIcon;
+        const TabIcon = path === GRAPH ? GraphIcon : path === REQUESTS ? RequestIcon : path === CODE ? CodeIcon : path === TASKS ? TasksIcon : path === WHITEBOARDS ? WhiteboardIcon : path === BROWSER ? BrowserIcon : path ? PageIcon : PlusIcon;
         return (
           <div
             key={tab.id}

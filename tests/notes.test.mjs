@@ -138,3 +138,13 @@ test('busca aproximada ignora acentos e mantém as posições', () => {
   assert.deepEqual(n.searchNotes('titulo', notes, {})[0].positions, [0, 1, 2, 3, 4, 5]);
   assert.equal(n.searchNotes('acao', notes, {})[0].note.name, 'Ação');
 });
+
+test('noteToText: página vira texto legível, com título, marcadores, tarefas, links e código', () => {
+  const md = '---\ntags: [a]\n---\n# Plano\n\nTexto **forte**, _itálico_ e `código` com snake_case_var.\n\n- item\n- [ ] fazer\n- [x] feito\n\nVeja [[Outra Nota|a outra]] e [site](https://x.dev).\n\n```js\nconst a = 1;\n```\n\n---\n';
+  assert.equal(
+    n.noteToText(md, 'Plano'),
+    'Plano\n\nTexto forte, itálico e código com snake_case_var.\n\n• item\n[ ] fazer\n[x] feito\n\nVeja a outra e site (https://x.dev).\n\nconst a = 1;\n\n----------\n',
+  );
+  assert.equal(n.noteToText('Só texto', ''), 'Só texto\n');
+  assert.equal(n.noteToText('Corpo', 'Ideias'), 'Ideias\n======\n\nCorpo\n');
+});

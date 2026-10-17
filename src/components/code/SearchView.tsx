@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { buildMatcher, replaceInText } from '../../../electron/searchCore.mjs';
 import { useT } from '../../lib/i18n';
 import type { IconTheme } from '../../lib/iconTheme';
+import { matchFileNames } from '../../lib/codeTools';
 import { baseName, dirName } from '../../lib/paths';
 import { languageForFile } from '../../lib/textmate';
 import type { FileSearchOptions, FileSearchResult } from '../../types';
@@ -18,6 +19,10 @@ export type SearchHost = {
   /** Caminho mostrado ("pasta • src/lib") a partir do absoluto. */
   displayPath(path: string): string;
   open(path: string, line: number, column: number, length: number): void;
+  /** Arquivo inteiro, pelo nome (sem posição). */
+  openFile(path: string): void;
+  /** Todos os arquivos das pastas abertas (para achar pelo nome). */
+  listFiles(): Promise<string[]>;
   /** Substitui nos arquivos abertos no editor (no modelo, com desfazer) e devolve quais tratou. */
   replaceOpen(paths: string[], options: FileSearchOptions, replacement: string): { handled: string[]; count: number };
   notify(text: string, error?: boolean): void;
@@ -54,6 +59,7 @@ export function SearchView({ host, request, rootsKey }: { host: SearchHost; requ
   const [state, setStateRaw] = useState<State>(memory.state);
   const [result, setResult] = useState<FileSearchResult | null>(memory.result);
   const [busy, setBusy] = useState(false);
+  const [names, setNames] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const serial = useRef(0);
@@ -118,6 +124,26 @@ export function SearchView({ host, request, rootsKey }: { host: SearchHost; requ
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [optionsKey]);
+
+  // Além do conteúdo, a consulta procura nos nomes dos arquivos (o Ctrl+P sem sair da vista de busca).
+  useEffect(() => {
+    const query = state.query.trim();
+    if (!query || state.isRegex) {
+      setNames([]);
+      return;
+    }
+    let alive = true;
+    const timer = window.setTimeout(() => {
+      void hostRef.current.listFiles().then(
+        (files) => alive && setNames(matchFileNames(query, files, state.matchCase)),
+        () => alive && setNames([]),
+      );
+    }, SEARCH_DELAY_MS);
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, [state.query, state.isRegex, state.matchCase, rootsKey]);
 
   // Arquivos mudaram no disco: refaz a busca (sem pressa), para os resultados não mentirem.
   useEffect(() => {
@@ -201,6 +227,27 @@ export function SearchView({ host, request, rootsKey }: { host: SearchHost; requ
     }
   };
 
+  const nameGroup: ResultGroup[] = names.length
+    ? [
+        {
+          id: '::names',
+          label: t('code.search.fileNames'),
+          count: names.length,
+          items: names.map((path) => ({
+            id: path,
+            title: host.displayPath(path),
+            onOpen: () => host.openFile(path),
+            content: (
+              <span className="flex min-w-0 items-center gap-1.5">
+                <FileIconView icon={host.iconTheme?.forFile(path, languageForFile(path)) ?? null} />
+                <span className="truncate">{baseName(path)}</span>
+                <span className="truncate opacity-60">{host.displayPath(dirName(path))}</span>
+              </span>
+            ),
+          })),
+        },
+      ]
+    : [];
   const groups: ResultGroup[] = (result?.results ?? []).map(({ path, matches }) => ({
     id: path,
     label: baseName(path),
@@ -229,7 +276,8 @@ export function SearchView({ host, request, rootsKey }: { host: SearchHost; requ
   if (error) summary = <p className="wb-search-msg" data-error role="alert">{error}</p>;
   else if (busy && !result) summary = <p className="wb-search-msg" role="status">{t('code.search.searching')}</p>;
   else if (!state.query) summary = <p className="wb-search-msg">{t('code.search.hint')}</p>;
-  else if (result && !result.total) summary = <p className="wb-search-msg" role="status">{t('code.search.noResults', { count: result.files })}</p>;
+  else if (result && !result.total && !names.length) summary = <p className="wb-search-msg" role="status">{t('code.search.noResults', { count: result.files })}</p>;
+  else if (result && !result.total) summary = null;
   else if (result)
     summary = (
       <div className="wb-search-msg flex items-center gap-2" role="status">
@@ -332,7 +380,7 @@ export function SearchView({ host, request, rootsKey }: { host: SearchHost; requ
         )}
       </div>
       {summary}
-      <div className="min-h-0 flex-1 overflow-y-auto pb-4">{groups.length > 0 && <ResultTree groups={groups} label={t('code.search.results')} />}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto pb-4">{nameGroup.length + groups.length > 0 && <ResultTree groups={[...nameGroup, ...groups]} label={t('code.search.results')} />}</div>
     </div>
   );
 }

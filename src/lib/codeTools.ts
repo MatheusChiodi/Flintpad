@@ -228,3 +228,30 @@ export function tabLabel(path: string, all: string[]): string {
   const parts = path.split(/[\\/]+/);
   return `${name} · ${parts[parts.length - 2] ?? ''}`;
 }
+
+const FILE_NAME_LIMIT = 50;
+// Sem acento e (por padrão) sem caixa: "acao" acha "Ação.ts".
+const foldName = (text: string, matchCase: boolean) => {
+  const plain = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return matchCase ? plain : plain.toLowerCase();
+};
+
+/** Arquivos cujo nome contém a consulta: nome igual, depois começo do nome, depois o resto. Com "/" na consulta, vale o caminho. */
+export function matchFileNames(query: string, files: string[], matchCase = false): string[] {
+  const wanted = foldName(query.trim().replace(/\\/g, '/'), matchCase);
+  if (!wanted) return [];
+  const byPath = wanted.includes('/');
+  const ranked: { path: string; rank: number }[] = [];
+  for (const path of files) {
+    const normal = path.replace(/\\/g, '/');
+    const name = foldName(byPath ? normal : normal.slice(normal.lastIndexOf('/') + 1), matchCase);
+    const at = name.indexOf(wanted);
+    if (at < 0) continue;
+    const base = byPath ? name.slice(name.lastIndexOf('/') + 1) : name;
+    ranked.push({ path, rank: base === wanted || base.replace(/\.[^.]+$/, '') === wanted ? 0 : base.startsWith(wanted) ? 1 : 2 });
+  }
+  return ranked
+    .sort((a, b) => a.rank - b.rank || a.path.length - b.path.length || a.path.localeCompare(b.path))
+    .slice(0, FILE_NAME_LIMIT)
+    .map((item) => item.path);
+}
