@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-17
+
 ### Added
 
 - **Notes**: download button on every page, with PDF and plain text (`.txt`) export; also in the File menu and the command palette.
@@ -36,4 +38,6 @@ First public release.
 - **Code**: VS Code-style workbench on Monaco with explorer, search and replace, terminal, language servers, Markdown preview, and your installed VS Code themes, grammars and icons.
 - **Welcome, home and settings**: recent vaults, example pages, English and Brazilian Portuguese, accent colors, reduced motion.
 
+[Unreleased]: https://github.com/MatheusChiodi/Flintpad/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/MatheusChiodi/Flintpad/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MatheusChiodi/Flintpad/releases/tag/v0.1.0
