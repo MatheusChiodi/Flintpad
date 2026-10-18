@@ -1,7 +1,7 @@
 {
   "name": "flintpad",
   "productName": "Flintpad",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local-first workspace: Markdown notes, graph, tasks, whiteboards, an API client, a code editor and a Chromium web browser, all as plain files on your machine.",
   "author": "Matheus Chiodi",
   "license": "MIT",

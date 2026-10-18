@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-18
+
+### Fixed
+
+- **Notes**: tabs and line breaks in a page name become spaces instead of gluing words together; an empty frontmatter block (`---` followed by `---`) is recognized; heading anchors are always unique, so links to repeated section titles land on the right one.
+- **Notes**: Markdown preview closes inline code only on a backtick run of the same length and turns a trailing backslash into a line break.
+- **Tasks**: "todo dia útil" (every weekday) is recognized instead of becoming a daily repeat; quick add keeps a date already written after 📅 in place.
+- **Tabs**: restoring a session keeps the right active tab when its id is 0.
+- **Whiteboards**: the 5 MB file limit is measured in UTF-8 bytes; an opacity like 99.6 is rounded before deciding whether to save it; resizing with no effect no longer adds an empty undo step; SVG export never writes `NaN` sizes; autosave no longer writes to a board after it is closed.
+- **Requests**: `{{toString}}` and other built-in names are no longer treated as defined variables; the `#fragment` stays out of query parameters; an API key with no name is not appended as `?=value`; cURL import handles value options such as `--max-redirs 5` and encodes `--data-urlencode`; search highlighting stays aligned with characters like `İ`; JSON format errors point to the right line.
+- **Code**: paths at a drive or filesystem root no longer get a doubled separator; fuzzy search no longer misses matches when a later word start fails; SQL validation handles PostgreSQL `$tag$` bodies and MySQL `#` comment-only chunks; high-contrast light themes use the light base, and JSON property names get their own color.
+- **Code**: language servers get the real file-name casing from disk again (`ws:realpath` always returned nothing).
+- **Browser**: reloading the same page keeps a valid visit time in history.
+
+### Tests
+
+- 825 new unit tests (1003 in total) covering requests, notes, tasks, graph, tabs, the code editor, whiteboards, the Electron main process and translation parity between English and Brazilian Portuguese.
+
 ## [0.2.0] - 2026-10-17
 
 ### Added
@@ -38,6 +56,7 @@ First public release.
 - **Code**: VS Code-style workbench on Monaco with explorer, search and replace, terminal, language servers, Markdown preview, and your installed VS Code themes, grammars and icons.
 - **Welcome, home and settings**: recent vaults, example pages, English and Brazilian Portuguese, accent colors, reduced motion.
 
-[Unreleased]: https://github.com/MatheusChiodi/Flintpad/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/MatheusChiodi/Flintpad/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/MatheusChiodi/Flintpad/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/MatheusChiodi/Flintpad/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MatheusChiodi/Flintpad/releases/tag/v0.1.0
