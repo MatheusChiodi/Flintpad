@@ -127,7 +127,7 @@ test('interpolate não mexe em chaves que não são variáveis', () => {
   assert.equal(r.interpolate('{a} {{ }} {{a b}}', { a: '1' }), '{a} {{ }} {{a b}}');
 });
 
-test('interpolate não trata nomes herdados de Object.prototype como variáveis', { todo: 'BUG: request.ts:88 usa `name in vars`, então {{toString}}/{{constructor}} viram o código da função nativa' }, () => {
+test('interpolate não trata nomes herdados de Object.prototype como variáveis', () => {
   assert.equal(r.interpolate('{{toString}}', {}), '{{toString}}');
   assert.equal(r.interpolate('{{constructor}}', {}), '{{constructor}}');
 });
@@ -201,7 +201,7 @@ test('paramsFromUrl preserva linhas desativadas e path params, descarta as query
   assert.deepEqual(r.paramsFromUrl('/u/:id?novo=3', previous).map((p) => p.name), ['novo', 'desligado', 'id']);
 });
 
-test('paramsFromUrl não leva o fragmento (#) para o valor do último parâmetro', { todo: 'BUG: request.ts:117-123 não corta o "#…" da query (queryPairs em requestTools.ts corta)' }, () => {
+test('paramsFromUrl não leva o fragmento (#) para o valor do último parâmetro', () => {
   assert.deepEqual(r.paramsFromUrl('https://x.com/a?q=1#sec').map((p) => [p.name, p.value]), [['q', '1']]);
 });
 
@@ -305,7 +305,7 @@ test('buildRequest com apikey na query acrescenta o parâmetro', () => {
   assert.deepEqual(out.headers, []);
 });
 
-test('buildRequest com apikey na query e sem chave não acrescenta "=valor"', { todo: 'BUG: request.ts:170 não confere a chave no placement queryparams (o ramo header confere) e gera "?=valor"' }, () => {
+test('buildRequest com apikey na query e sem chave não acrescenta "=valor"', () => {
   const out = r.buildRequest(req({ http: { auth: 'apikey' }, auth: { apikey: { value: 'v', placement: 'queryparams' } } }), {}, '1');
   assert.equal(out.url, 'https://api.x.com/a');
 });

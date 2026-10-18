@@ -69,9 +69,22 @@ const DATA_FLAGS = new Set(['-d', '--data', '--data-raw', '--data-binary', '--da
 const VALUE_FLAGS = new Set([
   '-X', '--request', '-H', '--header', '-u', '--user', '--url', '-A', '--user-agent', '-b', '--cookie', '-e', '--referer',
   '--json', '-o', '--output', '-m', '--max-time', '--connect-timeout', '-x', '--proxy', '-F', '--form', '-T', '--upload-file',
-  '--cacert', '--cert', '--key', '-w', '--write-out', '--retry', '-c', '--cookie-jar', '--resolve',
+  '--cacert', '--cert', '--key', '-w', '--write-out', '--retry', '-c', '--cookie-jar', '--resolve', '--max-redirs',
+  '--retry-delay', '--retry-max-time', '--limit-rate', '-r', '--range', '--interface', '--max-filesize',
   ...DATA_FLAGS,
 ]);
+
+// --data-urlencode: "nome=valor" codifica só o valor; "=valor" ou "valor" codifica tudo; @arquivo fica como está.
+function urlencodeData(raw: string): string {
+  const eq = raw.indexOf('=');
+  const at = raw.indexOf('@');
+  if (at >= 0 && (eq < 0 || at < eq)) return raw;
+  if (eq < 0) return encodeURIComponent(raw);
+  return (eq > 0 ? `${raw.slice(0, eq)}=` : '') + encodeURIComponent(raw.slice(eq + 1));
+}
+
+// Sem saber o valor de toda opção do curl, o que sobra solto e parece endereço é a URL (o "5" de --max-redirs 5 não é).
+const looksLikeUrl = (word: string) => /:\/\/|^[\w-]+(\.[\w-]+)+|^localhost|^\{\{|^\/|:\d/i.test(word);
 
 const headerValue = (headers: Pair[], name: string) => headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value;
 
@@ -81,6 +94,7 @@ export function parseCurl(command: string): CurlImport {
   if (!words.length || !/^curl(\.exe)?$/i.test(words[0])) throw new Error('not-curl');
   let method = '';
   let url = '';
+  let loose = ''; // primeira palavra solta que não parece URL, para o caso de nenhuma parecer
   let getMode = false;
   let jsonFlag = false;
   const headers: Pair[] = [];
@@ -101,7 +115,8 @@ export function parseCurl(command: string): CurlImport {
     }
     const take = () => value ?? words[++i] ?? '';
     if (!flag.startsWith('-') || flag === '-') {
-      if (!url) url = flag;
+      if (!url && looksLikeUrl(flag)) url = flag;
+      else if (!loose) loose = flag;
       continue;
     }
     if (flag === '-X' || flag === '--request') method = take().toUpperCase();
@@ -109,7 +124,8 @@ export function parseCurl(command: string): CurlImport {
       const raw = take();
       const colon = raw.indexOf(':');
       if (colon > 0) headers.push({ name: raw.slice(0, colon).trim(), value: raw.slice(colon + 1).trim(), enabled: true });
-    } else if (DATA_FLAGS.has(flag)) data.push(take());
+    } else if (flag === '--data-urlencode') data.push(urlencodeData(take()));
+    else if (DATA_FLAGS.has(flag)) data.push(take());
     else if (flag === '--json') {
       data.push(take());
       jsonFlag = true;
@@ -123,6 +139,7 @@ export function parseCurl(command: string): CurlImport {
     else if (VALUE_FLAGS.has(flag)) take(); // opções que não mudam a request (saída, proxy, timeout…)
     // demais opções sem valor (-L, -k, -s, -i, -v, --compressed…) são ignoradas
   }
+  url ||= loose;
   if (!url) throw new Error('no-url');
 
   if (jsonFlag) {
@@ -380,26 +397,47 @@ export function queryJson(value: unknown, path: string): unknown {
 
 export const MAX_MATCHES = 1000;
 
-/** Posições onde o termo aparece (sem diferenciar maiúsculas), até MAX_MATCHES. */
-export function findMatches(text: string, query: string): number[] {
+// Início e fim de cada achado no texto original. Se toLowerCase muda o tamanho ("İ" vira 2 caracteres),
+// as posições do texto em minúsculas são levadas de volta caractere a caractere.
+function matchRanges(text: string, query: string): [start: number, end: number][] {
   if (!query) return [];
   const haystack = text.toLowerCase();
   const needle = query.toLowerCase();
-  const found: number[] = [];
-  for (let at = haystack.indexOf(needle); at >= 0 && found.length < MAX_MATCHES; at = haystack.indexOf(needle, at + needle.length)) found.push(at);
+  let starts: number[] | null = null;
+  let ends: number[] | null = null;
+  if (haystack.length !== text.length) {
+    starts = [];
+    ends = [];
+    for (let i = 0; i < text.length; ) {
+      const size = text.codePointAt(i)! > 0xffff ? 2 : 1;
+      for (let k = text.slice(i, i + size).toLowerCase().length; k > 0; k--) {
+        starts.push(i);
+        ends.push(i + size);
+      }
+      i += size;
+    }
+  }
+  const found: [number, number][] = [];
+  for (let at = haystack.indexOf(needle); at >= 0 && found.length < MAX_MATCHES; at = haystack.indexOf(needle, at + needle.length)) {
+    const last = at + needle.length - 1;
+    found.push(starts && ends ? [starts[at], ends[last]] : [at, at + needle.length]);
+  }
   return found;
 }
 
+/** Posições onde o termo aparece (sem diferenciar maiúsculas), até MAX_MATCHES. */
+export const findMatches = (text: string, query: string): number[] => matchRanges(text, query).map(([start]) => start);
+
 /** Corta o texto em trechos comuns e trechos que batem com o termo, para destacar. */
 export function highlightSegments(text: string, query: string): { text: string; match: boolean }[] {
-  const positions = findMatches(text, query);
-  if (!positions.length) return [{ text, match: false }];
+  const ranges = matchRanges(text, query);
+  if (!ranges.length) return [{ text, match: false }];
   const segments: { text: string; match: boolean }[] = [];
   let last = 0;
-  for (const at of positions) {
+  for (const [at, end] of ranges) {
     if (at > last) segments.push({ text: text.slice(last, at), match: false });
-    segments.push({ text: text.slice(at, at + query.length), match: true });
-    last = at + query.length;
+    segments.push({ text: text.slice(at, end), match: true });
+    last = end;
   }
   if (last < text.length) segments.push({ text: text.slice(last), match: false });
   return segments;
@@ -593,11 +631,78 @@ export function formatJsonBody(text: string, indent = 2): JsonCheck {
     return { ok: true, text: out };
   } catch (error) {
     const message = (error as Error).message;
-    const position = Number(message.match(/position (\d+)/)?.[1] ?? NaN);
     // A posição é no texto mascarado; para linha/coluna serve, porque as variáveis não têm quebra de linha.
-    const at = Number.isFinite(position) ? position : masked.length;
+    const position = jsonErrorAt(masked);
+    const at = position >= 0 ? position : masked.length;
     const before = masked.slice(0, at).split('\n');
     return { ok: false, line: before.length, column: before[before.length - 1].length + 1, message };
+  }
+}
+
+// Onde o JSON quebra, varrendo o texto: a mensagem do JSON.parse nem sempre traz "position N". -1 se for válido.
+function jsonErrorAt(text: string): number {
+  let i = 0;
+  const NUMBER = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
+  const fail = (): never => {
+    throw i;
+  };
+  const space = () => {
+    while (i < text.length && ' \t\n\r'.includes(text[i])) i++;
+  };
+  const expect = (char: string) => (text[i] === char ? i++ : fail());
+  const string = () => {
+    expect('"');
+    for (; text[i] !== '"'; i++) {
+      if (i >= text.length || text[i] < ' ') fail();
+      if (text[i] !== '\\') continue;
+      i++;
+      if (text[i] === 'u') {
+        if (!/^[\da-fA-F]{4}$/.test(text.slice(i + 1, i + 5))) fail();
+        i += 4;
+      } else if (i >= text.length || !'"\\/bfnrt'.includes(text[i])) fail();
+    }
+    i++;
+  };
+  const list = (close: string, item: () => void) => {
+    i++;
+    space();
+    if (text[i] === close) return void i++;
+    for (;;) {
+      item();
+      space();
+      if (text[i] === close) return void i++;
+      expect(',');
+    }
+  };
+  const value = (): void => {
+    space();
+    const char = text[i];
+    if (char === '{')
+      list('}', () => {
+        space();
+        string();
+        space();
+        expect(':');
+        value();
+      });
+    else if (char === '[') list(']', value);
+    else if (char === '"') string();
+    else if (char === 't' || char === 'f' || char === 'n') {
+      const word = char === 't' ? 'true' : char === 'f' ? 'false' : 'null';
+      if (!text.startsWith(word, i)) fail();
+      i += word.length;
+    } else {
+      NUMBER.lastIndex = i;
+      if (!NUMBER.test(text)) fail();
+      i = NUMBER.lastIndex;
+    }
+  };
+  try {
+    value();
+    space();
+    return i < text.length ? i : -1;
+  } catch (at) {
+    return at as number;
   }
 }
 

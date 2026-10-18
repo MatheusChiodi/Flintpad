@@ -112,7 +112,7 @@ test('parseCurl pula o valor das opções que não mudam a request', () => {
   assert.deepEqual(out.headers, []);
 });
 
-test('parseCurl não toma o valor de uma opção desconhecida como URL', { todo: 'BUG: requestTools.ts:103-104 trata o valor de opções fora de VALUE_FLAGS (ex.: --max-redirs 5) como a URL' }, () => {
+test('parseCurl não toma o valor de uma opção desconhecida como URL', () => {
   assert.equal(r.parseCurl('curl --max-redirs 5 https://x.com').url, 'https://x.com');
 });
 
@@ -156,7 +156,7 @@ test('parseCurl decodifica + e %XX do formulário e tolera % inválido', () => {
   assert.deepEqual(out.body.formUrlEncoded.map((p) => [p.name, p.value]), [['nome', 'Ana Maria'], ['p', '100%']]);
 });
 
-test('parseCurl: --data-urlencode codifica o valor antes de montar o formulário', { todo: 'BUG: requestTools.ts:68/112 trata --data-urlencode como -d; "msg=a&b" vira texto em vez de um campo msg="a&b"' }, () => {
+test('parseCurl: --data-urlencode codifica o valor antes de montar o formulário', () => {
   const out = r.parseCurl(`curl https://x.com --data-urlencode 'msg=a&b'`);
   assert.equal(out.bodyMode, 'formUrlEncoded');
   assert.deepEqual(out.body.formUrlEncoded.map((p) => [p.name, p.value]), [['msg', 'a&b']]);
@@ -465,7 +465,7 @@ test('highlightSegments com achados nas pontas e colados', () => {
   ]);
 });
 
-test('highlightSegments acerta a posição quando toLowerCase muda o tamanho do texto', { todo: 'BUG: requestTools.ts:386-401 usa posições do texto em minúsculas no texto original; "İ" vira 2 caracteres e desloca o destaque' }, () => {
+test('highlightSegments acerta a posição quando toLowerCase muda o tamanho do texto', () => {
   assert.deepEqual(r.highlightSegments('İx', 'x'), [
     { text: 'İ', match: false },
     { text: 'x', match: true },
@@ -712,7 +712,7 @@ test('formatJsonBody aponta coluna quando o erro tem posição', () => {
   assert.equal(out.column, 9);
 });
 
-test('formatJsonBody aponta a linha certa de um token inesperado no meio do texto', { todo: 'BUG: requestTools.ts:596-598 depende de "position N" na mensagem; o V8 não a inclui em "Unexpected token" e o erro cai na última linha' }, () => {
+test('formatJsonBody aponta a linha certa de um token inesperado no meio do texto', () => {
   const out = r.formatJsonBody('{\n  "a": ,\n  "b": 1\n}');
   assert.equal(out.ok, false);
   assert.equal(out.line, 2);
