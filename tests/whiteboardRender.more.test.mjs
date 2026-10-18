@@ -276,7 +276,6 @@ test('boardToSvg: segunda barreira — cor, tracejado e imagem inválidos que es
 
 test(
   'boardToSvg: coordenadas não finitas viram 0, sem NaN nem Infinity no arquivo',
-  { todo: 'BUG (defesa em profundidade): render.ts:175-176 width/height usam Math.ceil cru, sem n(); um elemento com coordenada não finita (que escapou do modelo) gera width="NaN" e viewBox com NaN no <svg> raiz e no fundo' },
   () => {
   const board = {
     ...m.emptyBoard(),

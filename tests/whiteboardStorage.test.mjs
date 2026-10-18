@@ -306,7 +306,6 @@ test('autosave: depois de dispose nada é agendado nem gravado', async () => {
 
 test(
   'autosave: falha de uma gravação em andamento não ressuscita o pendente depois de dispose',
-  { todo: 'BUG: storage.ts:63 `pending ??= board` no catch roda mesmo após dispose(); dirty volta a true e um flush() posterior grava no arquivo descartado (possivelmente já na lixeira)' },
   async () => {
     const api = fakeApi();
     let release;

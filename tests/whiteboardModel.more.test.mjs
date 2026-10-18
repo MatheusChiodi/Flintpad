@@ -57,7 +57,6 @@ test('parseBoard: tamanho no limite passa; um caractere acima é recusado', () =
 
 test(
   'parseBoard: o limite é de bytes (5 MB), não de caracteres',
-  { todo: 'BUG: model.ts:163 compara text.length (unidades UTF-16) com MAX_BOARD_BYTES; texto com acentos/emoji passa de 5 MB em UTF-8 e é aceito' },
   () => {
     const base = doc([]);
     const pad = 'é'.repeat(Math.floor((m.MAX_BOARD_BYTES - base.length) / 1.5));
@@ -290,7 +289,6 @@ test('sanitizeStyle: só o que difere do padrão; opacidade entre 10 e 99', () =
 
 test(
   'sanitizeStyle: opacidade quase opaca (99.5–99.99) não grava o valor padrão 100',
-  { todo: 'BUG: model.ts:228 testa `opacity < 100` antes de arredondar; 99.6 vira opacity: 100 (o padrão, que não deveria ser gravado) e o arquivo muda na segunda leitura' },
   () => {
     const style = m.sanitizeStyle({ opacity: 99.6 });
     assert.ok(style.opacity === undefined || style.opacity < 100, `opacity = ${style.opacity}`);
@@ -626,7 +624,6 @@ test('moveElements: traços e imagens andam pela caixa; pontos normalizados não
 
 test(
   'resizeShape: seta ou id inexistente devolvem o mesmo quadro (nada mudou)',
-  { todo: 'BUG: model.ts:605 resizeShape sempre cria um quadro novo, mesmo quando nenhum elemento muda — contradiz o contrato do módulo ("o mesmo objeto quando nada muda") e gera passo de desfazer vazio' },
   () => {
     const { board, ids } = build(['rectangle', rect(0, 0)], ['rectangle', rect(300, 0)]);
     const arrow = m.connect(board, ids[0], ids[1]);
