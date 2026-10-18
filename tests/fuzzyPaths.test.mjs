@@ -31,7 +31,7 @@ test('dirName: separador no fim, caminho relativo e unidade com barra normal', (
   assert.equal(dirName('C:/x'), 'C:\\');
 });
 
-test('dirName da própria raiz continua sendo a raiz', { todo: 'BUG: paths.ts:12-19 — dirName("C:\\\\") e dirName("/") devolvem "" em vez da raiz' }, () => {
+test('dirName da própria raiz continua sendo a raiz', () => {
   assert.equal(dirName('C:\\'), 'C:\\');
   assert.equal(dirName('/'), '/');
 });
@@ -44,7 +44,7 @@ test('joinPath: ".." não sobe acima da raiz e partes vazias ou "." são ignorad
   assert.equal(joinPath('D:\\a'), 'D:\\a');
 });
 
-test('joinPath com raiz ou base terminada em separador não duplica a barra', { todo: 'BUG: paths.ts:23 — o split da base mantém o segmento vazio final: "C:\\\\"+"a" vira "C:\\\\\\\\a", "/"+"a" vira "//a"' }, () => {
+test('joinPath com raiz ou base terminada em separador não duplica a barra', () => {
   assert.equal(joinPath('C:\\', 'a'), 'C:\\a');
   assert.equal(joinPath('/', 'a'), '/a');
   assert.equal(joinPath('D:\\proj\\', 'a.ts'), 'D:\\proj\\a.ts');
@@ -110,7 +110,7 @@ test('fuzzyMatch: letras seguidas e acerto no nome do arquivo pontuam mais', () 
   assert.ok(fuzzyMatch('a', 'a.ts').score > fuzzyMatch('a', 'a.tsx').score);
 });
 
-test('fuzzyMatch acha a sequência mesmo quando a letra seguinte começa palavra mais adiante', { todo: 'BUG: fuzzy.ts:29-35 — ao pular para a próxima ocorrência em início de palavra, perde as letras seguintes: "abc" em "xa-bc-ab" dá null' }, () => {
+test('fuzzyMatch acha a sequência mesmo quando a letra seguinte começa palavra mais adiante', () => {
   const match = fuzzyMatch('abc', 'xa-bc-ab');
   assert.notEqual(match, null);
   assert.deepEqual(match.positions, [1, 3, 4]);

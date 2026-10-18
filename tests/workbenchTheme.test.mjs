@@ -113,7 +113,7 @@ test('toMonacoTheme: base conforme o uiTheme e só cores "#" passam', () => {
   assert.deepEqual(toMonacoTheme({}, 'vs').rules, []);
 });
 
-test('toMonacoTheme: alto contraste claro usa a base hc-light do Monaco', { todo: 'BUG: vscode.ts:97 — uiTheme "hc-light" começa com "hc" e vira base "hc-black" (escura)' }, () => {
+test('toMonacoTheme: alto contraste claro usa a base hc-light do Monaco', () => {
   assert.equal(toMonacoTheme({}, 'hc-light').base, 'hc-light');
 });
 
@@ -150,7 +150,7 @@ test('toMonacoTheme: entrada sem cor nem estilo é ignorada; cor inválida some 
   assert.deepEqual(rules, [{ token: 'keyword', foreground: undefined, fontStyle: 'bold' }]);
 });
 
-test('toMonacoTheme: "support.type.property-name" vira chave de JSON', { todo: 'BUG: vscode.ts:76 — "support.type" vem antes na tabela e captura o escopo; a entrada de property-name nunca é usada' }, () => {
+test('toMonacoTheme: "support.type.property-name" vira chave de JSON', () => {
   const { rules } = toMonacoTheme({ tokenColors: [{ scope: 'support.type.property-name', settings: { foreground: '#aaaaaa' } }] }, 'vs-dark');
   assert.deepEqual(
     rules.map((rule) => rule.token),

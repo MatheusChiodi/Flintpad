@@ -21,16 +21,30 @@ export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
   const q = fold(query.replace(/\s+/g, ''));
   if (!q) return { score: 0, positions: [] };
   const lower = fold(text);
+  // Primeiro tenta preferindo inícios de palavra; se esse caminho se perder (pulou para uma
+  // ocorrência adiante e as letras seguintes acabaram), volta ao casamento guloso simples.
+  const match = matchFrom(q, text, lower, true) ?? matchFrom(q, text, lower, false);
+  if (!match) return null;
+  let { score } = match;
+  const { positions } = match;
+  const nameStart = Math.max(text.lastIndexOf('/'), text.lastIndexOf('\\')) + 1;
+  if (positions[0] >= nameStart) score += 6;
+  if (lower.slice(nameStart).startsWith(q)) score += 10;
+  score -= text.length * 0.01;
+  return { score, positions };
+}
+
+function matchFrom(q: string, text: string, lower: string, preferWordStart: boolean): FuzzyMatch | null {
   const positions: number[] = [];
   let score = 0;
   let from = 0;
   let streak = 0;
   for (const char of q) {
-    // Prefere a próxima ocorrência que comece palavra; senão, a primeira.
+    // Prefere a próxima ocorrência que comece palavra (ou continue a sequência); senão, a primeira.
     let index = -1;
     for (let i = lower.indexOf(char, from); i >= 0; i = lower.indexOf(char, i + 1)) {
       if (index < 0) index = i;
-      if (isWordStart(text, i) || (positions.length && i === positions[positions.length - 1] + 1)) {
+      if (!preferWordStart || isWordStart(text, i) || (positions.length && i === positions[positions.length - 1] + 1)) {
         index = i;
         break;
       }
@@ -42,10 +56,6 @@ export function fuzzyMatch(query: string, text: string): FuzzyMatch | null {
     positions.push(index);
     from = index + 1;
   }
-  const nameStart = Math.max(text.lastIndexOf('/'), text.lastIndexOf('\\')) + 1;
-  if (positions[0] >= nameStart) score += 6;
-  if (lower.slice(nameStart).startsWith(q)) score += 10;
-  score -= text.length * 0.01;
   return { score, positions };
 }
 

@@ -91,11 +91,11 @@ test('splitStatements: corpo $$ ... $$ no PostgreSQL e Redshift; outros dialetos
   assert.ok(splitStatements(fn, 'mysql').length > 2);
 });
 
-test('splitStatements: corpo com etiqueta $tag$ ... $tag$ também protege os ";"', { todo: 'BUG: sqlLint.ts:56 — só "$$" é reconhecido; "$body$ ...; $body$" é quebrado no meio da função' }, () => {
+test('splitStatements: corpo com etiqueta $tag$ ... $tag$ também protege os ";"', () => {
   assert.deepEqual(texts('select $tag$ a;b $tag$; select 2', 'postgresql'), ['select $tag$ a;b $tag$', 'select 2']);
 });
 
-test('splitStatements: comentário só com "#" no fim não vira comando (MySQL)', { todo: 'BUG: sqlLint.ts:75-77 — hasCode só remove "--" e "/* */"; "# fim" sozinho conta como comando' }, () => {
+test('splitStatements: comentário só com "#" no fim não vira comando (MySQL)', () => {
   assert.deepEqual(texts('select 1;\n# fim\n', 'mysql'), ['select 1']);
 });
 

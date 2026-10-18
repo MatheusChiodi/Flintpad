@@ -11,6 +11,9 @@ export function baseName(path: string) {
 
 export function dirName(path: string) {
   const trimmed = path.replace(/[\\/]+$/, '');
+  // A própria raiz ("C:\", "/") não tem pasta acima: continua sendo a raiz.
+  if (trimmed !== path && /^[a-z]:$/i.test(trimmed)) return trimmed + separatorOf(path);
+  if (!trimmed && path) return path[0];
   const index = Math.max(trimmed.lastIndexOf('\\'), trimmed.lastIndexOf('/'));
   if (index < 0) return '';
   const dir = trimmed.slice(0, index);
@@ -20,7 +23,8 @@ export function dirName(path: string) {
 
 export function joinPath(base: string, ...parts: string[]) {
   const sep = separatorOf(base);
-  const out: string[] = base.split(SEPARATORS);
+  // Sem o separador final da base: "C:\" + "a" é "C:\a" (não "C:\\a") e "/" + "a" é "/a".
+  const out: string[] = base.replace(/[\\/]+$/, '').split(SEPARATORS);
   for (const part of parts) {
     for (const segment of part.split(SEPARATORS)) {
       if (!segment || segment === '.') continue;
@@ -29,7 +33,8 @@ export function joinPath(base: string, ...parts: string[]) {
       } else out.push(segment);
     }
   }
-  const joined = out.join(sep);
+  // Só a unidade ("C:") volta a ser a raiz do disco ("C:\").
+  const joined = out.length === 1 && /^[a-z]:$/i.test(out[0]) ? out[0] + sep : out.join(sep);
   return base.startsWith('/') && !joined.startsWith('/') ? '/' + joined : joined;
 }
 

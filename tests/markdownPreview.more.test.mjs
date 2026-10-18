@@ -63,7 +63,7 @@ test('título com até 3 espaços antes; com 4 já não é título', () => {
   assert.deepEqual(types(parseMarkdown('    ## não')), ['paragraph']);
 });
 
-test('âncoras repetidas nunca colidem com uma âncora já gerada', { todo: 'BUG: markdownPreview.ts:70-74 — "Uso", "Uso", "Uso 1" geram "uso", "uso-1", "uso-1" (duplicada)' }, () => {
+test('âncoras repetidas nunca colidem com uma âncora já gerada', () => {
   const ids = parseMarkdown('## Uso\n## Uso\n## Uso 1').map((b) => b.id);
   assert.equal(new Set(ids).size, 3);
 });
@@ -214,7 +214,7 @@ test('código em linha: crases duplas aceitam crase dentro, um espaço de cada l
   assert.deepEqual(parseInline('`**não**`'), [{ type: 'code', text: '**não**' }]);
 });
 
-test('código em linha só fecha com sequência de crases do mesmo tamanho', { todo: 'BUG: markdownPreview.ts:259 — indexOf acha "``" ao procurar "`": "`a``b`" vira dois códigos em vez de um "a``b"' }, () => {
+test('código em linha só fecha com sequência de crases do mesmo tamanho', () => {
   assert.deepEqual(parseInline('`a``b`'), [{ type: 'code', text: 'a``b' }]);
 });
 
@@ -242,7 +242,7 @@ test('quebra suave vira espaço e apara os espaços antes dela', () => {
   assert.deepEqual(parseInline('a   \nb'), [{ type: 'text', text: 'a' }, { type: 'br' }, { type: 'text', text: 'b' }]);
 });
 
-test('barra invertida no fim da linha é quebra de linha', { todo: 'BUG: markdownPreview.ts:247-255 — o comentário promete "(ou \\)", mas "a\\\\\\nb" vira texto "a\\ b" sem quebra' }, () => {
+test('barra invertida no fim da linha é quebra de linha', () => {
   assert.deepEqual(parseInline('a\\\nb'), [{ type: 'text', text: 'a' }, { type: 'br' }, { type: 'text', text: 'b' }]);
 });
 
