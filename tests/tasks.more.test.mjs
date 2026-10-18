@@ -248,7 +248,7 @@ test('parseRecurrence: formas em português e inglês', () => {
   assert.deepEqual(t.parseRecurrence('every weekday'), { unit: 'weekday', every: 1 });
 });
 
-test('parseRecurrence entende o singular "dia útil"', { todo: 'BUG: tasks.ts:250 — o regex aceita "úte(is|l)", então "útil" não casa e "todo dia útil" vira repetição diária (every 1 day) em vez de dias úteis' }, () => {
+test('parseRecurrence entende o singular "dia útil"', () => {
   assert.deepEqual(t.parseRecurrence('todo dia útil'), { unit: 'weekday', every: 1 });
   assert.deepEqual(t.parseRecurrence('dia util'), { unit: 'weekday', every: 1 });
 });
@@ -318,7 +318,7 @@ test('parseQuickAdd: data ISO, data inválida e metadados já escritos', () => {
   assert.equal(t.parseQuickAdd('Prova 🔽', TODAY), 'Prova 🔽');
 });
 
-test('parseQuickAdd preserva metadados já escritos (📅 data)', { todo: 'BUG: tasks.ts:331 — a data ISO depois de "📅" é consumida como palavra solta e o emoji fica órfão: "Prova 📅 2026-11-11 🔽" vira "Prova 📅 🔽 📅 2026-11-11"' }, () => {
+test('parseQuickAdd preserva metadados já escritos (📅 data)', () => {
   assert.equal(t.parseQuickAdd('Prova 📅 2026-11-11 🔽', TODAY), 'Prova 🔽 📅 2026-11-11');
   assert.equal(t.parseQuickAdd('Prova ⏳ 2026-11-11', TODAY), 'Prova ⏳ 2026-11-11');
 });

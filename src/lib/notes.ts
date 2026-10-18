@@ -11,7 +11,8 @@ const RESERVED_WINDOWS_NAMES = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
 
 /** Nome de página seguro para arquivo e para link; vazio se não sobrar nada. */
 export function sanitizeNoteName(raw: string): string {
-  const name = raw.replace(FORBIDDEN_NAME_CHARS, '').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '');
+  // Espaços (tab, quebra de linha) viram um espaço antes de apagar os controles, senão as palavras grudam.
+  const name = raw.replace(/\s+/g, ' ').replace(FORBIDDEN_NAME_CHARS, '').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '');
   return RESERVED_WINDOWS_NAMES.test(name) ? `${name}_` : name;
 }
 

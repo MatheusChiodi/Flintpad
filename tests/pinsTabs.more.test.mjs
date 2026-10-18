@@ -200,7 +200,7 @@ test('restoreSession: active inválido vale como a primeira posição salva', ()
   assert.equal(g.restoreSession(raw, () => true, 1).activeId, 1);
 });
 
-test('restoreSession com firstId 0 mantém a guia ativa salva', { todo: 'BUG: tabs.ts:97 — "activeId || ordered[0]" trata o id 0 como ausente; com firstId 0 e uma fixada à frente, a ativa vira a fixada' }, () => {
+test('restoreSession com firstId 0 mantém a guia ativa salva', () => {
   const raw = JSON.stringify({ tabs: [{ stack: ['a.md'], idx: 0 }, { stack: ['b.md'], idx: 0, pinned: true }], active: 0 });
   const out = g.restoreSession(raw, () => true, 0);
   assert.equal(out.activeId, 0);

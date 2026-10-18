@@ -24,7 +24,7 @@ test('sanitizeNoteName junta espaços, tira pontos finais e controles, mantém a
   assert.equal(n.sanitizeNoteName('Versão 1.2'), 'Versão 1.2');
 });
 
-test('sanitizeNoteName trata tab e quebra de linha como espaço', { todo: 'BUG: notes.ts:14 — os controles (tab, quebra de linha) são apagados antes de juntar espaços, então "de<TAB>segunda" vira "desegunda"' }, () => {
+test('sanitizeNoteName trata tab e quebra de linha como espaço', () => {
   assert.equal(n.sanitizeNoteName('Reunião de\tsegunda'), 'Reunião de segunda');
   assert.equal(n.sanitizeNoteName('linha um\nlinha dois'), 'linha um linha dois');
 });

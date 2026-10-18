@@ -92,7 +92,7 @@ test('splitFrontmatter para no primeiro fechamento', () => {
   assert.equal(body, 'b\n---\nc');
 });
 
-test('splitFrontmatter reconhece frontmatter vazio ("---" seguido de "---")', { todo: 'BUG: links.ts:34 — o regex exige uma quebra de linha extra, então "---\\n---\\n" (frontmatter vazio, válido no Obsidian) vira corpo' }, () => {
+test('splitFrontmatter reconhece frontmatter vazio ("---" seguido de "---")', () => {
   assert.deepEqual(l.splitFrontmatter('---\n---\ncorpo'), ['---\n---\n', 'corpo']);
 });
 
