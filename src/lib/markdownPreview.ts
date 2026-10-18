@@ -66,12 +66,17 @@ export function parseMarkdown(source: string): Block[] {
     }
   }
   const slugs = new Map<string, number>();
+  const used = new Set<string>();
   for (const block of parseBlocks(lines.slice(start), start)) {
     if (block.type === 'heading') {
       const base = slugify(plainText(block.children)) || 'secao';
-      const seen = slugs.get(base) ?? 0;
+      // Sufixo seguinte que ainda não foi usado: "Uso", "Uso", "Uso 1" não repetem "uso-1".
+      let seen = slugs.get(base) ?? 0;
+      let id = seen ? `${base}-${seen}` : base;
+      while (used.has(id)) id = `${base}-${++seen}`;
       slugs.set(base, seen + 1);
-      block.id = seen ? `${base}-${seen}` : base;
+      used.add(id);
+      block.id = id;
     }
     blocks.push(block);
   }
@@ -239,6 +244,14 @@ export function parseInline(text: string): Inline[] {
   while (i < text.length) {
     const char = text[i];
     const rest = text.slice(i);
+    if (char === '\\' && text[i + 1] === '\n') {
+      // barra invertida no fim da linha: quebra de linha
+      buffer = buffer.replace(/ +$/, '');
+      flush();
+      out.push({ type: 'br' });
+      i += 2;
+      continue;
+    }
     if (char === '\\' && i + 1 < text.length && ESCAPABLE.includes(text[i + 1])) {
       buffer += text[i + 1];
       i += 2;
@@ -256,7 +269,10 @@ export function parseInline(text: string): Inline[] {
     }
     if (char === '`') {
       const ticks = /^`+/.exec(rest)![0];
-      const end = text.indexOf(ticks, i + ticks.length);
+      // Fecha só com uma sequência de crases do mesmo tamanho (nem maior, nem parte de uma maior).
+      const close = new RegExp('(?<!`)' + ticks + '(?!`)', 'g');
+      close.lastIndex = i + ticks.length;
+      const end = close.exec(text)?.index ?? -1;
       if (end > 0) {
         flush();
         let code = text.slice(i + ticks.length, end).replace(/\n/g, ' ');

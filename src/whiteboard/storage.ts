@@ -59,8 +59,9 @@ export function createAutosave(path: string, onStatus: (status: 'saving' | 'save
         await window.api.write(path, serializeBoard(board));
         if (!pending) onStatus('saved');
       } catch (error) {
-        // Mantém o estado para a próxima tentativa, sem sobrescrever uma alteração mais nova.
-        pending ??= board;
+        // Mantém o estado para a próxima tentativa, sem sobrescrever uma alteração mais nova
+        // (nem ressuscitar o pendente se o quadro foi descartado durante a gravação).
+        if (!disposed) pending ??= board;
         onStatus('error');
         console.error('whiteboard:save', path, error instanceof Error ? error.message : error);
       }

@@ -81,7 +81,7 @@ export function restoreSession(raw: string | null | undefined, exists: (path: st
   const saved = (data as Partial<Session> | null)?.tabs;
   if (!Array.isArray(saved)) return empty;
   const tabs: Tab[] = [];
-  let activeId = 0;
+  let activeId: number | undefined;
   const wanted = Number((data as Partial<Session>).active) || 0;
   saved.slice(0, MAX_SESSION_TABS).forEach((entry, position) => {
     if (!entry || !Array.isArray(entry.stack)) return;
@@ -94,7 +94,8 @@ export function restoreSession(raw: string | null | undefined, exists: (path: st
     if (position === wanted) activeId = tab.id;
   });
   const ordered = pinnedFirst(tabs);
-  return { tabs: ordered, activeId: activeId || ordered[0]?.id || 0 };
+  // "??" e não "||": o id 0 (firstId 0) é uma guia ativa válida.
+  return { tabs: ordered, activeId: activeId ?? ordered[0]?.id ?? 0 };
 }
 
 export function loadSession(vault: string, store: Store = localStorage): string | null {

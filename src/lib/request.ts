@@ -85,7 +85,7 @@ export const envToVars = (env?: Environment): Record<string, string> =>
   Object.fromEntries((env?.variables ?? []).filter((v) => v.enabled && v.name).map((v) => [v.name, v.value]));
 
 export const interpolate = (text: string, vars: Record<string, string>) =>
-  text.replace(VARIABLE, (all, name: string) => (name in vars ? vars[name] : all));
+  text.replace(VARIABLE, (all, name: string) => (Object.hasOwn(vars, name) ? vars[name] : all));
 
 // Só o que vai no envio conta: anotações, linhas desativadas e modos não escolhidos não geram aviso.
 function sentParts(request: BruRequest): unknown[] {
@@ -103,7 +103,7 @@ function sentParts(request: BruRequest): unknown[] {
 
 export function unresolvedVariables(request: BruRequest, vars: Record<string, string>): string[] {
   const missing = new Set<string>();
-  for (const match of JSON.stringify(sentParts(request)).matchAll(VARIABLE)) if (!(match[1] in vars)) missing.add(match[1]);
+  for (const match of JSON.stringify(sentParts(request)).matchAll(VARIABLE)) if (!Object.hasOwn(vars, match[1])) missing.add(match[1]);
   return [...missing];
 }
 
@@ -114,7 +114,8 @@ const splitUrl = (url: string): [base: string, query: string] => {
 
 // A URL e a tabela de parâmetros são dois retratos da mesma query, como no Bruno.
 export function paramsFromUrl(url: string, previous: Pair[] = []): Pair[] {
-  const [, query] = splitUrl(url);
+  // O fragmento (#…) não é da query: fica fora do valor do último parâmetro.
+  const [, query] = splitUrl(url.split('#')[0]);
   const enabled = query
     .split('&')
     .filter(Boolean)
@@ -167,8 +168,9 @@ export function buildRequest(request: BruRequest, vars: Record<string, string>, 
       headers.push(['Authorization', `Basic ${toBase64(`${fill(auth.basic?.username)}:${fill(auth.basic?.password)}`)}`]);
       break;
     case 'apikey':
-      if (auth.apikey?.placement === 'queryparams') url.searchParams.append(fill(auth.apikey.key), fill(auth.apikey.value));
-      else if (auth.apikey?.key) headers.push([fill(auth.apikey.key), fill(auth.apikey.value)]);
+      if (auth.apikey?.placement === 'queryparams') {
+        if (auth.apikey.key) url.searchParams.append(fill(auth.apikey.key), fill(auth.apikey.value));
+      } else if (auth.apikey?.key) headers.push([fill(auth.apikey.key), fill(auth.apikey.value)]);
       break;
   }
 

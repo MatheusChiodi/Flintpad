@@ -172,8 +172,9 @@ export type SvgOptions = { padding?: number; background?: string | null; ids?: I
 export function boardToSvg(board: Board, { padding = 32, background = '#ffffff', ids }: SvgOptions = {}): { svg: string; width: number; height: number } {
   const wanted = ids ? new Set(ids) : null;
   const bounds = boardBounds(board, wanted ?? undefined) ?? { x: 0, y: 0, w: 0, h: 0 };
-  const width = Math.ceil(bounds.w + padding * 2);
-  const height = Math.ceil(bounds.h + padding * 2);
+  // Mesmo critério de n(): medida não finita vira 0, nunca NaN/Infinity no arquivo.
+  const width = Number(n(Math.ceil(bounds.w + padding * 2)));
+  const height = Number(n(Math.ceil(bounds.h + padding * 2)));
   const body = board.elements
     .filter((e) => !wanted || wanted.has(e.id))
     .map((element) => {

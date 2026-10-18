@@ -247,7 +247,7 @@ const UNIT_WORDS: [RegExp, 'day' | 'week' | 'month' | 'year'][] = [
 /** Lê regras como "every week", "every 3 days", "every weekday", "a cada 2 semanas", "todo mês", "dias úteis". */
 export function parseRecurrence(input: string): Recurrence | null {
   const text = input.trim().toLowerCase().replace(/\s+/g, ' ');
-  if (/^(?:every weekday|(?:todo )?dias? [úu]te(?:is|l))$/.test(text)) return { unit: 'weekday', every: 1 };
+  if (/^(?:every weekday|(?:todo )?dias? [úu]t(?:eis|il))$/.test(text)) return { unit: 'weekday', every: 1 };
   const match = /^(?:every|a cada|tod[oa]s? (?:os |as )?|tod[oa])\s*(\d+)?\s*(\S+)/.exec(text);
   if (!match) return null;
   const every = match[1] ? Number(match[1]) : 1;
@@ -328,7 +328,8 @@ export function parseQuickAdd(input: string, today: string): string {
       due = addDays(today, 7);
       i++;
     } else if (!due && quick) due = quick[1](today);
-    else if (!due && isIsoDate(word)) due = word;
+    // Data logo após um marcador (📅, ⏳...) já é metadado: fica no texto para parseTaskMeta.
+    else if (!due && isIsoDate(word) && !MARK_FIELD[words[i - 1]?.replace('️', '') ?? '']) due = word;
     else if (!due && WEEKDAYS.some((names) => names.includes(lower))) {
       const target = WEEKDAYS.findIndex((names) => names.includes(lower));
       const diff = (target - toUtc(today).getUTCDay() + 7) % 7 || 7;

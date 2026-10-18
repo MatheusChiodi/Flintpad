@@ -64,6 +64,7 @@ const SCOPE_TO_TOKENS: [scope: string, tokens: string[]][] = [
   ['storage', ['keyword']],
   ['entity.name.type', ['type', 'type.identifier']],
   ['entity.name.class', ['type', 'type.identifier']],
+  ['support.type.property-name', ['string.key.json', 'attribute.name']],
   ['support.type', ['type']],
   ['support.class', ['type.identifier']],
   ['entity.name.function', ['function', 'identifier.function']],
@@ -73,7 +74,6 @@ const SCOPE_TO_TOKENS: [scope: string, tokens: string[]][] = [
   ['variable', ['variable', 'variable.name']],
   ['punctuation', ['delimiter']],
   ['meta.tag', ['delimiter.html', 'delimiter.xml']],
-  ['support.type.property-name', ['string.key.json', 'attribute.name']],
   ['markup.heading', ['keyword.md']],
 ];
 
@@ -88,13 +88,19 @@ export function toMonacoTheme(theme: VsTheme, uiTheme: string): Monaco.editor.IS
     if (!foreground && !fontStyle) continue;
     const scopes = (Array.isArray(entry.scope) ? entry.scope : (entry.scope ?? '').split(',')).map((scope) => scope.trim()).filter(Boolean);
     for (const scope of scopes) {
-      const match = SCOPE_TO_TOKENS.find(([prefix]) => scope === prefix || scope.startsWith(`${prefix}.`));
+      // O prefixo mais específico (mais longo) vence: "support.type.property-name" não cai em "support.type".
+      let match: (typeof SCOPE_TO_TOKENS)[number] | undefined;
+      for (const entry of SCOPE_TO_TOKENS) {
+        const [prefix] = entry;
+        if ((scope === prefix || scope.startsWith(`${prefix}.`)) && (!match || prefix.length > match[0].length)) match = entry;
+      }
       if (!match) continue;
       for (const token of match[1]) rules.push({ token, foreground, fontStyle });
     }
   }
   const colors = Object.fromEntries(Object.entries(theme.colors ?? {}).filter(([, value]) => typeof value === 'string' && value.startsWith('#')));
-  const base = uiTheme === 'vs' ? 'vs' : uiTheme.startsWith('hc') ? 'hc-black' : 'vs-dark';
+  // "hc-light" é o alto contraste claro; os outros "hc*" são o escuro.
+  const base = uiTheme === 'vs' ? 'vs' : uiTheme === 'hc-light' ? 'hc-light' : uiTheme.startsWith('hc') ? 'hc-black' : 'vs-dark';
   return { base, inherit: true, rules, colors };
 }
 

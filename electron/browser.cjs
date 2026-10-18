@@ -325,7 +325,7 @@ function registerBrowserIpc({ getWin, getT }) {
     if (!visit || !/^(https?|file):/i.test(visit.url)) return;
     const list = history.get();
     // Recarregar a mesma página não cria outra visita: só atualiza o título e a hora.
-    if (list[0]?.url === visit.url) list[0] = { ...list[0], title: visit.title || list[0].title, time: visit.time };
+    if (list[0]?.url === visit.url) list[0] = { ...list[0], title: visit.title || list[0].title, time: Number(visit.time) || Date.now() };
     else list.unshift({ url: String(visit.url), title: String(visit.title ?? ''), time: Number(visit.time) || Date.now() });
     history.set(list.slice(0, MAX_HISTORY));
   });

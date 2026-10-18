@@ -24,6 +24,9 @@ export const dialectLabel = (dialect: SqlDialect) => SQL_DIALECTS.find(([id]) =>
 
 export type SqlStatement = { text: string; offset: number };
 
+// Abertura de texto com cifrão do PostgreSQL: "$$" ou "$tag$" (a etiqueta não começa com dígito, então "$1" fica de fora).
+const DOLLAR_TAG = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/;
+
 /** Quebra o script em comandos, ignorando ";" dentro de textos, identificadores entre aspas e comentários. */
 export function splitStatements(source: string, dialect: SqlDialect): SqlStatement[] {
   const statements: SqlStatement[] = [];
@@ -31,7 +34,7 @@ export function splitStatements(source: string, dialect: SqlDialect): SqlStateme
   let i = 0;
   const push = (end: number, next: number) => {
     const text = source.slice(start, end);
-    if (hasCode(text)) statements.push({ text, offset: start });
+    if (hasCode(text, dialect === 'mysql' || dialect === 'mariadb')) statements.push({ text, offset: start });
     start = next;
   };
   while (i < source.length) {
@@ -53,10 +56,11 @@ export function splitStatements(source: string, dialect: SqlDialect): SqlStateme
         else i++;
       }
       i++;
-    } else if (pair === '$$' && (dialect === 'postgresql' || dialect === 'redshift')) {
-      // Corpo de função em $$ ... $$: os ";" de dentro são do corpo.
-      const end = source.indexOf('$$', i + 2);
-      i = end < 0 ? source.length : end + 2;
+    } else if (char === '$' && (dialect === 'postgresql' || dialect === 'redshift') && DOLLAR_TAG.test(source.slice(i, i + 66))) {
+      // Corpo de função em $$ ... $$ ou $tag$ ... $tag$: os ";" de dentro são do corpo.
+      const tag = DOLLAR_TAG.exec(source.slice(i, i + 66))![0];
+      const end = source.indexOf(tag, i + tag.length);
+      i = end < 0 ? source.length : end + tag.length;
     } else if (char === ';') {
       push(i, i + 1);
       i++;
@@ -72,8 +76,10 @@ export function splitStatements(source: string, dialect: SqlDialect): SqlStateme
 }
 
 // Só comentários e espaços não formam um comando.
-function hasCode(text: string): boolean {
-  return /\S/.test(text.replace(/--[^\n]*|\/\*[\s\S]*?(\*\/|$)/g, ''));
+function hasCode(text: string, hashComments: boolean): boolean {
+  const code = text.replace(/--[^\n]*|\/\*[\s\S]*?(\*\/|$)/g, '');
+  // No MySQL/MariaDB "#" também abre comentário de linha.
+  return /\S/.test(hashComments ? code.replace(/#[^\n]*/g, '') : code);
 }
 
 export type SqlProblem = {

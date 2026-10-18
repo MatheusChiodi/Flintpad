@@ -158,9 +158,15 @@ export function migrate(doc: Raw): { doc: Raw; migrated: boolean } | ParseError 
   return { doc, migrated };
 }
 
+/** Tamanho em bytes UTF-8. Só codifica quando o número de caracteres não decide sozinho (cada um ocupa de 1 a 3 bytes). */
+function utf8Bytes(text: string): number {
+  if (text.length > MAX_BOARD_BYTES || text.length * 3 <= MAX_BOARD_BYTES) return text.length;
+  return new TextEncoder().encode(text).length;
+}
+
 /** Lê o texto de um arquivo de quadro. Arquivo vazio vira quadro vazio (recém-criado). */
 export function parseBoard(text: string): ParseResult {
-  if (text.length > MAX_BOARD_BYTES) return { ok: false, error: 'too-large' };
+  if (utf8Bytes(text) > MAX_BOARD_BYTES) return { ok: false, error: 'too-large' };
   if (!text.trim()) return { ok: true, board: emptyBoard(), migrated: false, dropped: 0 };
   let raw: unknown;
   try {
@@ -224,8 +230,9 @@ export function sanitizeStyle(value: Raw): Style {
   if (width && width !== DEFAULT_STROKE_WIDTH) style.strokeWidth = width;
   const dash = oneOf(STROKE_STYLES, value.strokeStyle);
   if (dash && dash !== 'solid') style.strokeStyle = dash;
+  // Arredonda antes de comparar: 99.6 vira 100, que é o padrão e não se grava.
   const opacity = finite(value.opacity, 100);
-  if (opacity !== null && opacity < 100) style.opacity = Math.max(10, Math.round(opacity));
+  if (opacity !== null && Math.round(opacity) < 100) style.opacity = Math.max(10, Math.round(opacity));
   if (typeof value.group === 'string' && ID.test(value.group)) style.group = value.group;
   if (value.locked === true) style.locked = true;
   const link = sanitizeLink(value.link);
@@ -603,6 +610,8 @@ export function moveElements(board: Board, ids: Iterable<string>, dx: number, dy
 
 /** Nova caixa de uma forma, traço ou imagem (o traço escala junto). */
 export function resizeShape(board: Board, id: string, rect: Rect): Board {
+  // Seta ou id inexistente: nada muda, devolve o mesmo quadro (sem passo de desfazer vazio).
+  if (!board.elements.some((element) => element.id === id && isBox(element))) return board;
   return replace(
     board,
     board.elements.map((element) =>

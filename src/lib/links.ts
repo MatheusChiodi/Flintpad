@@ -30,7 +30,8 @@ export function retargetLinks(content: string, oldPath: string, newName: string)
 }
 
 export function splitFrontmatter(text: string): [front: string, body: string] {
-  const match = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(text);
+  // O conteúdo é opcional: "---\n---\n" (frontmatter vazio) também vale, como no Obsidian.
+  const match = /^---\r?\n(?:[\s\S]*?\r?\n)?---\r?\n?/.exec(text);
   return match ? [match[0], text.slice(match[0].length)] : ['', text];
 }
 
