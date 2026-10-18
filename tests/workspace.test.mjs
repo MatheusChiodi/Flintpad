@@ -502,7 +502,6 @@ test('ws:stat dá os dados do arquivo; ws:stat e ws:realpath devolvem null fora 
 
 test(
   'ws:realpath devolve a grafia real do disco',
-  { todo: 'BUG: electron/workspace.cjs:332 usa fsp.realpath.native, que não existe em node:fs/promises (só em node:fs); o TypeError cai no catch e ws:realpath sempre devolve null' },
   async () => {
     const root = tempDir();
     write(path.join(root, 'Arquivo.txt'), 'x');

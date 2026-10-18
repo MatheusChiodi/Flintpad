@@ -329,7 +329,7 @@ function registerWorkspaceIpc({ getWin, getVault, readConfig, saveConfig, readOn
   // O language server devolve caminhos em minúsculas; aqui volta a grafia real do disco.
   ipcMain.handle('ws:realpath', async (_e, target) => {
     try {
-      return await fsp.realpath.native(guard(target));
+      return await new Promise((resolve, reject) => fs.realpath.native(guard(target), (err, real) => (err ? reject(err) : resolve(real))));
     } catch {
       return null;
     }

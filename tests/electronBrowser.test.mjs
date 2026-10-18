@@ -202,7 +202,6 @@ test('history:add sem hora usa a hora atual', () => {
 
 test(
   'history:add: recarregar sem hora também mantém uma hora numérica',
-  { todo: 'BUG: electron/browser.cjs:328 copia visit.time cru ao recarregar a mesma URL (sem o `Number(...) || Date.now()` do ramo de visita nova); a visita fica com time undefined' },
   () => {
     const { call } = setup();
     call('browser:history:add', { url: 'https://a.dev/', title: 'A', time: 1 });
