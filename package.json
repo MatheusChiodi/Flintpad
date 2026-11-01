@@ -90,7 +90,7 @@
     "concurrently": "^10.0.6",
     "cross-env": "^10.1.0",
     "d3-force": "^3.0.0",
-    "electron": "^44.7.1",
+    "electron": "^45.1.0",
     "electron-builder": "^26.15.3",
     "monaco-editor": "^0.57.0",
     "node-sql-parser": "^5.4.0",
